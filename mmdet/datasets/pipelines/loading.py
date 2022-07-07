@@ -284,7 +284,7 @@ class LoadAnnotations:
             dict: The dict contains loaded label annotations.
         """
 
-        results['gt_labels'] = results['ann_info']['labels'].copy()
+        results['gt_labels'] = results['ann_info']['labels'].astype(np.int64).copy()
         return results
 
     def _poly2mask(self, mask_ann, img_h, img_w):

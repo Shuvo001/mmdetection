@@ -83,7 +83,6 @@ def build_dataset(cfg, default_args=None):
 
     return dataset
 
-
 def build_dataloader(dataset,
                      samples_per_gpu,
                      workers_per_gpu,
@@ -124,7 +123,6 @@ def build_dataloader(dataset,
         DataLoader: A PyTorch dataloader.
     """
     rank, world_size = get_dist_info()
-
     if dist:
         # When model is :obj:`DistributedDataParallel`,
         # `batch_size` of :obj:`dataloader` is the
@@ -136,6 +134,9 @@ def build_dataloader(dataset,
         # the batch size is samples on all the GPUS
         batch_size = num_gpus * samples_per_gpu
         num_workers = num_gpus * workers_per_gpu
+
+    print("DEBUG:",__file__)
+    num_workers = 1
 
     if runner_type == 'IterBasedRunner':
         # this is a batch sampler, which can yield
@@ -204,6 +205,20 @@ def build_dataloader(dataset,
         **kwargs)
 
     return data_loader
+
+
+def build_dataloaderv2(dataset,
+                     samples_per_gpu,
+                     workers_per_gpu,
+                     num_gpus=1,
+                     dist=True,
+                     shuffle=True,
+                     seed=None,
+                     runner_type='EpochBasedRunner',
+                     persistent_workers=False,
+                     class_aware_sampler=None,
+                     **kwargs):
+    return dataset.loader
 
 
 def worker_init_fn(worker_id, num_workers, rank, seed):

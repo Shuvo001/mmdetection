@@ -10,7 +10,7 @@ from mmcv.runner import (DistSamplerSeedHook, EpochBasedRunner,
                          get_dist_info)
 
 from mmdet.core import DistEvalHook, EvalHook, build_optimizer
-from mmdet.datasets import (build_dataloader, build_dataset,
+from mmdet.datasets import (build_dataloaderv2, build_datasetv2,
                             replace_ImageToTensor)
 from mmdet.utils import (build_ddp, build_dp, compat_cfg,
                          find_latest_checkpoint, get_root_logger)
@@ -147,7 +147,7 @@ def train_detector(model,
         **cfg.data.get('train_dataloader', {})
     }
 
-    data_loaders = [build_dataloader(ds, **train_loader_cfg) for ds in dataset]
+    data_loaders = [build_dataloaderv2(ds, **train_loader_cfg) for ds in dataset]
 
     print(model)
     if hasattr(cfg,"finetune_model"):
@@ -228,9 +228,9 @@ def train_detector(model,
             # Replace 'ImageToTensor' to 'DefaultFormatBundle'
             cfg.data.val.pipeline = replace_ImageToTensor(
                 cfg.data.val.pipeline)
-        val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
+        val_dataset = build_datasetv2(cfg.data.val, dict(test_mode=True))
 
-        val_dataloader = build_dataloader(val_dataset, **val_dataloader_args)
+        val_dataloader = build_dataloaderv2(val_dataset, **val_dataloader_args)
         eval_cfg = cfg.get('evaluation', {})
         eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
         eval_hook = DistEvalHook if distributed else EvalHook

@@ -115,22 +115,23 @@ def pytorch2onnx(model,
 
         from mmdet import digit_version
 
-        min_required_version = '0.3.0'
-        assert digit_version(onnxsim.__version__) >= digit_version(
-            min_required_version
-        ), f'Requires to install onnx-simplify>={min_required_version}'
-
         input_dic = {'input': img_list[0].detach().cpu().numpy()}
-        model_opt, check_ok = onnxsim.simplify(
+        print(f"output_file {output_file}")
+        try:
+            model_opt, check_ok = onnxsim.simplify(
             output_file,
             input_data=input_dic,
-            custom_lib=ort_custom_op_path,
+            #custom_lib=ort_custom_op_path,
             dynamic_input_shape=dynamic_export)
+        except Exception as e:
+            print("ERROR",e)
+        except:
+            print("ERROR!!!")
         if check_ok:
             onnx.save(model_opt, output_file)
             print(f'Successfully simplified ONNX model: {output_file}')
         else:
-            warnings.warn('Failed to simplify ONNX model.')
+            print('Failed to simplify ONNX model.')
     print(f'Successfully exported ONNX model: {output_file}')
 
     if verify:

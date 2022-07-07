@@ -8,7 +8,7 @@ import numpy as np
 import onnx
 import torch
 from mmcv import Config
-from mmcv.tensorrt import is_tensorrt_plugin_loaded, onnx2trt, save_trt_engine
+from mmcv.tensorrt import is_tensorrt_plugin_loaded, onnx2trt, save_trt_engine,load_tensorrt_plugin
 
 from mmdet.core.export import preprocess_example_input
 from mmdet.core.export.model_wrappers import (ONNXRuntimeDetector,
@@ -191,9 +191,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-
 if __name__ == '__main__':
 
+    load_tensorrt_plugin()
     assert is_tensorrt_plugin_loaded(), 'TensorRT plugin should be compiled.'
     args = parse_args()
     warnings.warn(
