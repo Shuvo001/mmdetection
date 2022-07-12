@@ -227,6 +227,7 @@ class MosaicDetection(Dataset):
         self.enable_mosaic = mosaic
         self.enable_mixup = enable_mixup
         self.mosaic_prob = mosaic_prob
+        self.mosaic_prob = 1.0 
         self.mixup_prob = mixup_prob
         self.perspective_prob = perspective_prob
 

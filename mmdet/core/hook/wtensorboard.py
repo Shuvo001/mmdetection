@@ -12,6 +12,7 @@ import numpy as np
 import object_detection2.bboxes as odb
 import object_detection2.visualization as odv
 import wtorch.summary as summary
+from mmcv.parallel.data_container import DataContainer
 
 @HOOKS.register_module()
 class WTensorboardLoggerHook(LoggerHook):
@@ -69,6 +70,12 @@ class WTensorboardLoggerHook(LoggerHook):
             self.log_dir = osp.join(runner.work_dir, 'tf_logs')
         self.writer = SummaryWriter(self.log_dir)
 
+    @staticmethod
+    def get_data(data):
+        if isinstance(data,DataContainer):
+            return data.data[0]
+        return data
+
     @master_only
     def log(self, runner):
         tags = self.get_loggable_tags(runner, allow_text=True)
@@ -78,10 +85,10 @@ class WTensorboardLoggerHook(LoggerHook):
                 self.writer.add_text(tag, val, self.get_iter(runner))
             else:
                 self.writer.add_scalar(tag, val, self.get_iter(runner))
-        imgs = runner.inputs['img'].data[0]
+        imgs = self.get_data(runner.inputs['img'])
         idx = random.randint(0,imgs.shape[0]-1)
-        gt_bboxes = runner.inputs['gt_bboxes'].data[0]
-        gt_labels = runner.inputs['gt_labels'].data[0]
+        gt_bboxes = self.get_data(runner.inputs['gt_bboxes'])
+        gt_labels = self.get_data(runner.inputs['gt_labels'])
         img = imgs[idx]
         gt_bboxes = gt_bboxes[idx].cpu().numpy()
         gt_labels = gt_labels[idx].cpu().numpy()
@@ -105,3 +112,18 @@ class WTensorboardLoggerHook(LoggerHook):
     @master_only
     def after_run(self, runner):
         self.writer.close()
+    
+    def after_train_iter(self, runner):
+        if self.by_epoch and self.every_n_inner_iters(runner, self.interval):
+            runner.log_buffer.average(self.interval)
+        elif not self.by_epoch and self.every_n_iters(runner, self.interval):
+            runner.log_buffer.average(self.interval)
+        elif self.end_of_epoch(runner) and not self.ignore_last:
+            # not precise but more stable
+            runner.log_buffer.average(self.interval)
+        global_step = self.get_iter(runner)
+
+        if global_step%self.interval == self.interval-1:
+            self.log(runner)
+            if self.reset_flag:
+                runner.log_buffer.clear_output()

@@ -9,10 +9,13 @@ from .wandblogger_hook import MMDetWandbHook
 from .yolox_lrupdater_hook import YOLOXLrUpdaterHook
 from .yolox_mode_switch_hook import YOLOXModeSwitchHook
 from .wtensorboard import WTensorboardLoggerHook
+from .wcosine_hook import WCosineAnnealingLrUpdaterHook
+from .close_mosaic import WCloseMosaic
 
 __all__ = [
     'SyncRandomSizeHook', 'YOLOXModeSwitchHook', 'SyncNormHook',
     'ExpMomentumEMAHook', 'LinearMomentumEMAHook', 'YOLOXLrUpdaterHook',
     'CheckInvalidLossHook', 'SetEpochInfoHook', 'MemoryProfilerHook',
-    'MMDetWandbHook','WTensorboardLoggerHook'
+    'MMDetWandbHook','WTensorboardLoggerHook','WCosineAnnealingLrUpdaterHook',
+    'WCloseMosaic'
 ]

@@ -1,14 +1,15 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
 from pathlib import Path
-
+import cv2
+import img_utils as wmli
 import mmcv
 import numpy as np
 import torch
 from mmcv.ops import RoIPool
 from mmcv.parallel import collate, scatter
 from mmcv.runner import load_checkpoint
-
+import wtorch.utils as wtu
 from mmdet.core import get_classes
 from mmdet.datasets import replace_ImageToTensor
 from mmdet.datasets.pipelines import Compose
@@ -155,6 +156,73 @@ def inference_detector(model, imgs):
     else:
         return results
 
+def get_results(result,score_thr=0.05):
+    if isinstance(result, tuple):
+        bbox_result, segm_result = result
+        if isinstance(segm_result, tuple):
+            segm_result = segm_result[0]  # ms rcnn
+    else:
+        bbox_result, segm_result = result, None
+    bboxes = np.vstack(bbox_result)
+    labels = [
+        np.full(bbox.shape[0], i, dtype=np.int32)
+        for i, bbox in enumerate(bbox_result)
+    ]
+    labels = np.concatenate(labels)
+    scores = bboxes[...,-1]
+    bboxes = bboxes[...,:4]
+    index = scores>score_thr
+    bboxes = bboxes[index]
+    scores = scores[index]
+    labels = labels[index]
+
+    return bboxes,labels,scores
+
+def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),score_thr=0.05):
+    """Inference image(s) with the detector.
+
+    Args:
+        model (nn.Module): The loaded detector.
+        imgs (str/ndarray or list[str/ndarray] or tuple[str/ndarray]):
+           Either image files or loaded images.
+
+    Returns:
+        If imgs is a list or tuple, the same length list type results
+        will be returned, otherwise return the detection results directly.
+    """
+
+    is_batch = False
+    filename = ""
+
+    cfg = model.cfg
+    device = next(model.parameters()).device  # model device
+
+    if not isinstance(img, np.ndarray):
+        filename = img
+        img = wmli.imread(img)
+    
+    img,r = wmli.resize_and_pad(img,input_size,return_scale=True)
+    img = torch.tensor(img,dtype=torch.float32)
+    img = img.permute(2,0,1)
+    img = torch.unsqueeze(img,dim=0)
+    img = img.to(device)
+
+    if mean is not None:
+        img = wtu.normalize(img,mean,std)
+
+    shape = [img.shape[2],img.shape[3]]
+    img_metas = {'filename':filename,'ori_shape':shape,'img_shape':shape,'pad_shape':shape,
+    "scale_factor":[1.0,1.0,1.0,1.0]}
+    # forward the model
+    with torch.no_grad():
+        results = model(return_loss=False, rescale=True, img=[img],img_metas=[[img_metas]])
+
+    results = results[0]
+
+    bboxes,labels,scores = get_results(results,score_thr=score_thr)
+    bboxes = bboxes/r
+
+    return bboxes,labels,scores,results
 
 async def async_inference_detector(model, imgs):
     """Async inference image(s) with the detector.
@@ -238,7 +306,7 @@ def show_result_pyplot(model,
     """
     if hasattr(model, 'module'):
         model = model.module
-    model.show_result(
+    return model.show_result(
         img,
         result,
         score_thr=score_thr,

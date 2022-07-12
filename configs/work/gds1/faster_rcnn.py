@@ -9,7 +9,7 @@ model = dict(
             )
         )
     )
-
+work_dir="/home/wj/ai/mldata1/GDS1Crack/mmdet/weights"
 img_scale = (1024, 1024)  # height, width
 data_root = '/home/wj/ai/mldata/coco/'
 dataset_type = 'WXMLDataset'
@@ -43,22 +43,17 @@ train_pipeline = [
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])
 ]
-
+img_norm_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+batch_size = 16
 train_dataset = dict(
-    type='MultiImageMixDataset',
-    dataset=dict(
-        type=dataset_type,
-        data_dirs=[("/home/wj/ai/mldata1/GDS1Crack/train/mdata0",3)],
-        img_suffix=".jpg;;.bmp",
-        classes=["scratch"],
-        expand_dataset=2000,
-        pipeline=[
-            dict(type='LoadImageFromFile'),
-            dict(type='LoadAnnotations', with_bbox=True)
-        ],
-        filter_empty_gt=False,
-    ),
-    pipeline=train_pipeline)
+    type='MosaicDetectionDataset',
+    data_dirs=[("/home/wj/ai/mldata1/GDS1Crack/train/mdata0",3)],
+    img_suffix=".jpg;;.bmp",
+    category_index={0:"scratch"},
+    batch_size=batch_size,
+    **img_norm_cfg,
+)
 
 test_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -78,7 +73,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=batch_size,
     workers_per_gpu=4,
     persistent_workers=True,
     train=train_dataset,
@@ -104,15 +99,35 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[16, 22])
-runner = dict(type='EpochBasedRunner', max_epochs=24)
+
+# learning policy
+lr_config = dict(
+    policy='WCosineAnnealing',
+    warmup='exp',
+    by_epoch=False,
+    warmup_ratio=1,
+    warmup_iters=1000,
+    min_lr=1e-5)
+
+runner = dict(type='WIterBasedRunner', max_iters=50000)
 log_config = dict(
     interval=50,
     hooks=[
-        dict(type='TextLoggerHook'),
-        dict(type='WTensorboardLoggerHook',log_dir="/home/wj/ai/mldata1/GDS1Crack/tmp/gds1_log",
+        dict(type='TextLoggerHook',interval=10),
+        dict(type='WTensorboardLoggerHook',interval=100,
+        log_dir="/home/wj/ai/mldata1/GDS1Crack/tmp/gds1_log",
         mean=img_norm_cfg['mean'],std=img_norm_cfg['std'],rgb=True)
     ])
+checkpoint_config = dict(
+    interval=1000,
+)
 
+custom_hooks = [
+    dict(
+        type='WCloseMosaic',
+        close_iter_or_epoch=45000),
+]
+load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 finetune_model=True
 names_not2train = ["backbone"]
 names_2train = None

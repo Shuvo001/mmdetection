@@ -68,7 +68,7 @@ class CocoDataset(CustomDataset):
         Returns:
             list[dict]: Annotation info from COCO api.
         """
-
+        print(f"Load coco annotations.")
         self.coco = COCO(ann_file)
         # The order of returned `cat_ids` will not
         # change with the order of the CLASSES
@@ -86,6 +86,7 @@ class CocoDataset(CustomDataset):
             total_ann_ids.extend(ann_ids)
         assert len(set(total_ann_ids)) == len(
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
+        print(f"Load coco annotations success.")
         return data_infos
 
     def get_ann_info(self, idx):

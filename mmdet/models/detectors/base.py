@@ -352,8 +352,7 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             wait_time=wait_time,
             out_file=out_file)
 
-        if not (show or out_file):
-            return img
+        return img
 
     def onnx_export(self, img, img_metas):
         raise NotImplementedError(f'{self.__class__.__name__} does '

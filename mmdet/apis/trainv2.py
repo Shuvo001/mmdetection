@@ -10,12 +10,40 @@ from mmcv.runner import (DistSamplerSeedHook, EpochBasedRunner,
                          get_dist_info)
 
 from mmdet.core import DistEvalHook, EvalHook, build_optimizer
-from mmdet.datasets import (build_dataloaderv2, build_datasetv2,
+from mmdet.datasets import (build_dataloaderv2, build_dataset,
                             replace_ImageToTensor)
 from mmdet.utils import (build_ddp, build_dp, compat_cfg,
                          find_latest_checkpoint, get_root_logger)
 from wtorch.train_toolkit import *
 import wtorch.utils as wtu
+import wtorch.bboxes as wbb
+from mmcv.runner.hooks import CheckpointHook
+
+def data_processor(data_batch):
+    inputs = {}
+    inputs['img'] = data_batch[0]
+    data = data_batch[1]
+    nr_data= torch.sum(data,dim=-1)
+    nr = torch.sum((nr_data>0).to(torch.int32),dim=-1)
+    gt_bboxes = []
+    gt_labels = []
+    img_metas = []
+    batch_size = data_batch[0].shape[0]
+    for i in range(batch_size):
+        _gt_bboxes = data[i,:nr[i],1:5]
+        _gt_labels = data[i,:nr[i],0].to(torch.int64)
+        gt_bboxes.append(wbb.cxywh2xy(_gt_bboxes))
+        gt_labels.append(_gt_labels)
+        shape = data_batch[0].shape[1:3]
+        _img_metas = {'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
+        img_metas.append(_img_metas)
+        
+    inputs['gt_bboxes'] = gt_bboxes
+    inputs['gt_labels'] = gt_labels
+    inputs['img_metas'] = img_metas
+
+    return inputs
+
 
 def init_random_seed(seed=None, device='cuda'):
     """Initialize random seed.
@@ -181,7 +209,9 @@ def train_detector(model,
             optimizer=optimizer,
             work_dir=cfg.work_dir,
             logger=logger,
-            meta=meta))
+            data_processor=data_processor,
+            meta=meta),
+    )
 
     # an ugly workaround to make .log and .log.json filenames the same
     runner.timestamp = timestamp
@@ -228,7 +258,7 @@ def train_detector(model,
             # Replace 'ImageToTensor' to 'DefaultFormatBundle'
             cfg.data.val.pipeline = replace_ImageToTensor(
                 cfg.data.val.pipeline)
-        val_dataset = build_datasetv2(cfg.data.val, dict(test_mode=True))
+        val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
 
         val_dataloader = build_dataloaderv2(val_dataset, **val_dataloader_args)
         eval_cfg = cfg.get('evaluation', {})

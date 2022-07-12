@@ -11,7 +11,7 @@ http://arxiv.org/abs/1512.02325
 
 import math
 import random
-
+from wtorch.utils import npnormalize
 import cv2
 import numpy as np
 
@@ -193,10 +193,13 @@ def preproc_no_pad(img, input_size, swap=(2, 0, 1)):
     return resized_img , r
 
 class TrainTransform:
-    def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0):
+    def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0,mean=None,std=None,to_rgb=False):
         self.max_labels = max_labels
         self.flip_prob = flip_prob
         self.hsv_prob = hsv_prob
+        self.mean = mean
+        self.std = std
+        self.to_rgb = to_rgb
 
     def __call__(self, image, targets, input_dim):
         '''
@@ -206,11 +209,15 @@ class TrainTransform:
         return:
         image,[N,5] [label,cx,cy,w,h]
         '''
+        if self.to_rgb:
+            image = image[...,::-1]
         boxes = targets[:, :4].copy()
         labels = targets[:, 4].copy()
         if len(boxes) == 0:
             targets = np.zeros((self.max_labels, 5), dtype=np.float32)
-            image, r_o = preproc(image, input_dim,hsv_prob=self.hsv_prob,swap=None)
+            image, r_o = preproc(image, input_dim,hsv_prob=self.hsv_prob)
+            if self.mean is not None:
+                image = npnormalize(image,self.mean,self.std)
             return image, targets
 
         image_o = image.copy()
@@ -223,7 +230,7 @@ class TrainTransform:
 
         image_t, boxes = _mirror(image, boxes, self.flip_prob)
         height, width, _ = image_t.shape
-        image_t, r_ = preproc(image_t, input_dim,hsv_prob=self.hsv_prob,swap=None)
+        image_t, r_ = preproc(image_t, input_dim,hsv_prob=self.hsv_prob)
         # boxes [xyxy] 2 [cx,cy,w,h]
         boxes = xyxy2cxcywh(boxes)
         boxes *= r_
@@ -246,6 +253,8 @@ class TrainTransform:
             : self.max_labels
         ]
         padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
+        if self.mean is not None:
+            image_t = npnormalize(image_t,self.mean,self.std)
         return image_t, padded_labels
 
 

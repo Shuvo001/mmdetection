@@ -1,5 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset
+from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset,build_dataloaderv2
 from .cityscapes import CityscapesDataset
 from .coco import CocoDataset
 from .coco_panoptic import CocoPanopticDataset
@@ -26,5 +26,5 @@ __all__ = [
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
     'NumClassCheckHook', 'CocoPanopticDataset', 'MultiImageMixDataset',
-    'OpenImagesDataset', 'OpenImagesChallengeDataset','WXMLDataset'
+    'OpenImagesDataset', 'OpenImagesChallengeDataset','WXMLDataset','build_dataloaderv2'
 ]
