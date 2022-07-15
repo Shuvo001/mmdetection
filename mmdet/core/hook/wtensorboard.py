@@ -37,7 +37,8 @@ class WTensorboardLoggerHook(LoggerHook):
                  by_epoch=True,
                  mean=None,
                  std=None,
-                 rgb=True):
+                 rgb=True,
+                 bboxes_img_nr=1):
         super(WTensorboardLoggerHook, self).__init__(interval, ignore_last,
                                                     reset_flag, by_epoch)
         self.log_dir = log_dir
@@ -46,6 +47,7 @@ class WTensorboardLoggerHook(LoggerHook):
         self.mean = mean
         self.std = std
         self.rgb = rgb
+        self.bboxes_img_nr = bboxes_img_nr
 
     @master_only
     def before_run(self, runner):
@@ -86,23 +88,26 @@ class WTensorboardLoggerHook(LoggerHook):
             else:
                 self.writer.add_scalar(tag, val, self.get_iter(runner))
         imgs = self.get_data(runner.inputs['img'])
-        idx = random.randint(0,imgs.shape[0]-1)
-        gt_bboxes = self.get_data(runner.inputs['gt_bboxes'])
-        gt_labels = self.get_data(runner.inputs['gt_labels'])
-        img = imgs[idx]
-        gt_bboxes = gt_bboxes[idx].cpu().numpy()
-        gt_labels = gt_labels[idx].cpu().numpy()
-        if self.mean is not None:
-            img = unnormalize(img,mean=self.mean,std=self.std).cpu().numpy()
-        img = np.transpose(img,[1,2,0])
-        if not self.rgb:
-            img = img[...,::-1]
-        gt_bboxes = odb.npchangexyorder(gt_bboxes)
-        img = np.ascontiguousarray(img)
-        img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
-        img = np.clip(img,0,255).astype(np.uint8)
-        self.writer.add_image("input/img_with_bboxes",img,global_step=global_step,
-                dataformats="HWC")
+        idxs = list(range(imgs.shape[0]))
+        random.shuffle(idxs)
+        idxs = idxs[:self.bboxes_img_nr]
+        for idx in idxs:
+            gt_bboxes = self.get_data(runner.inputs['gt_bboxes'])
+            gt_labels = self.get_data(runner.inputs['gt_labels'])
+            img = imgs[idx]
+            gt_bboxes = gt_bboxes[idx].cpu().numpy()
+            gt_labels = gt_labels[idx].cpu().numpy()
+            if self.mean is not None:
+                img = unnormalize(img,mean=self.mean,std=self.std).cpu().numpy()
+            img = np.transpose(img,[1,2,0])
+            if not self.rgb:
+                img = img[...,::-1]
+            gt_bboxes = odb.npchangexyorder(gt_bboxes)
+            img = np.ascontiguousarray(img)
+            img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
+            img = np.clip(img,0,255).astype(np.uint8)
+            self.writer.add_image(f"input/img_with_bboxes{idx}",img,global_step=global_step,
+                    dataformats="HWC")
         model = runner.model
         if hasattr(model,"module"):
             model = model.module

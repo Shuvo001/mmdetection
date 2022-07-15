@@ -7,7 +7,7 @@ import warnings
 
 import torch
 from torch.optim import Optimizer
-
+import wtorch.utils as wtu
 import mmcv
 from mmcv.runner.base_runner import BaseRunner
 from mmcv.runner.builder import RUNNERS
@@ -283,3 +283,17 @@ class WIterBasedRunner(BaseRunner):
             log_config=log_config,
             timer_config=IterTimerHook(),
             custom_hooks_config=custom_hooks_config)
+    
+    def load_checkpoint(self,
+                        filename,
+                        map_location='cpu',
+                        strict=False,
+                        revise_keys=[(r'^module.', '')]):
+        dict = torch.load(filename,map_location=map_location)
+        if 'state_dict' in dict:
+            dict = dict['state_dict']
+        if hasattr(self.model,'module'):
+            model = self.model.module
+        else:
+            model = self.model
+        wtu.forgiving_state_restore(model,dict)

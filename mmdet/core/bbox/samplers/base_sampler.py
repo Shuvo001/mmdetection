@@ -21,6 +21,7 @@ class BaseSampler(metaclass=ABCMeta):
         self.add_gt_as_proposals = add_gt_as_proposals
         self.pos_sampler = self
         self.neg_sampler = self
+        print(f"BaseSampler add gt as proposals {self.add_gt_as_proposals}.")
 
     @abstractmethod
     def _sample_pos(self, assign_result, num_expected, **kwargs):

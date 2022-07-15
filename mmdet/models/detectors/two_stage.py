@@ -2,8 +2,11 @@
 import warnings
 
 import torch
-from ..builder import DETECTORS, build_backbone, build_head, build_neck
+from ..builder import DETECTORS, build_backbone, build_head, build_neck,build_second_stage_hook
 from .base import BaseDetector
+import numpy as np
+from wtorch.utils import unnormalize
+import wtorch.bboxes as wtb
 
 
 @DETECTORS.register_module()
@@ -22,7 +25,8 @@ class TwoStageDetector(BaseDetector):
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None,
-                 init_cfg=None):
+                 init_cfg=None,
+                 second_stage_hook=None):
         super(TwoStageDetector, self).__init__(init_cfg)
         if pretrained:
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
@@ -47,9 +51,28 @@ class TwoStageDetector(BaseDetector):
             roi_head.update(test_cfg=test_cfg.rcnn)
             roi_head.pretrained = pretrained
             self.roi_head = build_head(roi_head)
+        
+        if second_stage_hook is not None:
+            self.second_stage_hook = build_second_stage_hook(second_stage_hook)
+        else:
+            self.second_stage_hook = None
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
+    @staticmethod
+    def recover_raw_img(img,mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True):
+        '''
+        return img [H,W,3] bgr order
+        '''
+        img = img.detach().cpu()[0]
+        img = unnormalize(img,mean=mean,std=std).cpu().numpy()
+        img = np.transpose(img,[1,2,0])
+        if to_rgb:
+            img = img[...,::-1]
+        img = np.clip(img,0,255)
+        img = img.astype(np.uint8)
+        img = np.ascontiguousarray(img)
+        return img
 
     @property
     def with_rpn(self):
@@ -143,7 +166,14 @@ class TwoStageDetector(BaseDetector):
         else:
             proposal_list = proposals
 
-        roi_losses = self.roi_head.forward_train(x, img_metas, proposal_list,
+        if self.second_stage_hook is not None:
+            x = self.second_stage_hook(x)
+        
+        _proposal_list = []
+        for pbboxes,gtb in zip(proposal_list,gt_bboxes):
+            _proposal_list.append(self.cat_proposals_and_gtbboxes(pbboxes,gtb))
+
+        roi_losses = self.roi_head.forward_train(x, img_metas, _proposal_list,
                                                  gt_bboxes, gt_labels,
                                                  gt_bboxes_ignore, gt_masks,
                                                  **kwargs)
@@ -169,6 +199,23 @@ class TwoStageDetector(BaseDetector):
         return await self.roi_head.async_simple_test(
             x, proposal_list, img_meta, rescale=rescale)
 
+    @staticmethod
+    def cat_proposals_and_gtbboxes(proposals,gtbboxes,nr=10):
+        gt_nr = gtbboxes.shape[0]
+        if gt_nr==0:
+            return proposals
+        gtbboxes = torch.unsqueeze(gtbboxes,axis=0)
+        repeat_nr = int(max(1,nr/gt_nr+1))
+        gtbboxes = torch.tile(gtbboxes,(repeat_nr,1,1))
+        gtbboxes = torch.reshape(gtbboxes,[-1,4])
+        gtbboxes = wtb.distored_boxes(gtbboxes)
+        gtbboxes = gtbboxes[:nr]
+        gt_nr = gtbboxes.shape[0]
+        scores = gtbboxes.new_ones([gt_nr,1])
+
+        gt_proposals = torch.cat([gtbboxes,scores],axis=-1)
+        return torch.cat([gt_proposals,proposals],axis=0)
+
     def simple_test(self, img, img_metas, proposals=None, rescale=False):
         """Test without augmentation."""
 
@@ -178,6 +225,9 @@ class TwoStageDetector(BaseDetector):
             proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)
         else:
             proposal_list = proposals
+        
+        if self.second_stage_hook is not None:
+            x = self.second_stage_hook(x)
 
         return self.roi_head.simple_test(
             x, proposal_list, img_metas, rescale=rescale)
@@ -198,6 +248,8 @@ class TwoStageDetector(BaseDetector):
         img_shape = torch._shape_as_tensor(img)[2:]
         img_metas[0]['img_shape_for_onnx'] = img_shape
         x = self.extract_feat(img)
+        if self.second_stage_hook is not None:
+            x = self.second_stage_hook(x)
         proposals = self.rpn_head.onnx_export(x, img_metas)
         if hasattr(self.roi_head, 'onnx_export'):
             return self.roi_head.onnx_export(x, proposals, img_metas)

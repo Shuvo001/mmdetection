@@ -26,7 +26,6 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument('config', help='Config file')
     parser.add_argument('checkpoint', help='Checkpoint file')
-    parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
     parser.add_argument(
@@ -35,13 +34,13 @@ def parse_args():
         choices=['coco', 'voc', 'citys', 'random'],
         help='Color palette used for visualization')
     parser.add_argument(
-        '--score-thr', type=float, default=0.05, help='bbox score threshold')
+        '--score-thr', type=float, default=0.3, help='bbox score threshold')
     parser.add_argument(
         '--async-test',
         action='store_true',
         help='whether to set async options for async inference.')
     parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
-    parser.add_argument('--save_data_dir', default="/home/wj/ai/mldata1/GDS1Crack/tmp/eval_on_images", type=str,help='Path to output file')
+    parser.add_argument('--save_data_dir', default="/home/wj/ai/mldata1/GDS1Crack/tmp/predict_on_images", type=str,help='Path to output file')
     parser.add_argument('--test_data_dir', default="demo", type=str,help='Path to output file')
     args = parser.parse_args()
     return args
@@ -76,22 +75,14 @@ def main(_):
         bboxes = odb.npchangexyorder(bboxes)
         img = wmli.imread(full_path)
         r_img = odv.draw_bboxes(img,labels,scores,bboxes,
-                                             text_fn=text_fn,
-                                             show_text=True,is_relative_coordinate=False)
+                                 text_fn=text_fn,
+                                 show_text=True,is_relative_coordinate=False,
+                                 thickness=2,font_scale=0.6)
         wmli.imwrite(img_save_path,r_img)
 
 if __name__ == "__main__":
     tf.app.run()
 
 '''
-python object_detection_tools/eval_on_images.py --test_data_dir ~/ai/mldata1/GDS1Crack/val/ng/ --gpus 3 --config-file gds1 --save_data_dir ~/ai/mldata1/GDS1Crack/tmp/gds1_output
-0.114|0.171 60000
-0.111|0.164 100000
-0.116|0.175 50000
-python object_detection_tools/eval_on_images.py --test_data_dir ~/ai/mldata1/GDS1Crack/val/ng/ --gpus 3 --config-file gds1v2 --save_data_dir ~/ai/mldata1/GDS1Crack/tmp/gds1_output
-0.141|0.213 24999
-||0.145|0.222| 49999
-'''
-'''
-python -m tf2onnx.convert --graphdef tensorflow-model-graphdef-file --output model.onnx --inputs input0:0,input1:0 --outputs output0:0
+python tools/predict_on_images.py configs/work/gds1/faster_rcnn.py /home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth --test_data_dir /home/wj/ai/mldata1/GDS1Crack/val/ng --gpus 2
 '''

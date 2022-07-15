@@ -13,6 +13,7 @@ SHARED_HEADS = MODELS
 HEADS = MODELS
 LOSSES = MODELS
 DETECTORS = MODELS
+SECOND_STAGE_HOOKS = MODELS
 
 
 def build_backbone(cfg):
@@ -57,3 +58,7 @@ def build_detector(cfg, train_cfg=None, test_cfg=None):
         'test_cfg specified in both outer field and model field '
     return DETECTORS.build(
         cfg, default_args=dict(train_cfg=train_cfg, test_cfg=test_cfg))
+
+def build_second_stage_hook(cfg):
+    return SECOND_STAGE_HOOKS.build(cfg)
+

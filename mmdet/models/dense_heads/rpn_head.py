@@ -231,7 +231,9 @@ class RPNHead(AnchorHead):
             dets, _ = batched_nms(proposals, scores, ids, cfg.nms)
         else:
             return proposals.new_zeros(0, 5)
-
+        scores = dets[:,-1]
+        sorted_scores,indexs = scores.sort(descending=True)
+        dets = dets[indexs]
         return dets[:cfg.max_per_img]
 
     def onnx_export(self, x, img_metas):

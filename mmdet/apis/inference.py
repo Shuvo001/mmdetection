@@ -14,6 +14,7 @@ from mmdet.core import get_classes
 from mmdet.datasets import replace_ImageToTensor
 from mmdet.datasets.pipelines import Compose
 from mmdet.models import build_detector
+import wtorch.utils as wtu
 
 
 def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
@@ -44,7 +45,8 @@ def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
     config.model.train_cfg = None
     model = build_detector(config.model, test_cfg=config.get('test_cfg'))
     if checkpoint is not None:
-        checkpoint = load_checkpoint(model, checkpoint, map_location='cpu')
+        checkpoint = torch.load(checkpoint,map_location="cpu")
+        wtu.forgiving_state_restore(model,checkpoint)
         if 'CLASSES' in checkpoint.get('meta', {}):
             model.CLASSES = checkpoint['meta']['CLASSES']
         else:
@@ -201,7 +203,7 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
         filename = img
         img = wmli.imread(img)
     
-    img,r = wmli.resize_and_pad(img,input_size,return_scale=True)
+    img,r = wmli.resize_imgv2(img,input_size,return_scale=True)
     img = torch.tensor(img,dtype=torch.float32)
     img = img.permute(2,0,1)
     img = torch.unsqueeze(img,dim=0)
@@ -209,6 +211,8 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
 
     if mean is not None:
         img = wtu.normalize(img,mean,std)
+    
+    img = wtu.pad_feature(img,input_size,pad_value=0)
 
     shape = [img.shape[2],img.shape[3]]
     img_metas = {'filename':filename,'ori_shape':shape,'img_shape':shape,'pad_shape':shape,

@@ -240,3 +240,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+'''
+python tools/trainv2.py configs/work/gds1/faster_rcnn.py --no-validate --gpu-id 2
+'''

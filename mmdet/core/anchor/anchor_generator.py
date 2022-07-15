@@ -111,6 +111,10 @@ class AnchorGenerator:
         self.centers = centers
         self.center_offset = center_offset
         self.base_anchors = self.gen_base_anchors()
+        print(f"Base anchors size:")
+        for i,base_anchors in enumerate(self.base_anchors):
+            wh = base_anchors[:,2:]-base_anchors[:,:2]
+            print(f"{i}: {wh.cpu().numpy()}")
 
     @property
     def num_base_anchors(self):
