@@ -5,14 +5,13 @@ import os
 import os.path as osp
 import time
 import warnings
-
-import mmcv
 import torch
+import mmcv
 import torch.distributed as dist
 from mmcv import Config, DictAction
 from mmcv.runner import get_dist_info, init_dist
 from mmcv.utils import get_git_hash
-
+import wtorch.train_toolkit as wtt
 from mmdet import __version__
 from mmdet.apis import init_random_seed, set_random_seed, train_detectorv2
 from mmdet.datasets import build_dataset
@@ -107,6 +106,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
     cfg = Config.fromfile(args.config)
 

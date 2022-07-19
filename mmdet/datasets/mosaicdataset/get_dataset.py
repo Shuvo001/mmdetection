@@ -11,6 +11,7 @@ from .data_augment import TrainTransform
 from .mosaicdetection import MosaicDetection
 from ..builder import DATASETS
 from .samplers import *
+from iotoolkit.pascal_voc_toolkit import split_voc_files
 import time
 
 def worker_init_reset_seed(worker_id):
@@ -82,7 +83,10 @@ class DataLoader(torchDataLoader):
 @DATASETS.register_module()
 class MosaicDetectionDataset(object):
     dataset = None
-    def __init__(self,data_dirs,category_index,batch_size,img_suffix=".jpg",mean=None,std=None,to_rgb=False):
+    def __init__(self,data_dirs,category_index,batch_size,img_suffix=".jpg",mean=None,std=None,to_rgb=False,
+        pos_repeat_nr=None,
+        neg_repeat_nr=None,
+        name="MosaicData"):
         self.seed = int(time.time())
         img_size = (1024,1024)
         class_to_ind = {}
@@ -99,10 +103,13 @@ class MosaicDetectionDataset(object):
                                to_rgb=to_rgb)
         self.dataset = XmlBaseDataset(class_to_ind=class_to_ind,classes=classes,
                                       img_size=img_size,
-                                       preproc=preproc)
+                                      preproc=preproc,
+                                      dataset_name=name)
         self.img_files = [] 
         for dir in data_dirs:
             if not isinstance(dir,str):
+                if pos_repeat_nr is not None or neg_repeat_nr is not None:
+                    print(f"ERROR: pos_repeat_nr/neg_repeat_nr and repeat_nr can't set at the same time.")
                 dir,repeat_nr = dir
             else:
                 repeat_nr = 0
@@ -115,8 +122,27 @@ class MosaicDetectionDataset(object):
                 print(f"Find {len(imgs)} in {dir}")
             self.img_files.extend(imgs)
 
+        self.xml_files = [wmlu.change_suffix(x,"xml") for x in self.img_files]
+        if pos_repeat_nr is not None or neg_repeat_nr is not None:
+            files = list(zip(self.xml_files,self.img_files))
+            files0,files1 = split_voc_files(files,nr=1)
+            print(f"Find {len(files0)} empty annotation files, Find {len(files1)} files have annotation.")
+            if pos_repeat_nr is not None:
+                files1 = files1*pos_repeat_nr
+                print(f"After repeat, get {len(files1)} files have annotation.")
+            if neg_repeat_nr is not None:
+                files0 = files0*neg_repeat_nr
+                print(f"After repeat, get {len(files0)} files haven't annotation.")
+
+            files = files0+files1
+            files = list(zip(*files))
+            random.shuffle(files)
+            self.xml_files = files[0]
+            self.img_files = files[1]
+            print(f"After repeat total get {len(self.xml_files)} files.")
+
         self.dataset.img_files = self.img_files
-        self.dataset.xml_files = [wmlu.change_suffix(x,"xml") for x in self.dataset.img_files]
+        self.dataset.xml_files = self.xml_files
         self.dataset._cache_images()
         self.dataset = MosaicDetection(self.dataset,mosaic=True,
         img_size=img_size,

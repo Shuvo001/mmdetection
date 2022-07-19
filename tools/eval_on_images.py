@@ -16,7 +16,7 @@ import os
 from object_detection_tools.predictmodel import PredictModel
 import wml_utils as wmlu
 import img_utils as wmli
-import object_detection_tools.visualization as odv
+import object_detection2.visualization as odv
 import numpy as np
 from object_detection2.data.datasets.buildin import coco_category_index
 from iotoolkit.coco_toolkit import COCOData
@@ -52,7 +52,7 @@ def eval_dataset(data_dir):
     data.read_data(wmlu.home_dir("ai/mldata/coco/annotations/instances_val2014.json"),
                    image_dir=wmlu.home_dir("ai/mldata/coco/val2014"))'''
     def label_text2id(x):
-        data =  {"scratch":1}
+        data =  {"scratch":0}
         return data[x]
     data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
@@ -84,6 +84,8 @@ def get_results(result,score_thr=0.05):
 
     return bboxes,labels,scores
     
+def label_trans(labels):
+    return np.array([x+1 for x in labels])
 def main():
     args = parse_args()
 
@@ -96,7 +98,7 @@ def main():
     save_path = args.save_data_dir
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
-    metrics = COCOEvaluation(num_classes=90)
+    metrics = COCOEvaluation(num_classes=1,label_trans=label_trans)
 
     items = eval_dataset(args.test_data_dir)
     mean=[123.675, 116.28, 103.53]
@@ -117,6 +119,15 @@ def main():
         score_thr=0.3,
         out_file=img_save_path)
 
+        img_save_path = os.path.join(save_path,name+"_a.png")
+        img = wmli.imread(full_path)
+        img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
+        wmli.imwrite(img_save_path,img)
+        img_save_path = os.path.join(save_path,name+"_b.png")
+        img = wmli.imread(full_path)
+        img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
+        wmli.imwrite(img_save_path,img)
+
         kwargs = {}
         kwargs['gtboxes'] = gt_boxes
         kwargs['gtlabels'] =gt_labels 
@@ -124,6 +135,7 @@ def main():
         kwargs['labels'] =  labels
         kwargs['probability'] =  scores
         kwargs['img_size'] = shape
+        kwargs['use_relative_coord'] = False
         metrics(**kwargs)
         
         if i%100 == 99:
@@ -136,4 +148,5 @@ if __name__ == "__main__":
 
 '''
 python tools/eval_on_images.py configs/work/gds1/faster_rcnn.py /home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth --test_data_dir /home/wj/ai/mldata1/GDS1Crack/val/ng --gpus 3
+||0.128|0.231|
 '''

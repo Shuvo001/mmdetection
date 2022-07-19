@@ -49,7 +49,7 @@ model = dict(
             loss_bbox=dict(type='L1Loss', loss_weight=1.0))),
     second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
     )
-work_dir="/home/wj/ai/mldata1/GDS1Crack/mmdet/weights"
+work_dir="/home/wj/ai/mldata1/GDS1Crack/mmdet/weightsv2"
 img_scale = (1024, 1024)  # height, width
 data_root = '/home/wj/ai/mldata/coco/'
 dataset_type = 'WXMLDataset'
@@ -88,11 +88,13 @@ img_norm_cfg = dict(
 batch_size = 16
 train_dataset = dict(
     type='MosaicDetectionDataset',
-    data_dirs=[("/home/wj/ai/mldata1/GDS1Crack/train/mdata0",3)],
+    data_dirs=["/home/wj/ai/mldata1/GDS1Crack/train/mdata0"],
     img_suffix=".jpg;;.bmp",
     category_index={0:"scratch"},
+    pos_repeat_nr=3,
+    neg_repeat_nr=2,
+    name="gds1v2",
     batch_size=batch_size,
-    name="gds1",
     **img_norm_cfg,
 )
 
@@ -156,7 +158,7 @@ log_config = dict(
     hooks=[
         dict(type='TextLoggerHook',interval=10),
         dict(type='WTensorboardLoggerHook',interval=500,
-        log_dir="/home/wj/ai/mldata1/GDS1Crack/tmp/gds1_log",
+        log_dir="/home/wj/ai/mldata1/GDS1Crack/tmp/gds1v2_log",
         mean=img_norm_cfg['mean'],std=img_norm_cfg['std'],rgb=True)
     ])
 checkpoint_config = dict(

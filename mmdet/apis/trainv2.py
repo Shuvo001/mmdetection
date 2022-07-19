@@ -34,7 +34,7 @@ def data_processor(data_batch):
         _gt_labels = data[i,:nr[i],0].to(torch.int64)
         gt_bboxes.append(wbb.cxywh2xy(_gt_bboxes))
         gt_labels.append(_gt_labels)
-        shape = data_batch[0].shape[1:3]
+        shape = data_batch[0].shape[2:4]
         _img_metas = {'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
         img_metas.append(_img_metas)
         

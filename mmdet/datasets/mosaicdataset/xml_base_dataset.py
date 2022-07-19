@@ -79,7 +79,7 @@ class XmlBaseDataset(Dataset):
         img_size=(416, 416),
         preproc=None,
         target_transform=None,
-        dataset_name="BaseXmlDataset",
+        dataset_name=None,
         cache_dir=None,
     ):
         super().__init__(img_size)
@@ -91,6 +91,7 @@ class XmlBaseDataset(Dataset):
         else:
             self.target_transform = _AnnotationTransform(class_to_ind)
 
+        assert dataset_name is not None, "Need set a dataset name."
         self.name = dataset_name
         if cache_dir is not None:
             self.cache_dir = cache_dir
