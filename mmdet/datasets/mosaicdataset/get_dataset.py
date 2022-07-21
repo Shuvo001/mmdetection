@@ -137,8 +137,13 @@ class MosaicDetectionDataset(object):
             files = files0+files1
             files = list(zip(*files))
             random.shuffle(files)
-            self.xml_files = files[0]
-            self.img_files = files[1]
+            print("File list:")
+            wmlu.show_list(files[0][:100])
+            print("....")
+            wmlu.show_list(files[1][:100])
+            print("....")
+            self.xml_files = list(files[0])
+            self.img_files = list(files[1])
             print(f"After repeat total get {len(self.xml_files)} files.")
 
         self.dataset.img_files = self.img_files

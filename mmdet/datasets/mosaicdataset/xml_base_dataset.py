@@ -228,7 +228,7 @@ class XmlBaseDataset(Dataset):
     def same_files(filesa,filesb):
         if len(filesa) != len(filesb):
             return False
-        new_files_a = copy.deepcopy(filesa)
+        new_files_a = copy.deepcopy(list(filesa))
         random.shuffle(new_files_a)
         new_files_a = new_files_a[:1000]
         for x in new_files_a:
