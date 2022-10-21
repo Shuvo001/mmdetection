@@ -1,0 +1,98 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: normal",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "Python: train yolox-l",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/train.py",
+            "console": "integratedTerminal",
+            "args":["configs/yolox/yolox_l_8x8_300e_coco.py"],
+        },
+        {
+            "name": "Python: train faster-rcnn",
+            "type": "python",
+            "justMyCode": false,
+            "request": "launch",
+            "program": "./tools/train.py",
+            "console": "integratedTerminal",
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco_test.py"  "--gpu-id" "2"],
+        },
+        {
+            "name": "Python: train gds1 faster-rcnn",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/trainv2.py",
+            "console": "integratedTerminal",
+            "args":["configs/work/gds1/faster_rcnnv2.py" "--no-validate" "--gpu-id" "2"],
+        },
+        {
+            "name": "Python: image demo",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./demo/image_demo.py",
+            "console": "integratedTerminal",
+            "args":["demo/demo.jpg" "configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--out-file" "a.jpg"],
+        },
+        {
+            "name": "Python: eval on images",
+            "type": "python",
+            "justMyCode": false,
+            "request": "launch",
+            "program": "./tools/eval_on_images.py",
+            "console": "integratedTerminal",
+            "args":["configs/work/gds1/faster_rcnn.py" "/home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/eval_on_images"],
+        },
+        {
+            "name": "Python: predict on images",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/predict_on_images.py",
+            "console": "integratedTerminal",
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/predict_on_images"],
+        },
+        {
+            "name": "Python: predict on images gds1",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/predict_on_images.py",
+            "console": "integratedTerminal",
+            "args":["configs/work/gds1/faster_rcnn.py" "/home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/predict_on_images" "--test_data_dir" "/home/wj/ai/mldata1/GDS1Crack/example" "--gpus" "3"],
+        },
+        {
+            "name": "Python: export onnx demo",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/deployment/pytorch2onnx.py",
+            "console": "integratedTerminal",
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--input-img" "demo/demo.jpg"],
+        },
+        {
+            "name": "Python: export traced demo",
+            "type": "python",
+            "justMyCode": false,
+            "request": "launch",
+            "program": "./tools/deployment/pytorch2traced.py",
+            "console": "integratedTerminal",
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--input-img" "demo/demo.jpg"],
+        },
+    ]
+    
+}

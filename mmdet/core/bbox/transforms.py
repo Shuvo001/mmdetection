@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
 import torch
+import os
 
 
 def find_inside_bboxes(bboxes, img_h, img_w):
@@ -131,6 +132,24 @@ def bbox2result(bboxes, labels, num_classes):
             bboxes = bboxes.detach().cpu().numpy()
             labels = labels.detach().cpu().numpy()
         return [bboxes[labels == i, :] for i in range(num_classes)]
+
+def bbox2result_yolo_style(bboxes, labels, num_classes):
+    """Convert detection results to a list of numpy arrays.
+
+    Args:
+        bboxes (torch.Tensor | np.ndarray): shape (n, 5)
+        labels (torch.Tensor | np.ndarray): shape (n, )
+        num_classes (int): class number, including background class
+
+    Returns:
+        list(ndarray): bbox results of each class
+    """
+    print(f"{os.path.basename(__file__)}: output yolo style results.")
+    if bboxes.shape[0] == 0:
+        return bboxes.new_zeros([0,6])
+    else:
+        labels = labels.to(bboxes.dtype)
+        return torch.cat([bboxes,labels[:,None]],axis=-1)
 
 
 def distance2bbox(points, distance, max_shape=None):

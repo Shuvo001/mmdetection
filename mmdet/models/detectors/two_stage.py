@@ -229,8 +229,11 @@ class TwoStageDetector(BaseDetector):
         if self.second_stage_hook is not None:
             x = self.second_stage_hook(x)
 
-        return self.roi_head.simple_test(
-            x, proposal_list, img_metas, rescale=rescale)
+        results = self.roi_head.simple_test(
+            x, proposal_list, img_metas,
+            rescale=rescale)
+
+        return results
 
     def aug_test(self, imgs, img_metas, rescale=False):
         """Test with augmentations.

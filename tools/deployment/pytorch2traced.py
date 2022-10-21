@@ -41,16 +41,8 @@ def pytorch2onnx(model,
         warnings.warn('Not all models support export onnx without post '
                       'process, especially two stage detectors!')
         model.forward = model.forward_dummy
-        torch.onnx.export(
-            model,
-            one_img,
-            output_file,
-            input_names=['input'],
-            export_params=True,
-            keep_initializers_as_inputs=True,
-            do_constant_folding=True,
-            verbose=show,
-            opset_version=opset_version)
+        traced = torch.jit.trace(model,one_img)
+        traced.save(output_file)
 
         print(f'Successfully exported ONNX model without '
               f'post process: {output_file}')
@@ -60,7 +52,7 @@ def pytorch2onnx(model,
     origin_forward = model.forward
     model.forward = partial(
         model.forward,
-        img_metas=img_meta_list,
+        img_metas=None,
         return_loss=False,
         rescale=False)
 
@@ -69,38 +61,9 @@ def pytorch2onnx(model,
         output_names.append('masks')
     input_name = 'input'
     dynamic_axes = None
-    if dynamic_export:
-        dynamic_axes = {
-            input_name: {
-                0: 'batch',
-                2: 'height',
-                3: 'width'
-            },
-            'dets': {
-                0: 'batch',
-                1: 'num_dets',
-            },
-            'labels': {
-                0: 'batch',
-                1: 'num_dets',
-            },
-        }
-        if model.with_mask:
-            dynamic_axes['masks'] = {0: 'batch', 1: 'num_dets'}
 
-    torch.onnx.export(
-        model,
-        img_list,
-        output_file,
-        input_names=[input_name],
-        output_names=output_names,
-        export_params=True,
-        keep_initializers_as_inputs=True,
-        do_constant_folding=True,
-        verbose=show,
-        opset_version=opset_version,
-        dynamic_axes=dynamic_axes)
-
+    traced = torch.jit.trace(model,(img_list,))
+    traced.save(output_file)
     model.forward = origin_forward
 
     # get the custom op path
@@ -112,103 +75,7 @@ def pytorch2onnx(model,
         warnings.warn('If input model has custom op from mmcv, \
             you may have to build mmcv with ONNXRuntime from source.')
 
-    if do_simplify:
-        import onnxsim
-
-        from mmdet import digit_version
-
-        input_dic = {'input': img_list[0].detach().cpu().numpy()}
-        print(f"output_file {output_file}")
-        try:
-            model_opt, check_ok = onnxsim.simplify(
-            output_file,
-            input_data=input_dic,
-            #custom_lib=ort_custom_op_path,
-            dynamic_input_shape=dynamic_export)
-        except Exception as e:
-            print("ERROR",e)
-        except:
-            print("ERROR!!!")
-        if check_ok:
-            onnx.save(model_opt, output_file)
-            print(f'Successfully simplified ONNX model: {output_file}')
-        else:
-            print('Failed to simplify ONNX model.')
     print(f'Successfully exported ONNX model: {output_file}')
-
-    if verify:
-        # check by onnx
-        onnx_model = onnx.load(output_file)
-        onnx.checker.check_model(onnx_model)
-
-        # wrap onnx model
-        onnx_model = ONNXRuntimeDetector(output_file, model.CLASSES, 0)
-        if dynamic_export:
-            # scale up to test dynamic shape
-            h, w = [int((_ * 1.5) // 32 * 32) for _ in input_shape[2:]]
-            h, w = min(1344, h), min(1344, w)
-            input_config['input_shape'] = (1, 3, h, w)
-
-        if test_img is None:
-            input_config['input_path'] = input_img
-
-        # prepare input once again
-        one_img, one_meta = preprocess_example_input(input_config)
-        img_list, img_meta_list = [one_img], [[one_meta]]
-
-        # get pytorch output
-        with torch.no_grad():
-            pytorch_results = model(
-                img_list,
-                img_metas=img_meta_list,
-                return_loss=False,
-                rescale=True)[0]
-
-        img_list = [_.cuda().contiguous() for _ in img_list]
-        if dynamic_export:
-            img_list = img_list + [_.flip(-1).contiguous() for _ in img_list]
-            img_meta_list = img_meta_list * 2
-        # get onnx output
-        onnx_results = onnx_model(
-            img_list, img_metas=img_meta_list, return_loss=False)[0]
-        # visualize predictions
-        score_thr = 0.3
-        if show:
-            out_file_ort, out_file_pt = None, None
-        else:
-            out_file_ort, out_file_pt = 'show-ort.png', 'show-pt.png'
-
-        show_img = one_meta['show_img']
-        model.show_result(
-            show_img,
-            pytorch_results,
-            score_thr=score_thr,
-            show=True,
-            win_name='PyTorch',
-            out_file=out_file_pt)
-        onnx_model.show_result(
-            show_img,
-            onnx_results,
-            score_thr=score_thr,
-            show=True,
-            win_name='ONNXRuntime',
-            out_file=out_file_ort)
-
-        # compare a part of result
-        if model.with_mask:
-            compare_pairs = list(zip(onnx_results, pytorch_results))
-        else:
-            compare_pairs = [(onnx_results, pytorch_results)]
-        err_msg = 'The numerical values are different between Pytorch' + \
-                  ' and ONNX, but it does not necessarily mean the' + \
-                  ' exported ONNX model is problematic.'
-        # check the numerical value
-        for onnx_res, pytorch_res in compare_pairs:
-            for o_res, p_res in zip(onnx_res, pytorch_res):
-                np.testing.assert_allclose(
-                    o_res, p_res, rtol=1e-03, atol=1e-05, err_msg=err_msg)
-        print('The numerical values are the same between Pytorch and ONNX')
-
 
 def parse_normalize_cfg(test_pipeline):
     transforms = None
@@ -233,7 +100,7 @@ def parse_args():
         '--show',
         action='store_true',
         help='Show onnx graph and detection outputs')
-    parser.add_argument('--output-file', type=str, default='tmp1.onnx')
+    parser.add_argument('--output-file', type=str, default='tmp1.traced')
     parser.add_argument('--opset-version', type=int, default=11)
     parser.add_argument(
         '--test-img', type=str, default=None, help='Images for test')

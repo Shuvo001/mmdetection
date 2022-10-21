@@ -259,9 +259,13 @@ class RPNHead(AnchorHead):
         nms_pre = cfg.get('deploy_nms_pre', -1)
         # Different from the normal forward doing NMS level by level,
         # we do NMS across all levels when exporting ONNX.
-        dets, _ = add_dummy_nms_for_onnx(batch_bboxes, batch_scores,
+        try:
+            dets, _ = add_dummy_nms_for_onnx(batch_bboxes, batch_scores,
                                          cfg.max_per_img,
                                          cfg.nms.iou_threshold,
                                          score_threshold, nms_pre,
                                          cfg.max_per_img)
+        except Exception as e:
+            print(f"ERROR: {e}")
+            raise e
         return dets
