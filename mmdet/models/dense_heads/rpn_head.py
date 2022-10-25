@@ -6,9 +6,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.cnn import ConvModule
 from mmcv.ops import batched_nms
-
+import torchvision
 from ..builder import HEADS
 from .anchor_head import AnchorHead
+import wtorch.nms as wnms
 
 
 @HEADS.register_module()
@@ -227,14 +228,21 @@ class RPNHead(AnchorHead):
                 scores = scores[valid_mask]
                 ids = ids[valid_mask]
 
-        if proposals.numel() > 0:
-            dets, _ = batched_nms(proposals, scores, ids, cfg.nms)
+        if self.training:
+            if proposals.numel() > 0:
+                dets, _ = batched_nms(proposals, scores, ids, cfg.nms)
+            else:
+                return proposals.new_zeros(0, 5)
         else:
-            return proposals.new_zeros(0, 5)
+            keep = wnms.group_nms(proposals,scores,ids,nms_threshold=cfg.nms['iou_threshold'])
+            bboxes = proposals[keep]
+            scores = scores[keep]
+            dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)
         scores = dets[:,-1]
         sorted_scores,indexs = scores.sort(descending=True)
         dets = dets[indexs]
         return dets[:cfg.max_per_img]
+
 
     def onnx_export(self, x, img_metas):
         """Test without augmentation.

@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.runner import BaseModule, auto_fp16, force_fp32
 from torch.nn.modules.utils import _pair
-
-from mmdet.core import build_bbox_coder, multi_apply, multiclass_nms
+import wtorch.nms as wnms
+from mmdet.core import build_bbox_coder, multi_apply, multiclass_nms, wmulticlass_nms
 from mmdet.models.builder import HEADS, build_loss
 from mmdet.models.losses import accuracy
 from mmdet.models.utils import build_linear_layer
@@ -371,8 +371,13 @@ class BBoxHead(BaseModule):
         if cfg is None:
             return bboxes, scores
         else:
-            det_bboxes, det_labels = multiclass_nms(bboxes, scores,
+            if self.training:
+                det_bboxes, det_labels = multiclass_nms(bboxes, scores,
                                                     cfg.score_thr, cfg.nms,
+                                                    cfg.max_per_img)
+            else:
+                det_bboxes, det_labels = wmulticlass_nms(bboxes, scores,
+                                                    cfg.score_thr, cfg.nms["iou_threshold"],
                                                     cfg.max_per_img)
 
             return det_bboxes, det_labels

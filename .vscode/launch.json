@@ -64,7 +64,7 @@
             "request": "launch",
             "program": "./tools/predict_on_images.py",
             "console": "integratedTerminal",
-            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/predict_on_images"],
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/0day/predict_on_images"],
         },
         {
             "name": "Python: predict on images gds1",
@@ -92,6 +92,15 @@
             "program": "./tools/deployment/pytorch2traced.py",
             "console": "integratedTerminal",
             "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--input-img" "demo/demo.jpg"],
+        },
+        {
+            "name": "Python: traced predict on images",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/deployment/traced_predict_on_images.py",
+            "console": "integratedTerminal",
+            "args":["tmp.traced" "--gpus" "2" "--save_data_dir" "/home/wj/ai/mldata1/0day/traced_predict_on_images"],
         },
     ]
     

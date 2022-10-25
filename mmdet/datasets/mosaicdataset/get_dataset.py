@@ -6,7 +6,6 @@ import torch
 import uuid
 from wtorch.data import DataLoader as torchDataLoader
 import object_detection2.bboxes as odb
-from object_detection2.standard_names import *
 from .data_augment import TrainTransform
 from .mosaicdetection import MosaicDetection
 from ..builder import DATASETS

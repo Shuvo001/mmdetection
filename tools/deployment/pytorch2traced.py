@@ -35,7 +35,8 @@ def pytorch2onnx(model,
     }
     # prepare input
     one_img, one_meta = preprocess_example_input(input_config)
-    img_list, img_meta_list = [one_img], [[one_meta]]
+    img_list, img_meta_list = one_img.cuda(), [[one_meta]]
+    model.cuda()
 
     if skip_postprocess:
         warnings.warn('Not all models support export onnx without post '
@@ -100,7 +101,7 @@ def parse_args():
         '--show',
         action='store_true',
         help='Show onnx graph and detection outputs')
-    parser.add_argument('--output-file', type=str, default='tmp1.traced')
+    parser.add_argument('--output-file', type=str, default='tmp.traced')
     parser.add_argument('--opset-version', type=int, default=11)
     parser.add_argument(
         '--test-img', type=str, default=None, help='Images for test')

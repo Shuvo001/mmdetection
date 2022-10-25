@@ -48,7 +48,7 @@ class BBoxTestMixin:
                 cfg=rcnn_test_cfg)
             return det_bboxes, det_labels
 
-    @torch.jit.script
+    #@torch.jit.script
     def simple_test_bboxes(self,
                            x,
                            img_metas,
@@ -90,8 +90,9 @@ class BBoxTestMixin:
         bbox_results = self._bbox_forward(x, rois)
         if img_metas is not None:
             #wj debug
-            img_shapes = tuple(meta['img_shape'] for meta in img_metas)
-            scale_factors = tuple(meta['scale_factor'] for meta in img_metas)
+            assert len(img_metas) == 1, "only support one img"
+            img_shapes = (img_metas[0].get('img_shape',None),)
+            scale_factors = (img_metas[0].get('scale_factor',None),)
         else:
             img_shapes = None
             scale_factors = None
@@ -99,7 +100,8 @@ class BBoxTestMixin:
         # split batch bbox prediction back to each image
         cls_score = bbox_results['cls_score']
         bbox_pred = bbox_results['bbox_pred']
-        num_proposals_per_img = tuple(len(p) for p in proposals)
+        assert len(proposals)==1,f"Error proposals len {len(proposals)}"
+        num_proposals_per_img = (len(proposals[0]),) 
         rois = rois.split(num_proposals_per_img, 0)
         cls_score = cls_score.split(num_proposals_per_img, 0)
 

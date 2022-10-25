@@ -221,9 +221,14 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
     with torch.no_grad():
         results = model(return_loss=False, rescale=True, img=[img],img_metas=[[img_metas]])
 
-    results = results[0]
-
-    bboxes,labels,scores = get_results(results,score_thr=score_thr)
+    results = results.cpu().numpy()
+    bboxes = results[...,:4]
+    scores = results[...,4]
+    labels = results[...,5].astype(np.int32)
+    mask = scores>score_thr
+    bboxes = bboxes[mask]
+    scores = scores[mask]
+    labels = labels[mask]
     bboxes = bboxes/r
 
     return bboxes,labels,scores,results

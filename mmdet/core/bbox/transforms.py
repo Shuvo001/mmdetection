@@ -133,7 +133,8 @@ def bbox2result(bboxes, labels, num_classes):
             labels = labels.detach().cpu().numpy()
         return [bboxes[labels == i, :] for i in range(num_classes)]
 
-def bbox2result_yolo_style(bboxes, labels, num_classes):
+@torch.jit.script
+def bbox2result_yolo_style(bboxes, labels, num_classes:int):
     """Convert detection results to a list of numpy arrays.
 
     Args:
@@ -142,14 +143,14 @@ def bbox2result_yolo_style(bboxes, labels, num_classes):
         num_classes (int): class number, including background class
 
     Returns:
-        list(ndarray): bbox results of each class
+        tensor: bbox results of each class[N,6] (xmin,ymin,xmax,ymax,score,label)
     """
-    print(f"{os.path.basename(__file__)}: output yolo style results.")
+    print(f"output yolo style results.")
     if bboxes.shape[0] == 0:
         return bboxes.new_zeros([0,6])
     else:
         labels = labels.to(bboxes.dtype)
-        return torch.cat([bboxes,labels[:,None]],axis=-1)
+        return torch.cat([bboxes,labels[:,None]],dim=-1)
 
 
 def distance2bbox(points, distance, max_shape=None):

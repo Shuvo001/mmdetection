@@ -11,7 +11,6 @@ import random
 from .datasets_wrapper import Dataset
 import copy
 import sys
-from object_detection2.data.transforms.transform_toolkit import motion_blur
 
 class _AnnotationTransform(object):
 

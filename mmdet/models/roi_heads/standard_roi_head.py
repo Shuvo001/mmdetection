@@ -259,12 +259,10 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                         self.bbox_head.num_classes)
             for i in range(len(det_bboxes))
         ]'''
-        bbox_results = [
-            bbox2result_yolo_style(det_bboxes[i], det_labels[i],
+        assert len(det_bboxes) == 1,f"Error batch size {len(det_bboxes)}"
+        i = 0
+        bbox_results = bbox2result_yolo_style(det_bboxes[i], det_labels[i],
                         self.bbox_head.num_classes)
-            for i in range(len(det_bboxes))
-        ]
-
         if not self.with_mask:
             return bbox_results
         else:

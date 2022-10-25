@@ -4,6 +4,8 @@ import asyncio
 from argparse import ArgumentParser
 from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
                         init_detector, show_result_pyplot)
+import torch
+import wtorch.utils as wtu
 import object_detection2.bboxes as odb
 import os
 import wml_utils as wmlu
@@ -16,8 +18,7 @@ from object_detection2.metrics.toolkit import *
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
+    parser.add_argument('model', help='traced model file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
     parser.add_argument(
@@ -41,21 +42,63 @@ def parse_args():
 def text_fn(label,probability):
     return f"{label}:{probability:.2f}"
 
+def inference_traced(model, img,mean=None,std=None,input_size=(1024,1024),score_thr=0.05):
+    """Inference image(s) with the detector.
+
+    Args:
+        model (nn.Module): The loaded detector.
+        imgs (str/ndarray or list[str/ndarray] or tuple[str/ndarray]):
+           Either image files or loaded images.
+
+    Returns:
+        If imgs is a list or tuple, the same length list type results
+        will be returned, otherwise return the detection results directly.
+    """
+
+    device = torch.device("cuda:0")
+
+    if not isinstance(img, np.ndarray):
+        filename = img
+        img = wmli.imread(img)
+    
+    img,r = wmli.resize_imgv2(img,input_size,return_scale=True)
+    img = torch.tensor(img,dtype=torch.float32)
+    img = img.permute(2,0,1)
+    img = torch.unsqueeze(img,dim=0)
+    img = img.to(device)
+
+    if mean is not None:
+        img = wtu.normalize(img,mean,std)
+    
+    img = wtu.pad_feature(img,input_size,pad_value=0)
+
+    with torch.no_grad():
+        results = model(img)
+
+    results = results.cpu().numpy()
+    mask = results[...,4]>score_thr
+    results = results[mask]
+    bboxes = results[...,:4]
+    scores = results[...,4]
+    labels = results[...,5].astype(np.int32)
+    bboxes = bboxes/r
+
+    return bboxes,labels,scores,results
+
 def main():
     args = parse_args()
 
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, args.checkpoint, device=args.device)
-
-    print(f"Inference {args.test_data_dir}")
+    print(f"Load {args.model}")
+    model = torch.jit.load(args.model,map_location=args.device)
     files = wmlu.recurse_get_filepath_in_dir(args.test_data_dir,suffix=".bmp;;.jpg")
-    # test a single image
 
     save_path = args.save_data_dir
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
+    print(f"Inference {args.test_data_dir}")
 
     mean=[123.675, 116.28, 103.53]
     std=[58.395, 57.12, 57.375]
@@ -63,7 +106,7 @@ def main():
     input_size = (1216,800)
     
     for i,full_path in enumerate(files):
-        bboxes,labels,scores,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
+        bboxes,labels,scores,result = inference_traced(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
         img_save_path = os.path.join(save_path,name+".png")
         bboxes = odb.npchangexyorder(bboxes)
