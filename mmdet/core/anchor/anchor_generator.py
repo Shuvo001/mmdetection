@@ -138,6 +138,9 @@ class AnchorGenerator:
         Returns:
             list(torch.Tensor): Base anchors of a feature grid in multiple \
                 feature levels.
+        生成每一层的base_anchor, anchor的大小为scales*base_size, base_size默认为stride,如[4,8,16,32,64]
+        如果scales为[8]，那么第一层的anchor大小为[32],第二层的大小为[64],...
+        ratios为h/w,  如果self.scale_major为True，生成的为每个大小，每个比率的anchor, 否则为每个比率，每个大小的anchor
         """
         multi_level_base_anchors = []
         for i, base_size in enumerate(self.base_sizes):

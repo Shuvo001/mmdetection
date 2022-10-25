@@ -56,7 +56,6 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         assert hasattr(ops, layer_type)
         if layer_type == "RoIAlign":
             layer_cls = torchvision.ops.RoIAlign
-            
             print(f"Use torchvision roialign")
         else:
             layer_cls = getattr(ops, layer_type)
