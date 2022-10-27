@@ -170,7 +170,7 @@ class TwoStageDetector(BaseDetector):
             x = self.second_stage_hook(x)
         
         _proposal_list = []
-        for pbboxes,gtb in zip(proposal_list,gt_bboxes):
+        for pbboxes,gtb in zip(proposal_list,gt_bboxes): #默认将gtbboxes加入proposal
             _proposal_list.append(self.cat_proposals_and_gtbboxes(pbboxes,gtb))
 
         roi_losses = self.roi_head.forward_train(x, img_metas, _proposal_list,
@@ -222,7 +222,8 @@ class TwoStageDetector(BaseDetector):
         assert self.with_bbox, 'Bbox head must be implemented.'
         x = self.extract_feat(img)
         if proposals is None:
-            proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)
+            #proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)
+            proposal_list = self.rpn_head.simple_test(x, img_metas)
         else:
             proposal_list = proposals
         

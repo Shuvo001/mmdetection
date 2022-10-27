@@ -46,7 +46,7 @@ class BaseSampler(metaclass=ABCMeta):
 
         Args:
             assign_result (:obj:`AssignResult`): Bbox assigning results.
-            bboxes (Tensor): Boxes to be sampled from.
+            bboxes (Tensor): [N,4], Boxes to be sampled from. default is anchor bboxes
             gt_bboxes (Tensor): Ground truth bboxes.
             gt_labels (Tensor, optional): Class labels of ground truth bboxes.
 
@@ -89,7 +89,7 @@ class BaseSampler(metaclass=ABCMeta):
         pos_inds = pos_inds.unique()
         num_sampled_pos = pos_inds.numel()
         num_expected_neg = self.num - num_sampled_pos
-        if self.neg_pos_ub >= 0:
+        if self.neg_pos_ub >= 0: #default False
             _pos = max(1, num_sampled_pos)
             neg_upper_bound = int(self.neg_pos_ub * _pos)
             if num_expected_neg > neg_upper_bound:

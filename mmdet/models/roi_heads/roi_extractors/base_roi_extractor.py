@@ -26,7 +26,7 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         super(BaseRoIExtractor, self).__init__(init_cfg)
         self.roi_layers = self.build_roi_layers(roi_layer, featmap_strides)
         self.out_channels = out_channels
-        self.featmap_strides = featmap_strides
+        self.featmap_strides = featmap_strides #example [4,8,16,32]
         self.fp16_enabled = False
 
     @property
@@ -60,7 +60,7 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         else:
             layer_cls = getattr(ops, layer_type)
         roi_layers = nn.ModuleList(
-            [layer_cls(spatial_scale=1 / s, **cfg) for s in featmap_strides])
+            [layer_cls(spatial_scale=1 / s, **cfg) for s in featmap_strides]) #不同层的spatial_scale不一样
         return roi_layers
 
     def roi_rescale(self, rois, scale_factor):

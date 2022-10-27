@@ -5,14 +5,15 @@ import os
 import os.path as osp
 import time
 import warnings
-
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3"
 import mmcv
 import torch
 import torch.distributed as dist
 from mmcv import Config, DictAction
 from mmcv.runner import get_dist_info, init_dist
 from mmcv.utils import get_git_hash
-
+import wtorch.utils as wtu
+import wtorch.train_toolkit as wtt
 from mmdet import __version__
 from mmdet.apis import init_random_seed, set_random_seed, train_detector
 from mmdet.datasets import build_dataset
@@ -39,9 +40,8 @@ def parse_args():
     group_gpus = parser.add_mutually_exclusive_group()
     group_gpus.add_argument(
         '--gpus',
-        type=int,
-        help='(Deprecated, please use --gpu-id) number of gpus to use '
-        '(only applicable to non-distributed training)')
+        nargs='+',
+        type=int)
     group_gpus.add_argument(
         '--gpu-ids',
         type=int,
@@ -131,6 +131,13 @@ def main():
                           ' configuration file. Please update all the '
                           'configuration files to mmdet >= 2.24.1.')
 
+    if args.gpus is not None:
+        gpus_str = wtt.get_gpus_str(args.gpus)
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpus_str
+        cfg.gpu_ids = range(len(args.gpus))
+        warnings.warn('`--gpus` is deprecated because we only support '
+                      'single GPU mode in non-distributed training. '
+                      'Use `gpus=1` now.')
     # set multi-process settings
     setup_multi_processes(cfg)
 
@@ -150,19 +157,8 @@ def main():
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
     cfg.auto_resume = args.auto_resume
-    if args.gpus is not None:
-        cfg.gpu_ids = range(1)
-        warnings.warn('`--gpus` is deprecated because we only support '
-                      'single GPU mode in non-distributed training. '
-                      'Use `gpus=1` now.')
-    if args.gpu_ids is not None:
-        cfg.gpu_ids = args.gpu_ids[0:1]
-        warnings.warn('`--gpu-ids` is deprecated, please use `--gpu-id`. '
-                      'Because we only support single GPU mode in '
-                      'non-distributed training. Use the first GPU '
-                      'in `gpu_ids` now.')
     if args.gpus is None and args.gpu_ids is None:
-        cfg.gpu_ids = [args.gpu_id]
+        cfg.gpu_ids = [0]
 
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == 'none':

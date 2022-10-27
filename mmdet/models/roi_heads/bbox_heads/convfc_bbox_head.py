@@ -158,7 +158,7 @@ class ConvFCBBoxHead(BBoxHead):
 
     def forward(self, x):
         # shared part
-        if self.num_shared_convs > 0:
+        if self.num_shared_convs > 0: #default False
             for conv in self.shared_convs:
                 x = conv(x)
 

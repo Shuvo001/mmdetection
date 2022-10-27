@@ -53,8 +53,10 @@ class BBoxHead(BaseModule):
         self.reg_predictor_cfg = reg_predictor_cfg
         self.cls_predictor_cfg = cls_predictor_cfg
         self.fp16_enabled = False
-
+        #self.bbox_coder default is mmdet.core.bbox.coder.delta_xywh_bbox_coder.DeltaXYWHBBoxCoder
         self.bbox_coder = build_bbox_coder(bbox_coder)
+        #self.loss_cls default is mmdet.models.losses.cross_entropy_loss.CrossEntropyLoss
+        #使用cross_entropy
         self.loss_cls = build_loss(loss_cls)
         self.loss_bbox = build_loss(loss_bbox)
 
@@ -349,14 +351,14 @@ class BBoxHead(BaseModule):
         # some loss (Seesaw loss..) may have custom activation
         if self.custom_cls_channels:
             scores = self.loss_cls.get_activation(cls_score)
-        else:
+        else: #default use softmax
             scores = F.softmax(
-                cls_score, dim=-1) if cls_score is not None else None
+                cls_score, dim=-1) if cls_score is not None else None 
         # bbox_pred would be None in some detector when with_reg is False,
         # e.g. Grid R-CNN.
-        if bbox_pred is not None:
+        if bbox_pred is not None: #default True
             bboxes = self.bbox_coder.decode(
-                rois[..., 1:], bbox_pred, max_shape=img_shape)
+                rois[..., 1:], bbox_pred, max_shape=img_shape) #rois[...,0]为batch id
         else:
             bboxes = rois[:, 1:].clone()
             if img_shape is not None:

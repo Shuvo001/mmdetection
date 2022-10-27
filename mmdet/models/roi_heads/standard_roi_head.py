@@ -5,11 +5,11 @@ from mmdet.core import bbox2result, bbox2roi, build_assigner, build_sampler
 from mmdet.core.bbox.transforms import bbox2result_yolo_style
 from ..builder import HEADS, build_head, build_roi_extractor
 from .base_roi_head import BaseRoIHead
-from .test_mixins import BBoxTestMixin, MaskTestMixin
+from .test_mixins import MaskTestMixin
 
 
 @HEADS.register_module()
-class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
+class StandardRoIHead(BaseRoIHead, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
 
     def init_assigner_sampler(self):
@@ -17,12 +17,15 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         self.bbox_assigner = None
         self.bbox_sampler = None
         if self.train_cfg:
+            #bbox_assigner默认为MaxIoUAssigner in mmdet/core/bbox/assigners/max_iou_assigner.py
             self.bbox_assigner = build_assigner(self.train_cfg.assigner)
+            #bbox_sampler 默认为 mmdet.core.bbox.samplers.random_sampler.RandomSampler
             self.bbox_sampler = build_sampler(
                 self.train_cfg.sampler, context=self)
 
     def init_bbox_head(self, bbox_roi_extractor, bbox_head):
         """Initialize ``bbox_head``"""
+        #bbox_roi_extractor default is mmdet.models.roi_heads.roi_extractors.single_level_roi_extractor.SingleRoIExtractor
         self.bbox_roi_extractor = build_roi_extractor(bbox_roi_extractor)
         self.bbox_head = build_head(bbox_head)
 
@@ -120,7 +123,7 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         """Box head forward function used in both training and testing."""
         # TODO: a more flexible way to decide which feature maps to use
         bbox_feats = self.bbox_roi_extractor(
-            x[:self.bbox_roi_extractor.num_inputs], rois)
+            x[:self.bbox_roi_extractor.num_inputs], rois) #如果feature maps(即x)的数量与self.bbox_roi_extractor设置的数量不一致,取前self.bbox_roi_extractor.num_inputs个
         if self.with_shared_head:
             bbox_feats = self.shared_head(bbox_feats)
         cls_score, bbox_pred = self.bbox_head(bbox_feats)
@@ -143,6 +146,100 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         bbox_results.update(loss_bbox=loss_bbox)
         return bbox_results
+    
+    def simple_test_bboxes(self,
+                           x,
+                           img_metas,
+                           proposals,
+                           rcnn_test_cfg,
+                           rescale=False):
+        """Test only det bboxes without augmentation.
+
+        Args:
+            x (tuple[Tensor]): Feature maps of all scale level.
+            img_metas (list[dict]): Image meta info.
+            proposals (List[Tensor]): Region proposals.
+            rcnn_test_cfg (obj:`ConfigDict`): `test_cfg` of R-CNN.
+            rescale (bool): If True, return boxes in original image space.
+                Default: False.
+
+        Returns:
+            tuple[list[Tensor], list[Tensor]]: The first list contains
+                the boxes of the corresponding image in a batch, each
+                tensor has the shape (num_boxes, 5) and last dimension
+                5 represent (tl_x, tl_y, br_x, br_y, score). Each Tensor
+                in the second list is the labels with shape (num_boxes, ).
+                The length of both lists should be equal to batch_size.
+        """
+
+        rois = bbox2roi(proposals)
+
+        if rois.shape[0] == 0:
+            batch_size = len(proposals)
+            det_bbox = rois.new_zeros(0, 5)
+            det_label = rois.new_zeros((0, ), dtype=torch.long)
+            if rcnn_test_cfg is None:
+                det_bbox = det_bbox[:, :4]
+                det_label = rois.new_zeros(
+                    (0, self.bbox_head.fc_cls.out_features))
+            # There is no proposal in the whole batch
+            return [det_bbox] * batch_size, [det_label] * batch_size
+
+        bbox_results = self._bbox_forward(x, rois)
+        if img_metas is not None:
+            #wj debug
+            assert len(img_metas) == 1, "only support one img"
+            img_shapes = (img_metas[0].get('img_shape',None),)
+            scale_factors = (img_metas[0].get('scale_factor',None),)
+        else:
+            img_shapes = None
+            scale_factors = None
+
+        # split batch bbox prediction back to each image
+        cls_score = bbox_results['cls_score']
+        bbox_pred = bbox_results['bbox_pred']
+        assert len(proposals)==1,f"Error proposals len {len(proposals)}"
+        num_proposals_per_img = (len(proposals[0]),) 
+        rois = rois.split(num_proposals_per_img, 0)
+        cls_score = cls_score.split(num_proposals_per_img, 0) #split to each img
+
+        # some detector with_reg is False, bbox_pred will be None
+        if bbox_pred is not None:
+            # TODO move this to a sabl_roi_head
+            # the bbox prediction of some detectors like SABL is not Tensor
+            if isinstance(bbox_pred, torch.Tensor): #default True
+                bbox_pred = bbox_pred.split(num_proposals_per_img, 0)
+            else:
+                bbox_pred = self.bbox_head.bbox_pred_split(
+                    bbox_pred, num_proposals_per_img)
+        else:
+            bbox_pred = (None, ) * len(proposals)
+
+        # apply bbox post-processing to each image individually
+        det_bboxes = []
+        det_labels = []
+        for i in range(len(proposals)): #for each image
+            if rois[i].shape[0] == 0:
+                # There is no proposal in the single image
+                det_bbox = rois[i].new_zeros(0, 5)
+                det_label = rois[i].new_zeros((0, ), dtype=torch.long)
+                if rcnn_test_cfg is None:
+                    det_bbox = det_bbox[:, :4]
+                    det_label = rois[i].new_zeros(
+                        (0, self.bbox_head.fc_cls.out_features))
+
+            else:
+                det_bbox, det_label = self.bbox_head.get_bboxes(
+                    rois[i],
+                    cls_score[i],
+                    bbox_pred[i],
+                    img_shapes[i], #指定输出bbox的最大值
+                    scale_factors[i],
+                    rescale=rescale,
+                    cfg=rcnn_test_cfg)
+            det_bboxes.append(det_bbox)
+            det_labels.append(det_label)
+        return det_bboxes, det_labels
 
     def _mask_forward_train(self, x, sampling_results, bbox_feats, gt_masks,
                             img_metas):
@@ -231,10 +328,11 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         Args:
             x (tuple[Tensor]): Features from upstream network. Each
-                has shape (batch_size, c, h, w).
+                has shape (batch_size, c, h, w). tuple corresponding to different feature level
+                from hight resolution to low resolution
             proposal_list (list(Tensor)): Proposals from rpn head.
                 Each has shape (num_proposals, 5), last dimension
-                5 represent (x1, y1, x2, y2, score).
+                5 represent (x1, y1, x2, y2, score). list corresponding to dirrerent images
             img_metas (list[dict]): Meta information of images.
             rescale (bool): Whether to rescale the results to
                 the original image. Default: True.
@@ -261,8 +359,8 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         ]'''
         assert len(det_bboxes) == 1,f"Error batch size {len(det_bboxes)}"
         i = 0
-        bbox_results = bbox2result_yolo_style(det_bboxes[i], det_labels[i],
-                        self.bbox_head.num_classes)
+        bbox_results = bbox2result_yolo_style(det_bboxes[i], det_labels[i])
+
         if not self.with_mask:
             return bbox_results
         else:

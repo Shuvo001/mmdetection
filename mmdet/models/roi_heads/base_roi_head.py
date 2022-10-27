@@ -27,6 +27,7 @@ class BaseRoIHead(BaseModule, metaclass=ABCMeta):
             self.shared_head = build_shared_head(shared_head)
 
         if bbox_head is not None:
+            #roi_heads的损失默认也放在head中
             self.init_bbox_head(bbox_roi_extractor, bbox_head)
 
         if mask_head is not None:

@@ -75,11 +75,12 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
         self.reg_decoded_bbox = reg_decoded_bbox
 
         self.bbox_coder = build_bbox_coder(bbox_coder)
-        self.loss_cls = build_loss(loss_cls)
-        self.loss_bbox = build_loss(loss_bbox)
+        self.loss_cls = build_loss(loss_cls) #default is CrossEntropyLoss in mmdet/models/losses/cross_entropy_loss.py
+        self.loss_bbox = build_loss(loss_bbox) #default is L1Loss in mmdet/models/losses/smooth_l1_loss.py
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
         if self.train_cfg:
+            #self.assigner default is MaxIoUAssigner in mmdet/core/bbox/assigners/max_iou_assigner.py
             self.assigner = build_assigner(self.train_cfg.assigner)
             if hasattr(self.train_cfg,
                        'sampler') and self.train_cfg.sampler.type.split(
@@ -102,7 +103,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
                 sampler_cfg = dict(type='PseudoSampler')
             self.sampler = build_sampler(sampler_cfg, context=self)
         self.fp16_enabled = False
-
+        #self.prior_generator默认为AnchorGenerator
         self.prior_generator = build_prior_generator(anchor_generator)
 
         # Usually the numbers of anchors for each level are the same
@@ -194,6 +195,10 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
         for img_id, img_meta in enumerate(img_metas):
             multi_level_flags = self.prior_generator.valid_flags(
                 featmap_sizes, img_meta['pad_shape'], device)
+            '''
+            anchor's shape is [N,4]
+            valid_flag is [N]
+            '''
             valid_flag_list.append(multi_level_flags)
 
         return anchor_list, valid_flag_list
@@ -219,13 +224,13 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             gt_bboxes (Tensor): Ground truth bboxes of the image,
                 shape (num_gts, 4).
             gt_bboxes_ignore (Tensor): Ground truth bboxes to be
-                ignored, shape (num_ignored_gts, 4).
+                ignored, shape (num_ignored_gts, 4). default None
             img_meta (dict): Meta info of the image.
             gt_labels (Tensor): Ground truth labels of each box,
-                shape (num_gts,).
-            label_channels (int): Channel of label.
+                shape (num_gts,). default None
+            label_channels (int): Channel of label. default 1
             unmap_outputs (bool): Whether to map outputs back to the original
-                set of anchors.
+                set of anchors. default True
 
         Returns:
             tuple:
@@ -238,7 +243,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
         """
         inside_flags = anchor_inside_flags(flat_anchors, valid_flags,
                                            img_meta['img_shape'][:2],
-                                           self.train_cfg.allowed_border)
+                                           self.train_cfg.allowed_border) #self.train_cfg.allowed_border default -1
         if not inside_flags.any():
             return (None, ) * 7
         # assign gt and sample anchors
@@ -246,7 +251,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
 
         assign_result = self.assigner.assign(
             anchors, gt_bboxes, gt_bboxes_ignore,
-            None if self.sampling else gt_labels)
+            None if self.sampling else gt_labels) #default self.sampling = True
         sampling_result = self.sampler.sample(assign_result, anchors,
                                               gt_bboxes)
 
@@ -271,7 +276,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             if gt_labels is None:
                 # Only rpn gives gt_labels as None
                 # Foreground is the first class since v2.5.0
-                labels[pos_inds] = 0
+                labels[pos_inds] = 0 #前景为0
             else:
                 labels[pos_inds] = gt_labels[
                     sampling_result.pos_assigned_gt_inds]
@@ -325,7 +330,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             gt_labels_list (list[Tensor]): Ground truth labels of each box.
             label_channels (int): Channel of label.
             unmap_outputs (bool): Whether to map outputs back to the original
-                set of anchors.
+                set of anchors. default True
 
         Returns:
             tuple: Usually returns a tuple containing learning targets.
@@ -482,7 +487,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
 
         anchor_list, valid_flag_list = self.get_anchors(
             featmap_sizes, img_metas, device=device)
-        label_channels = self.cls_out_channels if self.use_sigmoid_cls else 1
+        label_channels = self.cls_out_channels if self.use_sigmoid_cls else 1 #default use_sigmoid_cls=True
         cls_reg_targets = self.get_targets(
             anchor_list,
             valid_flag_list,

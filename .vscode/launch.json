@@ -24,11 +24,11 @@
         {
             "name": "Python: train faster-rcnn",
             "type": "python",
-            "justMyCode": false,
+            "justMyCode": true,
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco_test.py"  "--gpu-id" "2"],
+            "args":["configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco_test.py"  "--gpus" "2"],
         },
         {
             "name": "Python: train gds1 faster-rcnn",

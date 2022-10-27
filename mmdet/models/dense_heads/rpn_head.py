@@ -149,11 +149,12 @@ class RPNHead(AnchorHead):
         mlvl_valid_anchors = []
         nms_pre = cfg.get('nms_pre', -1)
         for level_idx in range(len(cls_score_list)):
+            #从每一层按预测的score从高到低排，取前nms_pre(default 2000)个预测
             rpn_cls_score = cls_score_list[level_idx]
             rpn_bbox_pred = bbox_pred_list[level_idx]
             assert rpn_cls_score.size()[-2:] == rpn_bbox_pred.size()[-2:]
-            rpn_cls_score = rpn_cls_score.permute(1, 2, 0)
-            if self.use_sigmoid_cls:
+            rpn_cls_score = rpn_cls_score.permute(1, 2, 0) #[C,H,W]->[H,W,C]
+            if self.use_sigmoid_cls: #default True
                 rpn_cls_score = rpn_cls_score.reshape(-1)
                 scores = rpn_cls_score.sigmoid()
             else:
@@ -166,7 +167,7 @@ class RPNHead(AnchorHead):
             rpn_bbox_pred = rpn_bbox_pred.permute(1, 2, 0).reshape(-1, 4)
 
             anchors = mlvl_anchors[level_idx]
-            if 0 < nms_pre < scores.shape[0]:
+            if 0 < nms_pre < scores.shape[0]: #default True, nms_pre default is 2000
                 # sort is faster than topk
                 # _, topk_inds = scores.topk(cfg.nms_pre)
                 ranked_scores, rank_inds = scores.sort(descending=True)
@@ -219,7 +220,7 @@ class RPNHead(AnchorHead):
             anchors, rpn_bbox_pred, max_shape=img_shape)
         ids = torch.cat(level_ids)
 
-        if cfg.min_bbox_size >= 0:
+        if cfg.min_bbox_size >= 0: # default cfg.min_bbox_size=0
             w = proposals[:, 2] - proposals[:, 0]
             h = proposals[:, 3] - proposals[:, 1]
             valid_mask = (w > cfg.min_bbox_size) & (h > cfg.min_bbox_size)
@@ -230,10 +231,11 @@ class RPNHead(AnchorHead):
 
         if self.training:
             if proposals.numel() > 0:
-                dets, _ = batched_nms(proposals, scores, ids, cfg.nms)
+                dets, _ = batched_nms(proposals, scores, ids, cfg.nms) #default iou threshold is 0.7
             else:
                 return proposals.new_zeros(0, 5)
         else:
+            #和上面实际在训练时也是可以平替的
             keep = wnms.group_nms(proposals,scores,ids,nms_threshold=cfg.nms['iou_threshold'])
             bboxes = proposals[keep]
             scores = scores[keep]
@@ -241,7 +243,7 @@ class RPNHead(AnchorHead):
         scores = dets[:,-1]
         sorted_scores,indexs = scores.sort(descending=True)
         dets = dets[indexs]
-        return dets[:cfg.max_per_img]
+        return dets[:cfg.max_per_img] #default cfg.max_per_img=1000
 
 
     def onnx_export(self, x, img_metas):

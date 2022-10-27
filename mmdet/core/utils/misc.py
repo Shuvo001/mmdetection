@@ -105,7 +105,7 @@ def select_single_mlvl(mlvl_tensors, batch_id, detach=True):
     assert isinstance(mlvl_tensors, (list, tuple))
     num_levels = len(mlvl_tensors)
 
-    if detach:
+    if detach: #default True
         mlvl_tensor_list = [
             mlvl_tensors[i][batch_id].detach() for i in range(num_levels)
         ]

@@ -2,16 +2,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import asyncio
 from argparse import ArgumentParser
-from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
-                        init_detector, show_result_pyplot)
+from mmdet.apis import (inference_detectorv2,init_detector)
 import object_detection2.bboxes as odb
 import os
 import wml_utils as wmlu
 import img_utils as wmli
 import object_detection2.visualization as odv
-import numpy as np
-from iotoolkit.coco_toolkit import COCOData
-from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from object_detection2.metrics.toolkit import *
 
 def parse_args():

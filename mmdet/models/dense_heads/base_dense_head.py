@@ -38,7 +38,9 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                    rescale=False,
                    with_nms=True,
                    **kwargs):
-        """Transform network outputs of a batch into bbox results.
+        """
+        计算RPN的bboxes输出，具体方法为，对每一个图像，每一层，按预测得分取前2000个，使用NMS处理后取前1000个
+        Transform network outputs of a batch into bbox results.
 
         Note: When score_factors is not None, the cls_scores are
         usually multiplied by it then obtain the real score used in NMS,
@@ -70,9 +72,9 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                 (n,) tensor where each item is the predicted class label of
                 the corresponding box.
         """
-        assert len(cls_scores) == len(bbox_preds)
+        assert len(cls_scores) == len(bbox_preds) #level num
 
-        if score_factors is None:
+        if score_factors is None: #score_factors default is None
             # e.g. Retina, FreeAnchor, Foveabox, etc.
             with_score_factors = False
         else:
@@ -94,7 +96,7 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
             img_meta = img_metas[img_id]
             cls_score_list = select_single_mlvl(cls_scores, img_id)
             bbox_pred_list = select_single_mlvl(bbox_preds, img_id)
-            if with_score_factors:
+            if with_score_factors: #default False
                 score_factor_list = select_single_mlvl(score_factors, img_id)
             else:
                 score_factor_list = [None for _ in range(num_levels)]
@@ -310,7 +312,7 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                       **kwargs):
         """
         Args:
-            x (list[Tensor]): Features from FPN.
+            x (list[Tensor]): Features from FPN.[batch_size,C,H,W] 高分辨率到低分辨率
             img_metas (list[dict]): Meta information of each image, e.g.,
                 image size, scaling factor, etc.
             gt_bboxes (Tensor): Ground truth bboxes of the image,
@@ -327,7 +329,7 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                 losses: (dict[str, Tensor]): A dictionary of loss components.
                 proposal_list (list[Tensor]): Proposals of each image.
         """
-        outs = self(x)
+        outs = self(x) #outs: list[list[Tensor]]: outs[0] logits for each layer, outs[1] regs output ofr each layer
         if gt_labels is None:
             loss_inputs = outs + (gt_bboxes, img_metas)
         else:
@@ -357,7 +359,12 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                 The shape of the second tensor in the tuple is ``labels``
                 with shape (n, ).
         """
-        return self.simple_test_bboxes(feats, img_metas, rescale=rescale)
+        #print(f"BaseDenseHead.simple_test Old implemention use self.simple_test_bboxes")
+        #return self.simple_test_bboxes(feats, img_metas, rescale=rescale)
+        assert rescale==False, f"rescale=True, not implemented"
+        rpn_outs = self(feats) #调用另一个基类, BaseDenseHead.forward, 如rpn_head调用AnchorHead.forward
+        proposal_list = self.get_bboxes(*rpn_outs, img_metas=img_metas) #调用另一个基类,BaseDenseHead.get_bboxes
+        return proposal_list
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
     def onnx_export(self,

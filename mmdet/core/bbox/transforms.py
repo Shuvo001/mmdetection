@@ -134,13 +134,12 @@ def bbox2result(bboxes, labels, num_classes):
         return [bboxes[labels == i, :] for i in range(num_classes)]
 
 @torch.jit.script
-def bbox2result_yolo_style(bboxes, labels, num_classes:int):
+def bbox2result_yolo_style(bboxes, labels):
     """Convert detection results to a list of numpy arrays.
 
     Args:
         bboxes (torch.Tensor | np.ndarray): shape (n, 5)
         labels (torch.Tensor | np.ndarray): shape (n, )
-        num_classes (int): class number, including background class
 
     Returns:
         tensor: bbox results of each class[N,6] (xmin,ymin,xmax,ymax,score,label)

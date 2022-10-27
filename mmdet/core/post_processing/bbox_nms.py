@@ -127,9 +127,9 @@ def wmulticlass_nms(multi_bboxes,
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
         bboxes = multi_bboxes[:, None].expand(
-            multi_scores.size(0), num_classes, 4)
+            multi_scores.size(0), num_classes, 4) #如果是classes agnostic的bboxes, 转换为class wise的bboxes
 
-    scores = multi_scores[:, :-1]
+    scores = multi_scores[:, :-1] #最后一个为背景分，去年背景的得分
 
     labels = torch.arange(num_classes, dtype=torch.long, device=scores.device)
     labels = labels.view(1, -1).expand_as(scores)
@@ -152,9 +152,8 @@ def wmulticlass_nms(multi_bboxes,
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
 
 
-    bboxes,labels,inds = _wbatched_nms(bboxes,scores,labels,nms_threshold=nms_threshold,
+    dets,labels,inds = _wbatched_nms(bboxes,scores,labels,nms_threshold=nms_threshold,
                                      max_num=max_num)
-    dets = torch.cat([bboxes,scores[inds].unsqueeze(-1)],dim=-1)
     if return_inds:
         return dets, labels, inds
     else:
@@ -170,7 +169,7 @@ def _wbatched_nms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000)
     if max_num>0:
         keep = keep[:max_num]
 
-    dets = bboxes[keep]
+    dets = torch.cat([bboxes[keep],scores[keep].unsqueeze(-1)],dim=-1)
     
     return dets,labels[keep],keep
 

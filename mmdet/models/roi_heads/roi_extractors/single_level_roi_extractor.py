@@ -80,9 +80,9 @@ class SingleRoIExtractor(BaseRoIExtractor):
                 return roi_feats
             return self.roi_layers[0](feats[0], rois)
 
-        target_lvls = self.map_roi_levels(rois, num_levels)
+        target_lvls = self.map_roi_levels(rois, num_levels) #根据rois的面积将不同的rois分配到不同的feature map层
 
-        if roi_scale_factor is not None:
+        if roi_scale_factor is not None: #default False
             rois = self.roi_rescale(rois, roi_scale_factor)
 
         for i in range(num_levels):

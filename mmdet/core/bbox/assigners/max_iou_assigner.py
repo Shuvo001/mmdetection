@@ -61,6 +61,7 @@ class MaxIoUAssigner(BaseAssigner):
         self.ignore_wrt_candidates = ignore_wrt_candidates
         self.gpu_assign_thr = gpu_assign_thr
         self.match_low_quality = match_low_quality
+        #default is BboxOverlaps2D in mmdet/core/bbox/iou_calculators/iou2d_calculator.py
         self.iou_calculator = build_iou_calculator(iou_calculator)
 
     def assign(self, bboxes, gt_bboxes, gt_bboxes_ignore=None, gt_labels=None):
@@ -111,7 +112,7 @@ class MaxIoUAssigner(BaseAssigner):
         overlaps = self.iou_calculator(gt_bboxes, bboxes)
 
         if (self.ignore_iof_thr > 0 and gt_bboxes_ignore is not None
-                and gt_bboxes_ignore.numel() > 0 and bboxes.numel() > 0):
+                and gt_bboxes_ignore.numel() > 0 and bboxes.numel() > 0): #default False
             if self.ignore_wrt_candidates:
                 ignore_overlaps = self.iou_calculator(
                     bboxes, gt_bboxes_ignore, mode='iof')
@@ -175,7 +176,7 @@ class MaxIoUAssigner(BaseAssigner):
 
         # 2. assign negative: below
         # the negative inds are set to be 0
-        if isinstance(self.neg_iou_thr, float):
+        if isinstance(self.neg_iou_thr, float): #default True, neg_iou_thr default is 0.3
             assigned_gt_inds[(max_overlaps >= 0)
                              & (max_overlaps < self.neg_iou_thr)] = 0
         elif isinstance(self.neg_iou_thr, tuple):
@@ -184,10 +185,10 @@ class MaxIoUAssigner(BaseAssigner):
                              & (max_overlaps < self.neg_iou_thr[1])] = 0
 
         # 3. assign positive: above positive IoU threshold
-        pos_inds = max_overlaps >= self.pos_iou_thr
-        assigned_gt_inds[pos_inds] = argmax_overlaps[pos_inds] + 1
+        pos_inds = max_overlaps >= self.pos_iou_thr #pos_iou_thr default is 0.7
+        assigned_gt_inds[pos_inds] = argmax_overlaps[pos_inds] + 1 #正样本的值为gt bboxes idx+1
 
-        if self.match_low_quality:
+        if self.match_low_quality: #default is True
             # Low-quality matching will overwrite the assigned_gt_inds assigned
             # in Step 3. Thus, the assigned gt might not be the best one for
             # prediction.
@@ -197,8 +198,8 @@ class MaxIoUAssigner(BaseAssigner):
             # assigned_gt_inds will be overwritten to be bbox 2.
             # This might be the reason that it is not used in ROI Heads.
             for i in range(num_gts):
-                if gt_max_overlaps[i] >= self.min_pos_iou:
-                    if self.gt_max_assign_all:
+                if gt_max_overlaps[i] >= self.min_pos_iou: #self.min_pos_iou default is 0.3
+                    if self.gt_max_assign_all: #default True
                         max_iou_inds = overlaps[i, :] == gt_max_overlaps[i]
                         assigned_gt_inds[max_iou_inds] = i + 1
                     else:

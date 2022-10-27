@@ -265,7 +265,7 @@ class CrossEntropyLoss(nn.Module):
         """Forward function.
 
         Args:
-            cls_score (torch.Tensor): The prediction.
+            cls_score (torch.Tensor): The prediction logits.
             label (torch.Tensor): The learning label of the prediction.
             weight (torch.Tensor, optional): Sample-wise loss weight.
             avg_factor (int, optional): Average factor that is used to average

@@ -38,6 +38,23 @@ class BBoxTestMixin(object):
             *outs, img_metas=img_metas, rescale=rescale)
         return results_list
 
+    def simple_test_rpn(self, x, img_metas):
+        """Test without augmentation, only for ``RPNHead`` and its variants,
+        e.g., ``GARPNHead``, etc.
+
+        Args:
+            x (tuple[Tensor]): Features from the upstream network, each is
+                a 4D-tensor.
+            img_metas (list[dict]): Meta info of each image.
+
+        Returns:
+            list[Tensor]: Proposals of each image, each item has shape (n, 5),
+                where 5 represent (tl_x, tl_y, br_x, br_y, score).
+        """
+        rpn_outs = self(x) #调用另一个基类, BaseDenseHead.forward, 如rpn_head调用AnchorHead.forward
+        proposal_list = self.get_bboxes(*rpn_outs, img_metas=img_metas) #调用另一个基类,BaseDenseHead.get_bboxes
+        return proposal_list
+
     def aug_test_bboxes(self, feats, img_metas, rescale=False):
         """Test det bboxes with test time augmentation, can be applied in
         DenseHead except for ``RPNHead`` and its variants, e.g., ``GARPNHead``,
@@ -112,23 +129,6 @@ class BBoxTestMixin(object):
         return [
             (_det_bboxes, det_labels),
         ]
-
-    def simple_test_rpn(self, x, img_metas):
-        """Test without augmentation, only for ``RPNHead`` and its variants,
-        e.g., ``GARPNHead``, etc.
-
-        Args:
-            x (tuple[Tensor]): Features from the upstream network, each is
-                a 4D-tensor.
-            img_metas (list[dict]): Meta info of each image.
-
-        Returns:
-            list[Tensor]: Proposals of each image, each item has shape (n, 5),
-                where 5 represent (tl_x, tl_y, br_x, br_y, score).
-        """
-        rpn_outs = self(x)
-        proposal_list = self.get_bboxes(*rpn_outs, img_metas=img_metas)
-        return proposal_list
 
     def aug_test_rpn(self, feats, img_metas):
         """Test with augmentation for only for ``RPNHead`` and its variants,

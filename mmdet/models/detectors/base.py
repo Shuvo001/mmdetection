@@ -122,6 +122,8 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         if img_metas is None:
             img_metas = [{'img_shape':imgs.shape[-2:]}] #batch size = 1 
         if isinstance(imgs,list):
+            if len(imgs)>1:
+                print(f"Input {len(imgs)} imgs, Only process first imgs, first imgs' shape is {imgs[0].shape}")
             imgs = imgs[0] 
             img_metas = img_metas[0]
         return self.simple_test(imgs, img_metas, **kwargs)
@@ -136,6 +138,14 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         and List[dict]), and when ``resturn_loss=False``, img and img_meta
         should be double nested (i.e.  List[Tensor], List[List[dict]]), with
         the outer list indicating test time augmentations.
+        img_metas: dict
+        ori_shape: 图像原始大小
+        img_shape: 图像缩放后的大小
+        pad_shape: 缩放后的图像pad之后的大小
+        scale_factor: img_shape/ori_shape
+        flip:...
+        img_norm_cfg: mean,std
+        to_rgb: default true
         """
         if torch.onnx.is_in_onnx_export():
             assert len(img_metas) == 1
