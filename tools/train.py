@@ -6,7 +6,7 @@ import os.path as osp
 import time
 import warnings
 #os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3"
-import mmcv
+import mmcv  #use 1.5.0
 import torch
 import torch.distributed as dist
 from mmcv import Config, DictAction

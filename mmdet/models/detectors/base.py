@@ -79,35 +79,10 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         for img_meta in img_metas:
             img_meta['batch_input_shape'] = batch_input_shape
 
-    async def async_simple_test(self, img, img_metas, **kwargs):
-        raise NotImplementedError
 
     @abstractmethod
     def simple_test(self, img, img_metas, **kwargs):
         pass
-
-    @abstractmethod
-    def aug_test(self, imgs, img_metas, **kwargs):
-        """Test function with test time augmentation."""
-        pass
-
-    async def aforward_test(self, *, img, img_metas, **kwargs):
-        for var, name in [(img, 'img'), (img_metas, 'img_metas')]:
-            if not isinstance(var, list):
-                raise TypeError(f'{name} must be a list, but got {type(var)}')
-
-        num_augs = len(img)
-        if num_augs != len(img_metas):
-            raise ValueError(f'num of augmentations ({len(img)}) '
-                             f'!= num of image metas ({len(img_metas)})')
-        # TODO: remove the restriction of samples_per_gpu == 1 when prepared
-        samples_per_gpu = img[0].size(0)
-        assert samples_per_gpu == 1
-
-        if num_augs == 1:
-            return await self.async_simple_test(img[0], img_metas[0], **kwargs)
-        else:
-            raise NotImplementedError
 
     def forward_test(self, imgs, img_metas, **kwargs):
         """
@@ -120,7 +95,7 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
                 images in a batch.
         """
         if img_metas is None:
-            img_metas = [{'img_shape':imgs.shape[-2:]}] #batch size = 1 
+            img_metas = [{'img_shape':imgs.shape[-2:]}]*imgs.shape[0]
         if isinstance(imgs,list):
             if len(imgs)>1:
                 print(f"Input {len(imgs)} imgs, Only process first imgs, first imgs' shape is {imgs[0].shape}")
@@ -147,10 +122,6 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         img_norm_cfg: mean,std
         to_rgb: default true
         """
-        if torch.onnx.is_in_onnx_export():
-            assert len(img_metas) == 1
-            return self.onnx_export(img[0], img_metas[0])
-
         if return_loss:
             return self.forward_train(img, img_metas, **kwargs)
         else:
@@ -336,7 +307,3 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             out_file=out_file)
 
         return img
-
-    def onnx_export(self, img, img_metas):
-        raise NotImplementedError(f'{self.__class__.__name__} does '
-                                  f'not support ONNX EXPORT')

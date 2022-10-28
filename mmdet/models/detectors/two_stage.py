@@ -59,6 +59,7 @@ class TwoStageDetector(BaseDetector):
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
+
     @staticmethod
     def recover_raw_img(img,mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True):
         '''
@@ -90,24 +91,6 @@ class TwoStageDetector(BaseDetector):
         if self.with_neck:
             x = self.neck(x)
         return x
-
-    def forward_dummy(self, img):
-        """Used for computing network flops.
-
-        See `mmdetection/tools/analysis_tools/get_flops.py`
-        """
-        outs = ()
-        # backbone
-        x = self.extract_feat(img)
-        # rpn
-        if self.with_rpn:
-            rpn_outs = self.rpn_head(x)
-            outs = outs + (rpn_outs, )
-        proposals = torch.randn(1000, 4).to(img.device)
-        # roi_head
-        roi_outs = self.roi_head.forward_dummy(x, proposals)
-        outs = outs + (roi_outs, )
-        return outs
 
     def forward_train(self,
                       img,
@@ -181,24 +164,6 @@ class TwoStageDetector(BaseDetector):
 
         return losses
 
-    async def async_simple_test(self,
-                                img,
-                                img_meta,
-                                proposals=None,
-                                rescale=False):
-        """Async test without augmentation."""
-        assert self.with_bbox, 'Bbox head must be implemented.'
-        x = self.extract_feat(img)
-
-        if proposals is None:
-            proposal_list = await self.rpn_head.async_simple_test_rpn(
-                x, img_meta)
-        else:
-            proposal_list = proposals
-
-        return await self.roi_head.async_simple_test(
-            x, proposal_list, img_meta, rescale=rescale)
-
     @staticmethod
     def cat_proposals_and_gtbboxes(proposals,gtbboxes,nr=10):
         gt_nr = gtbboxes.shape[0]
@@ -235,32 +200,3 @@ class TwoStageDetector(BaseDetector):
             rescale=rescale)
 
         return results
-
-    def aug_test(self, imgs, img_metas, rescale=False):
-        """Test with augmentations.
-
-        If rescale is False, then returned bboxes and masks will fit the scale
-        of imgs[0].
-        """
-        x = self.extract_feats(imgs)
-        proposal_list = self.rpn_head.aug_test_rpn(x, img_metas)
-        return self.roi_head.aug_test(
-            x, proposal_list, img_metas, rescale=rescale)
-
-    def onnx_export(self, img, img_metas):
-
-        img_shape = torch._shape_as_tensor(img)[2:]
-        img_metas[0]['img_shape_for_onnx'] = img_shape
-        x = self.extract_feat(img)
-        if self.second_stage_hook is not None:
-            x = self.second_stage_hook(x)
-        proposals = self.rpn_head.onnx_export(x, img_metas)
-        if hasattr(self.roi_head, 'onnx_export'):
-            return self.roi_head.onnx_export(x, proposals, img_metas)
-        else:
-            raise NotImplementedError(
-                f'{self.__class__.__name__} can not '
-                f'be exported to ONNX. Please refer to the '
-                f'list of supported models,'
-                f'https://mmdetection.readthedocs.io/en/latest/tutorials/pytorch2onnx.html#list-of-supported-models-exportable-to-onnx'  # noqa E501
-            )

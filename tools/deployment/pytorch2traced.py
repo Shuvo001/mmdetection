@@ -35,6 +35,7 @@ def pytorch2onnx(model,
     }
     # prepare input
     one_img, one_meta = preprocess_example_input(input_config)
+    one_img = one_img.repeat(3,1,1,1)
     img_list, img_meta_list = one_img.cuda(), [[one_meta]]
     model.cuda()
 

@@ -244,38 +244,3 @@ class RPNHead(AnchorHead):
         sorted_scores,indexs = scores.sort(descending=True)
         dets = dets[indexs]
         return dets[:cfg.max_per_img] #default cfg.max_per_img=1000
-
-
-    def onnx_export(self, x, img_metas):
-        """Test without augmentation.
-
-        Args:
-            x (tuple[Tensor]): Features from the upstream network, each is
-                a 4D-tensor.
-            img_metas (list[dict]): Meta info of each image.
-        Returns:
-            Tensor: dets of shape [N, num_det, 5].
-        """
-        cls_scores, bbox_preds = self(x)
-
-        assert len(cls_scores) == len(bbox_preds)
-
-        batch_bboxes, batch_scores = super(RPNHead, self).onnx_export(
-            cls_scores, bbox_preds, img_metas=img_metas, with_nms=False)
-        # Use ONNX::NonMaxSuppression in deployment
-        from mmdet.core.export import add_dummy_nms_for_onnx
-        cfg = copy.deepcopy(self.test_cfg)
-        score_threshold = cfg.nms.get('score_thr', 0.0)
-        nms_pre = cfg.get('deploy_nms_pre', -1)
-        # Different from the normal forward doing NMS level by level,
-        # we do NMS across all levels when exporting ONNX.
-        try:
-            dets, _ = add_dummy_nms_for_onnx(batch_bboxes, batch_scores,
-                                         cfg.max_per_img,
-                                         cfg.nms.iou_threshold,
-                                         score_threshold, nms_pre,
-                                         cfg.max_per_img)
-        except Exception as e:
-            print(f"ERROR: {e}")
-            raise e
-        return dets

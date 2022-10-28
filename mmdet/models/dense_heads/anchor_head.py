@@ -10,11 +10,10 @@ from mmdet.core import (anchor_inside_flags, build_assigner, build_bbox_coder,
                         multi_apply, unmap)
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
-from .dense_test_mixins import BBoxTestMixin
 
 
 @HEADS.register_module()
-class AnchorHead(BaseDenseHead, BBoxTestMixin):
+class AnchorHead(BaseDenseHead):
     """Anchor-based head (RPN, RetinaNet, SSD, etc.).
 
     Args:
@@ -523,25 +522,3 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             bbox_weights_list,
             num_total_samples=num_total_samples)
         return dict(loss_cls=losses_cls, loss_bbox=losses_bbox)
-
-    def aug_test(self, feats, img_metas, rescale=False):
-        """Test function with test time augmentation.
-
-        Args:
-            feats (list[Tensor]): the outer list indicates test-time
-                augmentations and inner Tensor should have a shape NxCxHxW,
-                which contains features for all images in the batch.
-            img_metas (list[list[dict]]): the outer list indicates test-time
-                augs (multiscale, flip, etc.) and the inner list indicates
-                images in a batch. each dict has image information.
-            rescale (bool, optional): Whether to rescale the results.
-                Defaults to False.
-
-        Returns:
-            list[tuple[Tensor, Tensor]]: Each item in result_list is 2-tuple.
-                The first item is ``bboxes`` with shape (n, 5), where
-                5 represent (tl_x, tl_y, br_x, br_y, score).
-                The shape of the second tensor in the tuple is ``labels``
-                with shape (n,), The length of list should always be 1.
-        """
-        return self.aug_test_bboxes(feats, img_metas, rescale=rescale)
