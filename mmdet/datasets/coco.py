@@ -12,7 +12,7 @@ import mmcv
 import numpy as np
 from mmcv.utils import print_log
 from terminaltables import AsciiTable
-
+import torch
 from mmdet.core import eval_recalls
 from .api_wrappers import COCO, COCOeval
 from .builder import DATASETS
@@ -87,7 +87,10 @@ class CocoDataset(CustomDataset):
         assert len(set(total_ann_ids)) == len(
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
         print(f"Load coco annotations success.")
-        return data_infos
+        if "train" in ann_file:
+            return data_infos[:100]
+        else:
+            return data_infos
 
     def get_ann_info(self, idx):
         """Get COCO annotation by index.
@@ -254,6 +257,27 @@ class CocoDataset(CustomDataset):
                     json_results.append(data)
         return json_results
 
+    def _tensor2json(self, results,threshold=0.05):
+        """Convert detection results to COCO json style."""
+        json_results = []
+        for idx in range(len(self)):
+            img_id = self.img_ids[idx]
+            result = results[idx] #shape [N,6] (x0,y0,x1,y1,score,label)
+            mask = result[:,4]>threshold
+            result = result[mask].cpu().numpy()
+            for i in range(result.shape[0]):
+                bbox = result[i][:4]
+                score = result[i][4]
+                label = int(result[i][5])
+
+                data = dict()
+                data['image_id'] = img_id
+                data['bbox'] = self.xyxy2xywh(bbox)
+                data['score'] = score
+                data['category_id'] = self.cat_ids[label]
+                json_results.append(data)
+        return json_results
+
     def _segm2json(self, results):
         """Convert instance segmentation results to COCO json style."""
         bbox_json_results = []
@@ -328,6 +352,11 @@ class CocoDataset(CustomDataset):
             json_results = self._proposal2json(results)
             result_files['proposal'] = f'{outfile_prefix}.proposal.json'
             mmcv.dump(json_results, result_files['proposal'])
+        elif torch.is_tensor(results[0]):
+            json_results = self._tensor2json(results)
+            result_files['bbox'] = f'{outfile_prefix}.bbox.json'
+            result_files['proposal'] = f'{outfile_prefix}.bbox.json'
+            mmcv.dump(json_results, result_files['bbox'])
         else:
             raise TypeError('invalid type of results')
         return result_files
