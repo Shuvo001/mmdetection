@@ -705,7 +705,7 @@ class Normalize:
         """
         for key in results.get('img_fields', ['img']):
             results[key] = mmcv.imnormalize(results[key], self.mean, self.std,
-                                            self.to_rgb)
+                                            self.to_rgb) #先转换为rgb然后normalize
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)
         return results

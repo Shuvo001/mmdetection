@@ -175,11 +175,11 @@ class CocoDataset(CustomDataset):
             if ann['category_id'] not in self.cat_ids:
                 continue
             bbox = [x1, y1, x1 + w, y1 + h]
-            if ann.get('iscrowd', False):
+            if ann.get('iscrowd', False): #如果是iscrowd，加入ignore
                 gt_bboxes_ignore.append(bbox)
             else:
                 gt_bboxes.append(bbox)
-                gt_labels.append(self.cat2label[ann['category_id']])
+                gt_labels.append(self.cat2label[ann['category_id']]) #标签从0开始
                 gt_masks_ann.append(ann.get('segmentation', None))
 
         if gt_bboxes:
@@ -197,10 +197,10 @@ class CocoDataset(CustomDataset):
         seg_map = img_info['filename'].replace('jpg', 'png')
 
         ann = dict(
-            bboxes=gt_bboxes,
-            labels=gt_labels,
-            bboxes_ignore=gt_bboxes_ignore,
-            masks=gt_masks_ann,
+            bboxes=gt_bboxes, #[N,4] (x0,y0,x1,y1)
+            labels=gt_labels, #[N], 从0开始
+            bboxes_ignore=gt_bboxes_ignore,#[X,4] (iscrowd的bbox)
+            masks=gt_masks_ann, #list(list(int)) 
             seg_map=seg_map)
 
         return ann

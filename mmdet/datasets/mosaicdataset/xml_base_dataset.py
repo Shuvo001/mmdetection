@@ -11,6 +11,7 @@ import random
 from .datasets_wrapper import Dataset
 import copy
 import sys
+from object_detection2.data_process_toolkit import motion_blur
 
 class _AnnotationTransform(object):
 
@@ -39,6 +40,10 @@ class _AnnotationTransform(object):
             a list containing lists of bounding boxes  [bbox coords, class name][xmin, ymin, xmax, ymax, label_ind]
         """
         res = np.empty((0, 5))
+
+        if target is None:
+            return res,(0,0)
+
         for obj in target.iter("object"):
             difficult = obj.find("difficult")
             if difficult is not None:
@@ -75,12 +80,15 @@ class XmlBaseDataset(Dataset):
         self,
         class_to_ind,
         classes,
-        img_size=(416, 416),
+        img_size=(416, 416), #(H,W)
         preproc=None,
         target_transform=None,
-        dataset_name=None,
+        dataset_name="BaseXmlDataset",
         cache_dir=None,
     ):
+        assert isinstance(classes,(list,tuple)), f"ERROR classes type {type(classes)}"
+        assert isinstance(class_to_ind,dict), f"ERROR class to ind type {type(class_to_ind)}"
+        print(f"Image size {img_size}")
         super().__init__(img_size)
         self.img_size = img_size
         self.preproc = preproc
@@ -90,7 +98,6 @@ class XmlBaseDataset(Dataset):
         else:
             self.target_transform = _AnnotationTransform(class_to_ind)
 
-        assert dataset_name is not None, "Need set a dataset name."
         self.name = dataset_name
         if cache_dir is not None:
             self.cache_dir = cache_dir
@@ -171,8 +178,10 @@ class XmlBaseDataset(Dataset):
         max_w = self.img_size[1]
         cache_dir = self.cache_dir
         wmlu.create_empty_dir(cache_dir,remove_if_exists=False)
-        cache_file = osp.join(cache_dir, "img_resized_cache_" + self.name + ".array")
-        cache_xml_file= osp.join(cache_dir,"img_resized_cache_" + self.name + "_xml.array")
+        id_name = f"{self.img_size[0]}x{self.img_size[1]}_{len(self.xml_files)}"
+        cache_file = osp.join(cache_dir, "img_resized_cache_" + id_name+self.name + ".array")
+        cache_xml_file= osp.join(cache_dir,"img_resized_cache_" + id_name+self.name + "_xml.array")
+        print(f"Cache files {cache_file} {cache_xml_file}")
         cache_xml_data_file = wmlu.change_suffix(cache_xml_file,"pth")
 
         if self.always_make_generate_cache_files:
@@ -227,7 +236,7 @@ class XmlBaseDataset(Dataset):
     def same_files(filesa,filesb):
         if len(filesa) != len(filesb):
             return False
-        new_files_a = copy.deepcopy(list(filesa))
+        new_files_a = copy.deepcopy(filesa)
         random.shuffle(new_files_a)
         new_files_a = new_files_a[:1000]
         for x in new_files_a:
@@ -238,8 +247,11 @@ class XmlBaseDataset(Dataset):
     def load_anno_from_ids(self, index):
         annopath = self.xml_files[index]
         try:
-            with open(annopath,"r") as f:
-                target = ET.parse(f).getroot()
+            if not osp.exists(annopath):
+                target = None
+            else:
+                with open(annopath,"r") as f:
+                    target = ET.parse(f).getroot()
     
             assert self.target_transform is not None
             res, img_info = self.target_transform(target)

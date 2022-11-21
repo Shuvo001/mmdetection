@@ -207,6 +207,7 @@ class WIterBasedRunner(BaseRunner):
             create_symlink (bool, optional): Whether create symlink to the
                 latest checkpoint file. Defaults to True.
         """
+        out_dir = osp.join(out_dir,"weights")
         if meta is None:
             meta = {}
         elif not isinstance(meta, dict):

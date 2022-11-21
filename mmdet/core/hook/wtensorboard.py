@@ -69,7 +69,7 @@ class WTensorboardLoggerHook(LoggerHook):
                     '(applicable to PyTorch 1.1 or higher)')
 
         if self.log_dir is None:
-            self.log_dir = osp.join(runner.work_dir, 'tf_logs')
+            self.log_dir = osp.join(runner.work_dir, 'tblog')
         self.writer = SummaryWriter(self.log_dir)
 
     @staticmethod

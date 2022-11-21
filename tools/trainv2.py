@@ -1,4 +1,6 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+'''
+与train.py的区别为使用了build_dataloaderv2
+'''
 import argparse
 import copy
 import os
@@ -106,7 +108,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
+    #os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
     cfg = Config.fromfile(args.config)
 
@@ -150,6 +152,9 @@ def main():
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
     cfg.auto_resume = args.auto_resume
+    '''
+    使用gpu_ids指定使用的GPU
+    '''
     if args.gpus is not None:
         cfg.gpu_ids = range(1)
         warnings.warn('`--gpus` is deprecated because we only support '

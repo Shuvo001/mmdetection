@@ -255,7 +255,7 @@ class LoadAnnotations:
         ann_info = results['ann_info']
         results['gt_bboxes'] = ann_info['bboxes'].copy()
 
-        if self.denorm_bbox:
+        if self.denorm_bbox: #是否为相对坐标
             bbox_num = results['gt_bboxes'].shape[0]
             if bbox_num != 0:
                 h, w = results['img_shape'][:2]

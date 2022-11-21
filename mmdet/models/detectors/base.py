@@ -113,14 +113,17 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         and List[dict]), and when ``resturn_loss=False``, img and img_meta
         should be double nested (i.e.  List[Tensor], List[List[dict]]), with
         the outer list indicating test time augmentations.
+        img: [B,C,H,W]
         img_metas: dict
         ori_shape: 图像原始大小
         img_shape: 图像缩放后的大小
-        pad_shape: 缩放后的图像pad之后的大小
+        pad_shape: 缩放后的图像pad之后的大小(pad是为了对齐到如32)
         scale_factor: img_shape/ori_shape
         flip:...
         img_norm_cfg: mean,std
         to_rgb: default true
+        kwargs['gt_bboxes'] #[N,4] (x0,y0,x1,y1)
+        kwargs['gt_labels] #[N], 从0开始的label
         """
         if return_loss:
             return self.forward_train(img, img_metas, **kwargs)

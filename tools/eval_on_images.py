@@ -5,20 +5,14 @@ from argparse import ArgumentParser
 
 from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
                         init_detector, show_result_pyplot)
-import object_detection2.config.config as config
 from object_detection2.standard_names import *
-from object_detection2.engine.defaults import default_argument_parser, get_config_file
-from object_detection2.data.dataloader import *
-from object_detection2.data.datasets.build import DATASETS_REGISTRY
 import object_detection2.bboxes as odb
 import tensorflow as tf
 import os
-from object_detection_tools.predictmodel import PredictModel
 import wml_utils as wmlu
 import img_utils as wmli
 import object_detection2.visualization as odv
 import numpy as np
-from object_detection2.data.datasets.buildin import coco_category_index
 from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from object_detection2.metrics.toolkit import *
@@ -107,17 +101,11 @@ def main():
     
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
+        print("gt_labels:",gt_labels)
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
         img_save_path = os.path.join(save_path,name+".png")
-        show_result_pyplot(
-        model,
-        full_path,
-        result,
-        palette=args.palette,
-        score_thr=0.3,
-        out_file=img_save_path)
 
         img_save_path = os.path.join(save_path,name+"_a.png")
         img = wmli.imread(full_path)
