@@ -16,7 +16,7 @@ model = dict(
         feat_channels=256,
         anchor_generator=dict(
             type='AnchorGenerator',
-            scales=[10],
+            scales=[3],
             ratios=[0.5, 1.0, 2.0],
             strides=[4, 8, 16, 32, 64]),
         bbox_coder=dict(
@@ -93,8 +93,10 @@ train_dataset = dict(
     classes=classes,
     pos_repeat_nr=3,
     neg_repeat_nr=2,
-    name="gds1v2",
+    name="b11act",
     batch_size=batch_size,
+    img_size= (640,1024),
+    allow_empty_annotation=True,
     **img_norm_cfg,
 )
 

@@ -181,8 +181,7 @@ def train_detector(model,
     if hasattr(cfg,"finetune_model"):
         if cfg.finetune_model:
             finetune_model(model,names2train=cfg.names_2train,names_not2train=cfg.names_not2train)
-    else:
-        show_model_parameters_info(model)
+    show_model_parameters_info(model)
 
     # put model on gpus
     if distributed:

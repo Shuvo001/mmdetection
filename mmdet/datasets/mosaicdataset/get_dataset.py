@@ -88,6 +88,7 @@ class MosaicDetectionDataset(object):
         neg_repeat_nr=None,
         name="MosaicData",
         img_size=(1024,1024),
+        allow_empty_annotation=True,
         ):
         self.seed = int(time.time())
         class_to_ind = dict(zip(classes,count()))
@@ -102,7 +103,8 @@ class MosaicDetectionDataset(object):
                                          classes=classes,
                                          img_size=img_size,
                                          preproc=preproc,
-                                         data_dirs=data_dirs)
+                                         data_dirs=data_dirs,
+                                         allow_empty_annotation=allow_empty_annotation)
 
         self.dataset = MosaicDetection(self.dataset,mosaic=True,
         img_size=img_size,

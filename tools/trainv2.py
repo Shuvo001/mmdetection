@@ -21,6 +21,7 @@ from mmdet.models import build_detector
 from mmdet.utils import (collect_env, get_device, get_root_logger,
                          replace_cfg_vals, setup_multi_processes,
                          update_data_root)
+import wtorch.train_toolkit as wtt
 
 
 def parse_args():
@@ -233,6 +234,7 @@ def main():
             CLASSES=datasets[0].CLASSES)
     # add an attribute for visualization convenience
     model.CLASSES = datasets[0].CLASSES
+
     train_detectorv2(
         model,
         datasets,
@@ -247,4 +249,5 @@ if __name__ == '__main__':
     main()
 '''
 python tools/trainv2.py configs/work/gds1/faster_rcnn.py --no-validate --gpu-id 2
+python tools/trainv2.py configs/aiot_project/b11act/faster_rcnn.py --no-validate --gpu-id 3
 '''
