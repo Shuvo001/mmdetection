@@ -40,6 +40,15 @@
             "args":["configs/aiot_project/b11act/faster_rcnn.py" "--no-validate" "--gpu-id" "3"],
         },
         {
+            "name": "Python: train b11 act new",
+            "type": "python",
+            "justMyCode": false,
+            "request": "launch",
+            "program": "./tools/train.py",
+            "console": "integratedTerminal",
+            "args":["configs/aiot_project/b11act/faster_rcnn.py" "--no-validate" "--gpus" "3" "2"],
+        },
+        {
             "name": "Python: image demo",
             "type": "python",
             "justMyCode": true,

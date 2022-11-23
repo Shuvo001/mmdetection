@@ -18,6 +18,7 @@ from wtorch.train_toolkit import *
 import wtorch.utils as wtu
 import wtorch.bboxes as wbb
 from mmcv.runner.hooks import CheckpointHook
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 def data_processor(data_batch):
     inputs = {}
@@ -42,7 +43,7 @@ def data_processor(data_batch):
     inputs['gt_labels'] = gt_labels
     inputs['img_metas'] = img_metas
 
-    return inputs
+    return wtu.cuda(inputs)
 
 
 def init_random_seed(seed=None, device='cuda'):
@@ -149,7 +150,8 @@ def train_detector(model,
                    distributed=False,
                    validate=False,
                    timestamp=None,
-                   meta=None):
+                   meta=None,
+                   rank=None):
 
     cfg = compat_cfg(cfg)
     logger = get_root_logger(log_level=cfg.log_level)
@@ -163,8 +165,6 @@ def train_detector(model,
     train_dataloader_default_args = dict(
         samples_per_gpu=2,
         workers_per_gpu=2,
-        # `num_gpus` will be ignored if distributed
-        num_gpus=len(cfg.gpu_ids),
         dist=distributed,
         seed=cfg.seed,
         runner_type=runner_type,
@@ -188,14 +188,10 @@ def train_detector(model,
         find_unused_parameters = cfg.get('find_unused_parameters', False)
         # Sets the `find_unused_parameters` parameter in
         # torch.nn.parallel.DistributedDataParallel
-        model = build_ddp(
-            model,
-            cfg.device,
-            device_ids=[int(os.environ['LOCAL_RANK'])],
-            broadcast_buffers=False,
-            find_unused_parameters=find_unused_parameters)
+        model = DDP(model,device_ids=[rank],output_device=rank,
+                    find_unused_parameters=find_unused_parameters) 
     else:
-        model = build_dp(model, cfg.device, device_ids=cfg.gpu_ids)
+        model = model.cuda()
 
     # build optimizer
     auto_scale_lr(cfg, distributed, logger)

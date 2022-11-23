@@ -50,7 +50,7 @@ model = dict(
             loss_bbox=dict(type='L1Loss', loss_weight=1.0))),
     second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
     )
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_new"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_test"
 img_scale = (1024, 1024)  # height, width
 dataset_type = 'WXMLDataset'
 img_norm_cfg = dict(
@@ -85,7 +85,7 @@ train_pipeline = [
 ]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-batch_size = 8
+batch_size = 16
 train_dataset = dict(
     type='MosaicDetectionDataset',
     data_dirs=['/home/wj/ai/mldata1/B11ACT/datas/labeled'],
@@ -137,17 +137,32 @@ data = dict(
 
 optimizer = dict(type='SGD', lr=0.02, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
-
-max_iters=50000
 # learning policy
 lr_config = dict(
-    policy='WarmupCosLR',
-    warmup_total_iters=1000,
-    total_iters=max_iters)
+    policy='step',
+    warmup='linear',
+    warmup_iters=500,
+    warmup_ratio=0.001,
+    step=[16, 22])
 
+# learning policy
+lr_config = dict(
+    policy='WCosineAnnealing',
+    warmup='exp',
+    by_epoch=False,
+    warmup_ratio=1,
+    warmup_iters=1000,
+    min_lr=1e-5)
+
+max_iters = 50000
 log_config = dict(
-    print_interval=10,
-    tb_interval=100)
+    interval=50,
+    hooks=[
+        dict(type='TextLoggerHook',interval=10),
+        dict(type='WTensorboardLoggerHook',interval=500,
+        log_dir=work_dir+"/tblog",
+        mean=img_norm_cfg['mean'],std=img_norm_cfg['std'],rgb=True)
+    ])
 checkpoint_config = dict(
     interval=1000,
 )

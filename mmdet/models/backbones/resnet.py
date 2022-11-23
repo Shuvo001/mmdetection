@@ -6,6 +6,7 @@ import torch.utils.checkpoint as cp
 from mmcv.cnn import build_conv_layer, build_norm_layer, build_plugin_layer
 from mmcv.runner import BaseModule
 from torch.nn.modules.batchnorm import _BatchNorm
+import wtorch.dist as wtd
 
 from ..builder import BACKBONES
 from ..utils import ResLayer
@@ -633,7 +634,10 @@ class ResNet(BaseModule):
         if self.deep_stem:
             x = self.stem(x)
         else:
-            x = self.conv1(x)
+            try:
+                x = self.conv1(x)
+            except:
+                print(f"ERROR:{self.conv1.weight.device}, {x.device}, {wtd.get_rank()}")
             x = self.norm1(x)
             x = self.relu(x)
         x = self.maxpool(x)

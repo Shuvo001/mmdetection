@@ -16,7 +16,7 @@ from .voc import VOCDataset
 from .wider_face import WIDERFaceDataset
 from .xml_style import XMLDataset
 from .wxml_dataset import WXMLDataset
-from .mosaicdataset.get_dataset import MosaicDetectionDataset
+from .mosaicdataset.mosaicdetectiondataset import MosaicDetectionDataset
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',
