@@ -6,7 +6,7 @@ import warnings
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
-from mmcv import Config 
+from thirdparty.pyconfig.config import Config 
 import wtorch.train_toolkit as wtt
 from mmdet.apis import init_random_seed, set_random_seed, train_detectorv2
 from mmdet.datasets import build_dataset
