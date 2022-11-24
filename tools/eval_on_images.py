@@ -7,7 +7,6 @@ from mmdet.apis import (async_inference_detector, inference_detector,inference_d
                         init_detector, show_result_pyplot)
 from object_detection2.standard_names import *
 import object_detection2.bboxes as odb
-import tensorflow as tf
 import os
 import wml_utils as wmlu
 import img_utils as wmli
@@ -16,6 +15,8 @@ import numpy as np
 from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from object_detection2.metrics.toolkit import *
+import os.path as osp
+from itertools import count
 
 def parse_args():
     parser = ArgumentParser()
@@ -36,18 +37,26 @@ def parse_args():
         action='store_true',
         help='whether to set async options for async inference.')
     parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
-    parser.add_argument('--save_data_dir', default="/home/wj/ai/mldata1/GDS1Crack/tmp/eval_on_images", type=str,help='Path to output file')
-    parser.add_argument('--test_data_dir', default="/home/wj/ai/mldata1/GDS1Crack/val/ng", type=str,help='Path to output file')
+    parser.add_argument('--save_data_dir', type=str,help='Path to output file')
+    parser.add_argument('--test_data_dir', type=str,help='Path to output file')
     args = parser.parse_args()
     return args
 
-def eval_dataset(data_dir):
+def eval_dataset(data_dir,classes):
     '''data = COCOData()
     data.read_data(wmlu.home_dir("ai/mldata/coco/annotations/instances_val2014.json"),
                    image_dir=wmlu.home_dir("ai/mldata/coco/val2014"))'''
+    if classes is not None:
+        text2label = dict(zip(classes,count()))
+    else:
+        text2label = {"scratch":0}
+
+    print(f"Text to label")
+    wmlu.show_dict(text2label)
+
     def label_text2id(x):
-        data =  {"scratch":0}
-        return data[x]
+        return text2label[x]
+
     data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
 
@@ -89,15 +98,29 @@ def main():
     model = init_detector(args.config, args.checkpoint, device=args.device)
     # test a single image
 
+    if hasattr(model.cfg,"classes"):
+        classes = model.cfg.classes
+
+    work_dir = model.cfg.work_dir
     save_path = args.save_data_dir
+    if save_path is None:
+        save_path = osp.join(work_dir,"tmp","eval_on_images")
+
+    test_data_dir = args.test_data_dir
+
+    if test_data_dir is None:
+        test_data_dir = model.cfg.data.val.data_dirs
+    
+    print(f"test_data_dir: {test_data_dir}")
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     metrics = COCOEvaluation(num_classes=1,label_trans=label_trans)
 
-    items = eval_dataset(args.test_data_dir)
-    mean=[123.675, 116.28, 103.53]
-    std=[58.395, 57.12, 57.375]
-    input_size = (1024,1024)
+    items = eval_dataset(test_data_dir,classes=classes)
+    mean = model.cfg.img_norm_cfg.mean
+    std = model.cfg.img_norm_cfg.std
+    input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
+    print(f"mean = {mean}, std={std}, input size={input_size}")
     
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
@@ -105,13 +128,13 @@ def main():
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
-        img_save_path = os.path.join(save_path,name+".png")
+        img_save_path = os.path.join(save_path,name+".jpg")
 
-        img_save_path = os.path.join(save_path,name+"_a.png")
+        img_save_path = os.path.join(save_path,name+"_a.jpg")
         img = wmli.imread(full_path)
         img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
         wmli.imwrite(img_save_path,img)
-        img_save_path = os.path.join(save_path,name+"_b.png")
+        img_save_path = os.path.join(save_path,name+"_b.jpg")
         img = wmli.imread(full_path)
         img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
         wmli.imwrite(img_save_path,img)

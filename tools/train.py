@@ -157,5 +157,5 @@ if __name__ == '__main__':
         main(0,world_size,args)
 '''
 python tools/trainv2.py configs/work/gds1/faster_rcnn.py --no-validate --gpu-id 2
-python tools/train.py configs/aiot_project/b11act/faster_rcnn.py --no-validate --gpu-id 3
+python tools/train.py configs/aiot_project/b11act/faster_rcnn.py --gpus 2 3
 '''

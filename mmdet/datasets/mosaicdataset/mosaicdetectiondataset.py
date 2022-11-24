@@ -16,10 +16,8 @@ import time
 class MosaicDetectionDataset(MosaicDetection):
     dataset = None
     def __init__(self,data_dirs,classes,batch_size,img_suffix=".jpg",mean=None,std=None,to_rgb=False,
-        pos_repeat_nr=None,
-        neg_repeat_nr=None,
         name="MosaicData",
-        img_size=(1024,1024),
+        img_size=(1024,1024), #(H,W)
         allow_empty_annotation=True,
         ):
         self.seed = int(time.time())

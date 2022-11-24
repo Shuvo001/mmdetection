@@ -203,9 +203,9 @@ class MosaicDetection(Dataset):
 
         Args:
             dataset(Dataset) : Pytorch dataset object.
-            img_size (tuple):
+            img_size (tuple): (H,W)
             mosaic (bool): enable mosaic augmentation or not.
-            preproc (func):
+            preproc (func): default is TrainTransform() in data_augment
             degrees (float):
             translate (float):
             mosaic_scale (tuple):
@@ -278,7 +278,7 @@ class MosaicDetection(Dataset):
                 mosaic_img, mosaic_labels = self.mixup(mosaic_img, mosaic_labels, self.input_dim,r=r)
             '''
             after preproc the labels from [N,5] [xmin,ymin,xmax,ymax,label] trans to 
-            [max_labels,5] [label,cx,cy,w,h]
+            [max_labels,5] [label,x0,y0,x1,y1]
             '''
             mix_img, padded_labels = self.preproc(mosaic_img, mosaic_labels, self.input_dim)
             img_info = (mix_img.shape[1], mix_img.shape[0])

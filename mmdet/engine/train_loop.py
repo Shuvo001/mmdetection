@@ -35,7 +35,7 @@ def default_data_processor(data_batch):
     for i in range(batch_size):
         _gt_bboxes = data[i,:nr[i],1:5]
         _gt_labels = data[i,:nr[i],0].to(torch.int64)
-        gt_bboxes.append(wbb.cxywh2xy(_gt_bboxes))
+        gt_bboxes.append(_gt_bboxes)
         gt_labels.append(_gt_labels)
         shape = data_batch[0].shape[2:4]
         _img_metas = {'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
@@ -146,7 +146,7 @@ class SimpleTrainer:
 
     def log_after_iter(self):
         if self.iter%self.cfg.log_config.print_interval == 0:
-            print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, iter time={self.iter_time}:.3f")
+            print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, iter time={self.iter_time:.3f}")
         if self.iter%self.cfg.log_config.tb_interval == 0:
             self.tblog()
     

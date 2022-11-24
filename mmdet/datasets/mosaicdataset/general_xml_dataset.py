@@ -18,7 +18,7 @@ class GeneralXmlDataset(XmlBaseDataset):
     NUM_CLASSES = None
     CLASSES = None
     def __init__(self,
-        img_size=(896, 544),
+        img_size=(896, 544), # (H,W)
         is_train=True,
         preproc=None,
         cache=True,

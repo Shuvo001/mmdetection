@@ -187,6 +187,7 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
         model (nn.Module): The loaded detector.
         imgs (str/ndarray or list[str/ndarray] or tuple[str/ndarray]):
            Either image files or loaded images.
+        input_size: (w,h)
 
     Returns:
         If imgs is a list or tuple, the same length list type results

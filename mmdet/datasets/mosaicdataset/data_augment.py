@@ -220,22 +220,21 @@ class TrainTransform:
                 image = npnormalize(image,self.mean,self.std)
             return image, targets
 
-        image_o = image.copy()
-        targets_o = targets.copy()
-        height_o, width_o, _ = image_o.shape
+        #image_o = image.copy()
+        #targets_o = targets.copy()
+        '''height_o, width_o, _ = image_o.shape
         boxes_o = targets_o[:, :4]
-        labels_o = targets_o[:, 4]
+        labels_o = targets_o[:, 4]'''
         # bbox_o: [xyxy] to [c_x,c_y,w,h]
-        boxes_o = xyxy2cxcywh(boxes_o)
 
         image_t, boxes = _mirror(image, boxes, self.flip_prob)
-        height, width, _ = image_t.shape
+        #height, width, _ = image_t.shape
         image_t, r_ = preproc(image_t, input_dim,hsv_prob=self.hsv_prob)
         # boxes [xyxy] 2 [cx,cy,w,h]
-        boxes = xyxy2cxcywh(boxes)
         boxes *= r_
 
-        mask_b = np.minimum(boxes[:, 2], boxes[:, 3]) > 1
+        wh = boxes[...,2:]-boxes[...,:2]
+        mask_b = np.min(wh,axis=-1) > 1
         boxes_t = boxes[mask_b]
         labels_t = labels[mask_b]
 
