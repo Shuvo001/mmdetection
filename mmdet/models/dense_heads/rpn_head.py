@@ -188,6 +188,7 @@ class RPNHead(AnchorHead):
                                        mlvl_valid_anchors, level_ids, cfg,
                                        img_shape)
 
+    @torch.cuda.amp.autocast(enabled=False)
     def _bbox_post_process(self, mlvl_scores, mlvl_bboxes, mlvl_valid_anchors,
                            level_ids, cfg, img_shape, **kwargs):
         """bbox post-processing method.
@@ -229,17 +230,12 @@ class RPNHead(AnchorHead):
                 scores = scores[valid_mask]
                 ids = ids[valid_mask]
 
-        if self.training:
-            if proposals.numel() > 0:
-                dets, _ = batched_nms(proposals, scores, ids, cfg.nms) #default iou threshold is 0.7
-            else:
-                return proposals.new_zeros(0, 5)
-        else:
-            #和上面实际在训练时也是可以平替的
-            keep = wnms.group_nms(proposals,scores,ids,nms_threshold=cfg.nms['iou_threshold'])
-            bboxes = proposals[keep]
-            scores = scores[keep]
-            dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)
+        if proposals.numel() == 0:
+            return proposals.new_zeros(0, 5)
+        keep = wnms.group_nms(proposals,scores,ids,nms_threshold=cfg.nms['iou_threshold'])
+        bboxes = proposals[keep]
+        scores = scores[keep]
+        dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)
         scores = dets[:,-1]
         sorted_scores,indexs = scores.sort(descending=True)
         dets = dets[indexs]

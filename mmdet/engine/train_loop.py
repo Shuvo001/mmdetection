@@ -48,19 +48,21 @@ def default_data_processor(data_batch):
     return wtu.cuda(inputs)
 
 class SimpleTrainer:
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,data_processor=default_data_processor):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,data_processor=default_data_processor,use_fp16=False):
         self.cfg = cfg
         self.model = model
         self.dataset = dataset
         self.rank = rank
         self.work_dir = cfg.work_dir
         self.data_loader = build_dataloader(dataset,
-                                            batch_size=self.cfg.train_dataset.batch_size)
+                                            batch_size=self.cfg.data.train.batch_size,
+                                            num_workers=self.cfg.data.workers_per_gpu)
         self.data_loader_iter = iter(self.data_loader)
         self.data_processor = data_processor
         self.iter = 0
         self.max_iters = max_iters
         self.world_size = world_size
+        self.use_fp16 = use_fp16
         self.init_before_run()
         pass
 
@@ -108,15 +110,23 @@ class SimpleTrainer:
 
         self.model = model
 
+        if self.use_fp16:
+            print(f"Use fp16")
+            self.scaler = torch.cuda.amp.GradScaler()
+
         if self.rank != 0:
             return
         logdir = osp.join(self.work_dir,"tblog")
+        print(f"log dir {logdir}")
         wmlu.create_empty_dir_remove_if(logdir,"tblog")
         self.log_writer = SummaryWriter(logdir)
 
     def run(self):
         while self.iter < self.max_iters:
-            self.train_one_iter()
+            if self.use_fp16:
+                self.train_amp_one_iter()
+            else:
+                self.train_one_iter()
             self.log_after_iter()
             self.save_checkpoint()
             self.iter += 1
@@ -141,6 +151,32 @@ class SimpleTrainer:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.lr_scheduler.step()
+        self.iter_time = time.time()-time_b
+
+    def train_amp_one_iter(self):
+        time_b = time.time()
+        data_batch = next(self.data_loader_iter)
+        if self.data_processor is not None:
+            data_batch = self.data_processor(data_batch)
+
+        data_batch = wtu.to(data_batch,device=self.rank)
+
+        #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
+
+        self.inputs = data_batch
+        with torch.cuda.amp.autocast():
+            outputs = self.model.train_step(data_batch, self.optimizer)
+        if not isinstance(outputs, dict):
+            raise TypeError('model.train_step() must return a dict')
+        self.outputs = outputs
+        loss = outputs["loss"]
+        self.optimizer.zero_grad()
+        self.scaler.scale(loss).backward()
+        self.scaler.unscale_(self.optimizer)
+        total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
         self.lr_scheduler.step()
         self.iter_time = time.time()-time_b
 

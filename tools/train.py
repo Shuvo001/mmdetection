@@ -57,6 +57,11 @@ def parse_args():
         '--auto-scale-lr',
         action='store_true',
         help='enable automatically scaling LR.')
+    parser.add_argument(
+        '--use-fp16',
+        action='store_true',
+        help='Whether or not use fp16 for training')
+    parser.add_argument('--dist-port', default="12355", help='port for disttribute training')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -65,7 +70,7 @@ def parse_args():
 
 
 def main(rank,world_size,args):
-    wtd.setup_dist_group(rank,world_size)
+    wtd.setup_dist_group(rank,world_size,port=args.dist_port)
     torch.cuda.set_device(rank)
     device = rank
 
@@ -99,6 +104,9 @@ def main(rank,world_size,args):
         # use config filename as default work_dir if cfg.work_dir is None
         cfg.work_dir = osp.join('./work_dirs',
                                 osp.splitext(osp.basename(args.config))[0])
+    
+    if args.use_fp16:
+        cfg.work_dir = cfg.work_dir+"_fp16"
 
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
@@ -141,7 +149,7 @@ def main(rank,world_size,args):
 
     model.CLASSES = dataset.CLASSES
 
-    trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters)
+    trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,use_fp16=args.use_fp16)
     trainer.run()
 
 
