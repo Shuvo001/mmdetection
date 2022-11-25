@@ -362,6 +362,6 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
         #print(f"BaseDenseHead.simple_test Old implemention use self.simple_test_bboxes")
         #return self.simple_test_bboxes(feats, img_metas, rescale=rescale)
         assert rescale==False, f"rescale=True, not implemented"
-        rpn_outs = self(feats) 
+        rpn_outs = self(feats) #tuple[list[Tensor],list[Tensor]], rpn_outs[0]为每一层的分类logits, rpn_outs[1]为每一层的bboxes_reg
         proposal_list = self.get_bboxes(*rpn_outs, img_metas=img_metas) 
         return proposal_list

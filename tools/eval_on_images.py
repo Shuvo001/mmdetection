@@ -96,6 +96,14 @@ def main():
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, args.checkpoint, device=args.device)
+    '''
+    nms_pre: 为每一层nms之前的最大值
+    nms: 仅在每一层内部做
+    min_bbox_size: 为宽高的最小值
+    max_per_img: 上述处理后排序，最很分最高的max_per_img候选
+    '''
+    print("RPN Head test config")
+    wmlu.show_dict(model.rpn_head.test_cfg)
     # test a single image
 
     if hasattr(model.cfg,"classes"):
@@ -162,4 +170,10 @@ python tools/eval_on_images.py configs/work/gds1/faster_rcnn.py /home/wj/ai/mlda
 ||0.128|0.231|
 python tools/eval_on_images.py configs/aiot_project/b11act/faster_rcnn.py ~/ai/mldata1/B11ACT/workdir/b11act/weights/latest.pth --gpus 1  
 ||0.817|1.000|
+python tools/eval_on_images.py configs/aiot_project/b11act/faster_rcnn.py ~/ai/mldata1/B11ACT/workdir/b11act_new/weights/checkpoint_49000.pth 
+|0.626|1.000|
+python tools/eval_on_images.py configs/aiot_project/b11act/faster_rcnn.py ~/ai/mldata1/B11ACT/workdir/b11act_new/weights/checkpoint_49000.pth 
+||0.619|1.000|
+python tools/eval_on_images.py configs/aiot_project/b11act/faster_rcnn.py /home/wj/ai/mldata1/B11ACT/workdir/b11act_new_fp16/weights/checkpoint_49000.pth
+||0.626|1.000|
 '''

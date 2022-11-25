@@ -192,8 +192,8 @@ class ConvFCBBoxHead(BBoxHead):
         for fc in self.reg_fcs:
             x_reg = self.relu(fc(x_reg))
 
-        cls_score = self.fc_cls(x_cls) if self.with_cls else None
-        bbox_pred = self.fc_reg(x_reg) if self.with_reg else None
+        cls_score = self.fc_cls(x_cls) if self.with_cls else None  #默认输出C=num_class+1(背景)
+        bbox_pred = self.fc_reg(x_reg) if self.with_reg else None  #默认输出C=num_class*4
         return cls_score, bbox_pred
 
 

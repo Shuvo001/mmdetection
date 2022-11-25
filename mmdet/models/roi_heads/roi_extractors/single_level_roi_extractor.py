@@ -68,17 +68,19 @@ class SingleRoIExtractor(BaseRoIExtractor):
             roi_feats = roi_feats.expand(*expand_dims)
             roi_feats = roi_feats.reshape(-1, self.out_channels, *out_size)
             roi_feats = roi_feats * 0
-        else:
-            roi_feats = feats[0].new_zeros(
-                rois.size(0), self.out_channels, *out_size)
-        # TODO: remove this when parrots supports
-        if torch.__version__ == 'parrots':
-            roi_feats.requires_grad = True
 
         if num_levels == 1:
             if len(rois) == 0:
+                roi_feats = feats[0].new_zeros(
+                    rois.size(0), self.out_channels, *out_size)
                 return roi_feats
             return self.roi_layers[0](feats[0], rois)
+
+        roi_feats = feats[0].new_zeros(
+            rois.size(0), self.out_channels, *out_size)
+        # TODO: remove this when parrots supports
+        if torch.__version__ == 'parrots':
+            roi_feats.requires_grad = True
 
         target_lvls = self.map_roi_levels(rois, num_levels) #根据rois的面积将不同的rois分配到不同的feature map层
 

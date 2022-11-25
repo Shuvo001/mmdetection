@@ -142,7 +142,7 @@ class StandardRoIHead(BaseRoIHead, MaskTestMixin):
         Args:
             x (tuple[Tensor]): Feature maps of all scale level.
             img_metas (list[dict]): Image meta info.
-            proposals (List[Tensor]): Region proposals.
+            proposals (List[Tensor]): tensor [N,5], (x0,y0,x1,y1,score) Region proposals.
             rcnn_test_cfg (obj:`ConfigDict`): `test_cfg` of R-CNN.
             rescale (bool): If True, return boxes in original image space.
                 Default: False.

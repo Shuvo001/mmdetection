@@ -130,6 +130,7 @@ class SimpleTrainer:
             self.log_after_iter()
             self.save_checkpoint()
             self.iter += 1
+        self.save_checkpoint()
     
 
     def train_one_iter(self):
@@ -237,5 +238,7 @@ class SimpleTrainer:
         wmlu.make_dir_for_file(output_path)
         print(f"Save ckpt {output_path}")
         torch.save(states, output_path)
+        sym_path = wmlu.change_name(output_path,"latest.pth")
+        wmlu.symlink(output_path,sym_path)
 
 

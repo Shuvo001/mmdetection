@@ -89,6 +89,8 @@ def bbox2roi(bbox_list):
             img_inds = bboxes.new_full((bboxes.size(0), 1), img_id)
             rois = torch.cat([img_inds, bboxes[:, :4]], dim=-1)
         else:
+            #在rpn中已经做了措施，防止poposals大小为0，这一步应该不会出现
+            print(f"ERROR: bbox2roi zero size bboxes.")
             rois = bboxes.new_zeros((0, 5))
         rois_list.append(rois)
     rois = torch.cat(rois_list, 0)
@@ -138,13 +140,12 @@ def bbox2result_yolo_style(bboxes, labels):
     """Convert detection results to a list of numpy arrays.
 
     Args:
-        bboxes (torch.Tensor | np.ndarray): shape (n, 5)
+        bboxes (torch.Tensor | np.ndarray): shape (n, 5) (xmin,ymin,xmax,ymax,score)
         labels (torch.Tensor | np.ndarray): shape (n, )
 
     Returns:
         tensor: bbox results of each class[N,6] (xmin,ymin,xmax,ymax,score,label)
     """
-    print(f"output yolo style results.")
     if bboxes.shape[0] == 0:
         return bboxes.new_zeros([0,6])
     else:

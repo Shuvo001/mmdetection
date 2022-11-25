@@ -69,11 +69,11 @@
         {
             "name": "Python: eval b11act",
             "type": "python",
-            "justMyCode": false,
+            "justMyCode": true,
             "request": "launch",
             "program": "./tools/eval_on_images.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/faster_rcnn.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act/weights/latest.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/eval_on_images"],
+            "args":["configs/aiot_project/b11act/faster_rcnn.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_new/weights/checkpoint_49000.pth" "--gpus" "1" ],
         },
         {
             "name": "Python: predict on images",

@@ -225,18 +225,19 @@ class RPNHead(AnchorHead):
             w = proposals[:, 2] - proposals[:, 0]
             h = proposals[:, 3] - proposals[:, 1]
             valid_mask = (w > cfg.min_bbox_size) & (h > cfg.min_bbox_size)
+            valid_mask[0] = True #防止出现proposals.numel()==0
             if not valid_mask.all():
                 proposals = proposals[valid_mask]
                 scores = scores[valid_mask]
                 ids = ids[valid_mask]
 
         if proposals.numel() == 0:
+            print(f"ERROR: no proposals.")
             return proposals.new_zeros(0, 5)
         keep = wnms.group_nms(proposals,scores,ids,nms_threshold=cfg.nms['iou_threshold'])
         bboxes = proposals[keep]
         scores = scores[keep]
-        dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)
-        scores = dets[:,-1]
         sorted_scores,indexs = scores.sort(descending=True)
+        dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)
         dets = dets[indexs]
         return dets[:cfg.max_per_img] #default cfg.max_per_img=1000
