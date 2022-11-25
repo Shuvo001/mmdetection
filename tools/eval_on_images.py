@@ -1,6 +1,4 @@
 # coding=utf-8
-# Copyright (c) OpenMMLab. All rights reserved.
-import asyncio
 from argparse import ArgumentParser
 
 from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
@@ -39,6 +37,9 @@ def parse_args():
     parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
     parser.add_argument('--save_data_dir', type=str,help='Path to output file')
     parser.add_argument('--test_data_dir', type=str,help='Path to output file')
+    parser.add_argument('--save_results',
+        action='store_true',
+        help='whether save results imgs.')
     args = parser.parse_args()
     return args
 
@@ -104,7 +105,13 @@ def main():
     '''
     print("RPN Head test config")
     wmlu.show_dict(model.rpn_head.test_cfg)
-    # test a single image
+    '''
+    score_thr: 仅当score大于score_thr才会留下
+    nms: iou_threshold, nms iou阀值
+    max_per_img: nms后只留下最多max_per_img个目标
+    '''
+    print("RCNN test config")
+    wmlu.show_dict(model.roi_head.test_cfg)
 
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
@@ -122,7 +129,10 @@ def main():
     print(f"test_data_dir: {test_data_dir}")
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
-    metrics = COCOEvaluation(num_classes=1,label_trans=label_trans)
+    metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+
+
 
     items = eval_dataset(test_data_dir,classes=classes)
     mean = model.cfg.img_norm_cfg.mean
@@ -132,20 +142,20 @@ def main():
     
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
-        print("gt_labels:",gt_labels)
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
-        img_save_path = os.path.join(save_path,name+".jpg")
-
-        img_save_path = os.path.join(save_path,name+"_a.jpg")
-        img = wmli.imread(full_path)
-        img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
-        wmli.imwrite(img_save_path,img)
-        img_save_path = os.path.join(save_path,name+"_b.jpg")
-        img = wmli.imread(full_path)
-        img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
-        wmli.imwrite(img_save_path,img)
+        if args.save_results:
+            img_save_path = os.path.join(save_path,name+".jpg")
+    
+            img_save_path = os.path.join(save_path,name+"_a.jpg")
+            img = wmli.imread(full_path)
+            img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
+            wmli.imwrite(img_save_path,img)
+            img_save_path = os.path.join(save_path,name+"_b.jpg")
+            img = wmli.imread(full_path)
+            img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
+            wmli.imwrite(img_save_path,img)
 
         kwargs = {}
         kwargs['gtboxes'] = gt_boxes

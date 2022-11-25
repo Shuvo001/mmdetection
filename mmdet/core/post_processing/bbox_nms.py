@@ -129,7 +129,7 @@ def wmulticlass_nms(multi_bboxes,
         bboxes = multi_bboxes[:, None].expand(
             multi_scores.size(0), num_classes, 4) #如果是classes agnostic的bboxes, 转换为class wise的bboxes
 
-    scores = multi_scores[:, :-1] #最后一个为背景分，去年背景的得分
+    scores = multi_scores[:, :-1] #最后一个为背景分，去掉背景的得分
 
     labels = torch.arange(num_classes, dtype=torch.long, device=scores.device)
     labels = labels.view(1, -1).expand_as(scores)
