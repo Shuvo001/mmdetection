@@ -51,3 +51,14 @@ class MosaicDetectionDataset(MosaicDetection):
         perspective_prob=0.5
         )
         self.batch_size = batch_size
+
+
+    def __getitem__(self, idx):
+        mix_img, padded_labels, img_info, img_id = super().__getitem__(idx)
+        padded_labels = torch.from_numpy(padded_labels)
+        nr_data = torch.sum(padded_labels,dim=-1)
+        nr_data = (nr_data>0).to(torch.int16)
+        nr = torch.sum(nr_data,dim=-1)
+
+        return mix_img,padded_labels,torch.tensor(nr,dtype=torch.int16)
+    

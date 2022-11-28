@@ -20,43 +20,47 @@ import torch.distributed as dist
 import wtorch.dist as wtd
 import numpy as np
 from mmdet.dataloader.build import build_dataloader
+from .base_trainer import BaseTrainer
 
 
 def default_data_processor(data_batch):
     inputs = {}
     inputs['img'] = data_batch[0]
     data = data_batch[1]
-    nr_data= torch.sum(data,dim=-1)
-    nr = torch.sum((nr_data>0).to(torch.int32),dim=-1)
+    nr = data_batch[2]
     gt_bboxes = []
     gt_labels = []
     img_metas = []
     batch_size = data_batch[0].shape[0]
+    shape = data_batch[0].shape[2:4]
+    _img_metas = {'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
     for i in range(batch_size):
         _gt_bboxes = data[i,:nr[i],1:5]
         _gt_labels = data[i,:nr[i],0].to(torch.int64)
         gt_bboxes.append(_gt_bboxes)
         gt_labels.append(_gt_labels)
-        shape = data_batch[0].shape[2:4]
-        _img_metas = {'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
         img_metas.append(_img_metas)
+    
         
     inputs['gt_bboxes'] = gt_bboxes
     inputs['gt_labels'] = gt_labels
     inputs['img_metas'] = img_metas
 
-    return wtu.cuda(inputs)
+    return inputs
 
-class SimpleTrainer:
+class SimpleTrainer(BaseTrainer):
     def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,data_processor=default_data_processor,use_fp16=False):
-        self.cfg = cfg
+        super().__init__(cfg)
         self.model = model
         self.dataset = dataset
         self.rank = rank
         self.work_dir = cfg.work_dir
+        self.estimate_time_cost = wmlu.EstimateTimeCost()
         self.data_loader = build_dataloader(dataset,
                                             batch_size=self.cfg.data.train.batch_size,
-                                            num_workers=self.cfg.data.workers_per_gpu)
+                                            num_workers=self.cfg.data.workers_per_gpu,
+                                            pin_memory=self.cfg.data.pin_memory,
+                                            )
         self.data_loader_iter = iter(self.data_loader)
         self.data_processor = data_processor
         self.iter = 0
@@ -64,6 +68,7 @@ class SimpleTrainer:
         self.world_size = world_size
         self.use_fp16 = use_fp16
         self.init_before_run()
+        self.run_info = {}
         pass
 
     def init_before_run(self):
@@ -114,6 +119,9 @@ class SimpleTrainer:
             print(f"Use fp16")
             self.scaler = torch.cuda.amp.GradScaler()
 
+        self.call_hook('before_run')
+        self.estimate_time_cost.reset(self.max_iters)
+
         if self.rank != 0:
             return
         logdir = osp.join(self.work_dir,"tblog")
@@ -123,27 +131,51 @@ class SimpleTrainer:
 
     def run(self):
         while self.iter < self.max_iters:
+            self.run_info = {}
+
+            self.call_hook('before_iter')
+
+            time_b0 = time.time()
+            self.fetch_iter_data()
+            time_b1 = time.time()
+            self.run_info['data_time'] = time_b1-time_b0
+
             if self.use_fp16:
                 self.train_amp_one_iter()
             else:
                 self.train_one_iter()
-            self.log_after_iter()
-            self.save_checkpoint()
-            self.iter += 1
-        self.save_checkpoint()
-    
 
-    def train_one_iter(self):
-        time_b = time.time()
+            time_b2 = time.time()
+            self.estimate_time_cost.add_count()
+            self.run_info['model_time'] = time_b2-time_b1
+
+            self.call_hook('after_iter')
+
+            self.save_checkpoint()
+
+            self.run_info['iter_time'] = time.time()-time_b0
+
+            self.log_after_iter()
+
+            self.iter += 1
+
+        self.save_checkpoint()
+        self.after_run()
+
+    
+    def fetch_iter_data(self):
         data_batch = next(self.data_loader_iter)
         if self.data_processor is not None:
             data_batch = self.data_processor(data_batch)
 
-        data_batch = wtu.to(data_batch,device=self.rank)
-
+        #data_batch = wtu.to(data_batch,device=self.rank)
         #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
 
         self.inputs = data_batch
+    
+
+    def train_one_iter(self):
+        data_batch = self.inputs
         outputs = self.model.train_step(data_batch, self.optimizer)
         if not isinstance(outputs, dict):
             raise TypeError('model.train_step() must return a dict')
@@ -153,19 +185,9 @@ class SimpleTrainer:
         loss.backward()
         self.optimizer.step()
         self.lr_scheduler.step()
-        self.iter_time = time.time()-time_b
 
     def train_amp_one_iter(self):
-        time_b = time.time()
-        data_batch = next(self.data_loader_iter)
-        if self.data_processor is not None:
-            data_batch = self.data_processor(data_batch)
-
-        data_batch = wtu.to(data_batch,device=self.rank)
-
-        #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
-
-        self.inputs = data_batch
+        data_batch = self.inputs
         with torch.cuda.amp.autocast():
             outputs = self.model.train_step(data_batch, self.optimizer)
         if not isinstance(outputs, dict):
@@ -179,11 +201,13 @@ class SimpleTrainer:
         self.scaler.step(self.optimizer)
         self.scaler.update()
         self.lr_scheduler.step()
-        self.iter_time = time.time()-time_b
 
     def log_after_iter(self):
         if self.iter%self.cfg.log_config.print_interval == 0:
-            print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, iter time={self.iter_time:.3f}")
+            data_time = self.run_info['data_time']
+            model_time = self.run_info['model_time']
+            iter_time = self.run_info['iter_time']
+            print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, data_time={data_time:.3f}, model_time={model_time:.3f}, iter time={iter_time: .3f}, {self.estimate_time_cost}")
         if self.iter%self.cfg.log_config.tb_interval == 0:
             self.tblog()
     
@@ -240,5 +264,9 @@ class SimpleTrainer:
         torch.save(states, output_path)
         sym_path = wmlu.change_name(output_path,"latest.pth")
         wmlu.symlink(output_path,sym_path)
+
+
+    def after_run(self):
+        self.call_hook('after_run')
 
 

@@ -1,4 +1,5 @@
 from wtorch.data import DataLoader as torchDataLoader
+#from torch.utils.data import DataLoader as torchDataLoader
 import torch
 from .samplers import *
 

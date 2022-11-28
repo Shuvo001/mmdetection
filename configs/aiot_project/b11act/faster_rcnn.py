@@ -55,8 +55,6 @@ img_scale = (640, 1024)  # height, width
 dataset_type = 'WXMLDataset'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-img_norm_cfg = dict(
-    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 batch_size = 8
 train_dataset = dict(
     type='MosaicDetectionDataset',
@@ -74,6 +72,7 @@ data = dict(
     samples_per_gpu=batch_size,
     workers_per_gpu=4,
     persistent_workers=True,
+    pin_memory=True,
     train=train_dataset,
     val=dict(
         type=dataset_type,
@@ -86,7 +85,7 @@ data = dict(
         img_suffix=".jpg;;.bmp",
         classes=classes))
 
-optimizer = dict(type='SGD', lr=0.02, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
 
 max_iters=50000
@@ -98,15 +97,16 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=100)
+    tb_interval=200)
 checkpoint_config = dict(
     interval=1000,
 )
 
-custom_hooks = [
+hooks = [
     dict(
         type='WCloseMosaic',
-        close_iter_or_epoch=45000),
+        close_iter_or_epoch=-5000,
+        by_epoch=False),
 ]
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from='/home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth'

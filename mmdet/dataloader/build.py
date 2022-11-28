@@ -12,7 +12,7 @@ def worker_init_reset_seed(worker_id):
     torch.set_rng_state(torch.manual_seed(seed).get_state())
     np.random.seed(seed)
 
-def build_dataloader(dataset,batch_size,num_workers=16,seed=None):
+def build_dataloader(dataset,batch_size,num_workers=16,seed=None,pin_memory=False):
     sampler = InfiniteSampler(len(dataset), seed=seed if seed is not None else int(time.time()))
     batch_sampler = YoloBatchSampler(
         sampler=sampler,
@@ -21,9 +21,9 @@ def build_dataloader(dataset,batch_size,num_workers=16,seed=None):
         mosaic=True,
     )
 
-    dataloader_kwargs = {"num_workers": num_workers, "pin_memory": False}
+    dataloader_kwargs = {"num_workers": num_workers, "pin_memory": pin_memory}
     dataloader_kwargs["batch_sampler"] = batch_sampler
-    dataloader_kwargs["batch_split_nr"] = 2
+    #dataloader_kwargs["batch_split_nr"] = 2
 
     # Make sure each process has different random seed, especially for 'fork' method.
     # Check https://github.com/pytorch/pytorch/issues/63311 for more details.
