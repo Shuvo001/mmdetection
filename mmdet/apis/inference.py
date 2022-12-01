@@ -47,13 +47,6 @@ def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
     if checkpoint is not None:
         checkpoint = torch.load(checkpoint,map_location="cpu")
         wtu.forgiving_state_restore(model,checkpoint)
-        if 'CLASSES' in checkpoint.get('meta', {}):
-            model.CLASSES = checkpoint['meta']['CLASSES']
-        else:
-            warnings.simplefilter('once')
-            warnings.warn('Class names are not saved in the checkpoint\'s '
-                          'meta data, use COCO classes by default.')
-            model.CLASSES = get_classes('coco')
     model.cfg = config  # save the config in the model for convenience
     model.to(device)
     model.eval()

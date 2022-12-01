@@ -91,6 +91,7 @@ def get_results(result,score_thr=0.05):
     
 def label_trans(labels):
     return np.array([x+1 for x in labels])
+
 def main():
     args = parse_args()
 
@@ -110,6 +111,7 @@ def main():
     score_thr: 仅当score大于score_thr才会留下
     nms: iou_threshold, nms iou阀值
     max_per_img: nms后只留下最多max_per_img个目标
+    mask_thr_binary: mask threshold
     '''
     print("RCNN test config")
     wmlu.show_dict(model.roi_head.test_cfg)
@@ -141,6 +143,8 @@ def main():
 
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
+        if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-00_DUST_CAM00":
+            continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
@@ -154,14 +158,24 @@ def main():
     
             img_save_path = os.path.join(save_path,name+"_a.jpg")
             img = wmli.imread(full_path)
-            img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
+            if save_size is not None:
+                img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
+                t_bboxes = bboxes*r
+            else:
+                t_bboxes = bboxes
+            img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn)
             if det_masks is not None:
-                img = odv.draw_mask_xy(img,classes=labels,bboxes=bboxes,masks=det_masks,color_fn=odv.red_color_fn)
-            wmli.imwrite(img_save_path,img,save_size)
+                img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
+            wmli.imwrite(img_save_path,img)
             img_save_path = os.path.join(save_path,name+"_b.jpg")
             img = wmli.imread(full_path)
-            img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
-            wmli.imwrite(img_save_path,img,save_size)
+            if save_size is not None:
+                img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
+                t_gt_boxes = gt_boxes*r
+            else:
+                t_gt_boxes = gt_boxes
+            img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=t_gt_boxes,text_fn=text_fn)
+            wmli.imwrite(img_save_path,img)
 
         kwargs = {}
         kwargs['gtboxes'] = gt_boxes
