@@ -12,6 +12,7 @@ from mmdet.core import BitmapMasks, PolygonMasks, find_inside_bboxes
 from mmdet.core.evaluation.bbox_overlaps import bbox_overlaps
 from mmdet.utils import log_img_scale
 from ..builder import PIPELINES
+import wtorch.utils as wtu
 
 try:
     from imagecorruptions import corrupt
@@ -2080,7 +2081,7 @@ class Mosaic:
         
         if 'gt_masks' in results:
             mosaic_mask = []
-            mosaic_mask_shape = (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2)),
+            mosaic_mask_shape = (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2))
         else:
             mosaic_mask = None
 
@@ -2107,9 +2108,9 @@ class Mosaic:
                 img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
             
             if mosaic_mask is not None:
-                mask_i = results_patch['gt_masks']
-                mask_i =  resize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
-                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape.shape[1]])
+                mask_i = results_patch['gt_masks'].masks
+                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
 
             # compute the combine parameters
             paste_coord, crop_coord = self._mosaic_combine(
@@ -2120,7 +2121,7 @@ class Mosaic:
             # crop and paste image
             mosaic_img[y1_p:y2_p, x1_p:x2_p] = img_i[y1_c:y2_c, x1_c:x2_c]
             if mosaic_mask is not None:
-                n_mask_i[y1_p:y2_p, x1_p:x2_p] = mask_i[y1_c:y2_c, x1_c:x2_c]
+                n_mask_i[:,y1_p:y2_p, x1_p:x2_p] = mask_i[:,y1_c:y2_c, x1_c:x2_c]
 
 
             # adjust coordinate
@@ -2155,8 +2156,8 @@ class Mosaic:
             if not self.skip_filter:
                 mosaic_bboxes, mosaic_labels,valid_inds = \
                     self._filter_box_candidates(mosaic_bboxes, mosaic_labels)
-            if mosaic_mask is not None:
-                mosaic_mask = mosaic_mask[valid_inds]
+                if mosaic_mask is not None:
+                    mosaic_mask = mosaic_mask[valid_inds]
 
         # remove outside bboxes
         inside_inds = find_inside_bboxes(mosaic_bboxes, 2 * self.img_scale[0],
@@ -2164,8 +2165,8 @@ class Mosaic:
         mosaic_bboxes = mosaic_bboxes[inside_inds]
         mosaic_labels = mosaic_labels[inside_inds]
         if mosaic_mask is not None:
-            mosaic_mask = mosaic_mask[valid_inds]
-            results['gt_masks'] = mosaic_mask
+            mosaic_mask = mosaic_mask[inside_inds]
+            results['gt_masks'] = BitmapMasks(mosaic_mask)
 
         results['img'] = mosaic_img
         results['img_shape'] = mosaic_img.shape

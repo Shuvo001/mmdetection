@@ -219,7 +219,11 @@ class BitmapMasks(BaseInstanceMasks):
         >>> assert new.height, new.width == out_shape
     """
 
-    def __init__(self, masks, height, width):
+    def __init__(self, masks, height=None, width=None):
+        if height is None:
+            height = masks.shape[1]
+        if width is None:
+            width = masks.shape[2]
         self.height = height
         self.width = width
         if len(masks) == 0:

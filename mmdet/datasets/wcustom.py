@@ -145,8 +145,13 @@ class WCustomDataset(Dataset):
         Returns:
             dict: Annotation info of specified index.
         """
+        cur_data = self._ann_item(idx)
+        img_file, img_shape,labels, labels_names, bboxes, masks, *_ = cur_data
+        bboxes = odb.npchangexyorder(bboxes)
+        labels = np.array(labels).astype(np.int32)
+        ann_info = dict(bboxes=bboxes,labels=labels,bitmap_masks=masks)
 
-        return self._inner_dataset[idx]['ann']
+        return ann_info
 
     def get_cat_ids(self, idx):
         """Get category ids by index.
@@ -203,6 +208,13 @@ class WCustomDataset(Dataset):
                 idx = self._rand_another(idx)
                 continue
             return data
+    def _ann_item(self,idx):
+        if idx not in self.__data_cache:
+            cur_data = self._inner_dataset[idx]
+            self.__data_cache[idx] = cur_data
+        else:
+            cur_data = self.__data_cache[idx]
+        return cur_data
 
     def prepare_train_img(self, idx):
         """Get training data and annotations after pipeline.
@@ -214,11 +226,7 @@ class WCustomDataset(Dataset):
             dict: Training data and annotation after pipeline with new keys \
                 introduced by pipeline.
         """
-        if idx not in self.__data_cache:
-            cur_data = self._inner_dataset[idx]
-            self.__data_cache[idx] = cur_data
-        else:
-            cur_data = self.__data_cache[idx]
+        cur_data = self._ann_item(idx)
         img_file, img_shape,labels, labels_names, bboxes, masks, *_ = cur_data
         bboxes = odb.npchangexyorder(bboxes)
         labels = np.array(labels).astype(np.int32)

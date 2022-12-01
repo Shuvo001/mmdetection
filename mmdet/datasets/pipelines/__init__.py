@@ -15,17 +15,4 @@ from .transforms import (Albu, CopyPaste, CutOut, Expand, MinIoURandomCrop,
                          RandomAffine, RandomCenterCropPad, RandomCrop,
                          RandomFlip, RandomShift, Resize, SegRescale,
                          YOLOXHSVRandomAug)
-
-__all__ = [
-    'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
-    'Transpose', 'Collect', 'DefaultFormatBundle', 'LoadAnnotations',
-    'LoadImageFromFile', 'LoadImageFromWebcam', 'LoadPanopticAnnotations',
-    'LoadMultiChannelImageFromFiles', 'LoadProposals', 'FilterAnnotations',
-    'MultiScaleFlipAug', 'Resize', 'RandomFlip', 'Pad', 'RandomCrop',
-    'Normalize', 'SegRescale', 'MinIoURandomCrop', 'Expand',
-    'PhotoMetricDistortion', 'Albu', 'InstaBoost', 'RandomCenterCropPad',
-    'AutoAugment', 'CutOut', 'Shear', 'Rotate', 'ColorTransform',
-    'EqualizeTransform', 'BrightnessTransform', 'ContrastTransform',
-    'Translate', 'RandomShift', 'Mosaic', 'MixUp', 'RandomAffine',
-    'YOLOXHSVRandomAug', 'CopyPaste'
-]
+from .wtransforms import *
