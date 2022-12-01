@@ -15,7 +15,7 @@ import time
 @DATASETS.register_module()
 class MosaicDetectionDataset(MosaicDetection):
     dataset = None
-    def __init__(self,data_dirs,classes,batch_size,img_suffix=".jpg",mean=None,std=None,to_rgb=False,
+    def __init__(self,data_dirs,classes,img_suffix=".jpg",mean=None,std=None,to_rgb=False,
         name="MosaicData",
         img_size=(1024,1024), #(H,W)
         allow_empty_annotation=True,
@@ -50,8 +50,6 @@ class MosaicDetectionDataset(MosaicDetection):
         mixup_prob=0.5,
         perspective_prob=0.5
         )
-        self.batch_size = batch_size
-
 
     def __getitem__(self, idx):
         mix_img, padded_labels, img_info, img_id = super().__getitem__(idx)

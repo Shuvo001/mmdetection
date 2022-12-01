@@ -15,6 +15,7 @@ from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
+import shutil
 
 def parse_args():
     parser = ArgumentParser()
@@ -131,31 +132,36 @@ def main():
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
-
-
-
     items = eval_dataset(test_data_dir,classes=classes)
     mean = model.cfg.img_norm_cfg.mean
     std = model.cfg.img_norm_cfg.std
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"mean = {mean}, std={std}, input size={input_size}")
-    
+    save_size = (1024,640) 
+
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         gt_boxes = odb.npchangexyorder(gt_boxes)
-        bboxes,labels,scores,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
+        bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")
+
+            if save_size is not None:
+                wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
+            else:
+                shutil.copy(full_path,img_save_path)
     
             img_save_path = os.path.join(save_path,name+"_a.jpg")
             img = wmli.imread(full_path)
             img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=bboxes,text_fn=text_fn)
-            wmli.imwrite(img_save_path,img)
+            if det_masks is not None:
+                img = odv.draw_mask_xy(img,classes=labels,bboxes=bboxes,masks=det_masks,color_fn=odv.red_color_fn)
+            wmli.imwrite(img_save_path,img,save_size)
             img_save_path = os.path.join(save_path,name+"_b.jpg")
             img = wmli.imread(full_path)
             img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=gt_boxes,text_fn=text_fn)
-            wmli.imwrite(img_save_path,img)
+            wmli.imwrite(img_save_path,img,save_size)
 
         kwargs = {}
         kwargs['gtboxes'] = gt_boxes
@@ -169,6 +175,8 @@ def main():
         
         if i%100 == 99:
             metrics.show()
+    
+    print(f"Image save path: {save_path}")
         
     metrics.show()
 

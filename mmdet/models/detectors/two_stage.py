@@ -181,7 +181,7 @@ class TwoStageDetector(BaseDetector):
         gt_proposals = torch.cat([gtbboxes,scores],axis=-1)
         return torch.cat([gt_proposals,proposals],axis=0)
 
-    def simple_test(self, img, img_metas, proposals=None, rescale=False):
+    def simple_test(self, img, img_metas, proposals=None):
         """Test without augmentation."""
 
         assert self.with_bbox, 'Bbox head must be implemented.'
@@ -196,7 +196,6 @@ class TwoStageDetector(BaseDetector):
             x = self.second_stage_hook(x)
 
         results = self.roi_head.simple_test(
-            x, proposal_list, img_metas,
-            rescale=rescale)
+            x, proposal_list, img_metas)
 
         return results

@@ -55,21 +55,22 @@ img_scale = (640, 1024)  # height, width
 dataset_type = 'WXMLDataset'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-batch_size = 8
+samples_per_gpu = 8
 train_dataset = dict(
     type='MosaicDetectionDataset',
     data_dirs=['/home/wj/ai/mldata1/B11ACT/datas/labeled'],
     img_suffix=".jpg;;.bmp",
     classes=classes,
     name="b11act",
-    batch_size=batch_size,
     img_size= img_scale,
     allow_empty_annotation=True,
     **img_norm_cfg,
 )
 
 data = dict(
-    samples_per_gpu=batch_size,
+    dataloader="yolo_dataloader",
+    data_processor="yolo_data_processor",
+    samples_per_gpu=samples_per_gpu,
     workers_per_gpu=4,
     persistent_workers=True,
     pin_memory=True,

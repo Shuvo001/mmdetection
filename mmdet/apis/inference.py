@@ -204,6 +204,7 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
         filename = img
         img = wmli.imread(img)
     
+    ori_shape = [img.shape[0],img.shape[1]]
     img,r = wmli.resize_imgv2(img,input_size,return_scale=True)
     img = torch.tensor(img,dtype=torch.float32)
     img = img.permute(2,0,1)
@@ -216,23 +217,35 @@ def inference_detectorv2(model, img,mean=None,std=None,input_size=(1024,1024),sc
     img = wtu.pad_feature(img,input_size,pad_value=0)
 
     shape = [img.shape[2],img.shape[3]]
-    img_metas = {'filename':filename,'ori_shape':shape,'img_shape':shape,'pad_shape':shape,
-    "scale_factor":[1.0,1.0,1.0,1.0]}
+    img_metas = {'filename':filename,'ori_shape':shape,'img_shape':shape,'pad_shape':shape}
     # forward the model
     with torch.no_grad():
-        results = model(return_loss=False, rescale=True, img=[img],img_metas=[[img_metas]])
+        results = model(return_loss=False, img=[img],img_metas=[[img_metas]])
 
-    results = results[0].cpu().numpy()
-    bboxes = results[...,:4]
-    scores = results[...,4]
-    labels = results[...,5].astype(np.int32)
-    mask = scores>score_thr
-    bboxes = bboxes[mask]
-    scores = scores[mask]
-    labels = labels[mask]
+    det_bboxes = results[0].cpu().numpy()
+    det_masks = results[1].cpu().numpy()
+    if det_masks.shape[-1]==0:
+        det_masks = None
+    bboxes = det_bboxes[...,:4]
+    scores = det_bboxes[...,4]
+    labels = det_bboxes[...,5].astype(np.int32)
+
     bboxes = bboxes/r
 
-    return bboxes,labels,scores,results
+    bboxes[...,0:4:2] = np.clip(bboxes[...,0:4:2],0,ori_shape[1])
+    bboxes[...,1:4:2] = np.clip(bboxes[...,1:4:2],0,ori_shape[0])
+    keep0 = scores>score_thr
+    keep1 = (bboxes[...,2]-bboxes[...,0])>1
+    keep2 = (bboxes[...,3]-bboxes[...,1])>1
+    keep = np.logical_and(keep0,keep1)
+    keep = np.logical_and(keep,keep2)
+    bboxes = bboxes[keep]
+    scores = scores[keep]
+    labels = labels[keep]
+    if det_masks is not None:
+        det_masks = det_masks[keep]
+
+    return bboxes,labels,scores,det_masks,results
 
 async def async_inference_detector(model, imgs):
     """Async inference image(s) with the detector.

@@ -5,6 +5,9 @@ from .samplers import *
 import time
 import random
 from .default_dataloader import DataLoader
+from thirdparty.registry import Registry
+
+DATALOADER_REGISTER = Registry("DATALOADER")
 
 def worker_init_reset_seed(worker_id):
     seed = uuid.uuid4().int % 2**32
@@ -12,11 +15,12 @@ def worker_init_reset_seed(worker_id):
     torch.set_rng_state(torch.manual_seed(seed).get_state())
     np.random.seed(seed)
 
-def build_dataloader(dataset,batch_size,num_workers=16,seed=None,pin_memory=False):
+@DATALOADER_REGISTER.register()
+def yolo_dataloader(dataset,samples_per_gpu,num_workers=16,seed=None,pin_memory=False,dist=True,num_gpus=1):
     sampler = InfiniteSampler(len(dataset), seed=seed if seed is not None else int(time.time()))
     batch_sampler = YoloBatchSampler(
         sampler=sampler,
-        batch_size=batch_size,
+        batch_size=samples_per_gpu,
         drop_last=False,
         mosaic=True,
     )
@@ -32,3 +36,11 @@ def build_dataloader(dataset,batch_size,num_workers=16,seed=None,pin_memory=Fals
     data_loader = DataLoader(dataset, **dataloader_kwargs)
 
     return data_loader
+
+def build_dataloader(name,dataset,samples_per_gpu,num_workers=16,seed=None,pin_memory=False,num_gpus=1,dist=True):
+    build_func = DATALOADER_REGISTER.get(name)
+    return build_func(dataset=dataset,samples_per_gpu=samples_per_gpu,num_workers=num_workers,
+    seed=seed,
+    pin_memory=pin_memory,
+    num_gpus=num_gpus,
+    dist=dist)

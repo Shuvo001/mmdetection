@@ -257,7 +257,7 @@ class MaskTestMixin:
             # rescale it back to the testing scale to obtain RoIs.
             if rescale:
                 scale_factors = [
-                    torch.from_numpy(scale_factor).to(det_bboxes[0].device)
+                    torch.from_numpy(np.array(scale_factor,dtype=np.float32)).to(det_bboxes[0].device)
                     for scale_factor in scale_factors
                 ]
             _bboxes = [

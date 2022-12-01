@@ -62,7 +62,11 @@ class LoadImageFromFile:
             filename = osp.join(results['img_prefix'],
                                 results['img_info']['filename'])
         else:
-            filename = results['img_info']['filename']
+            try:
+                filename = results['img_info']['filename']
+            except:
+                print("A")
+                pass
 
         img_bytes = self.file_client.get(filename)
         img = mmcv.imfrombytes(
@@ -356,6 +360,24 @@ class LoadAnnotations:
         results['mask_fields'].append('gt_masks')
         return results
 
+    def _load_bitmap_masks(self, results):
+        """Private function to load mask annotations.
+
+        Args:
+            results (dict): Result dict from :obj:`mmdet.CustomDataset`.
+
+        Returns:
+            dict: The dict contains loaded mask annotations.
+                If ``self.poly2mask`` is set ``True``, `gt_mask` will contain
+                :obj:`PolygonMasks`. Otherwise, :obj:`BitmapMasks` is used.
+        """
+        h, w = results['img_info']['height'], results['img_info']['width']
+        gt_masks = results['ann_info']['bitmap_masks']
+        gt_masks = BitmapMasks(gt_masks,height=h,width=w)
+        results['gt_masks'] = gt_masks
+        results['mask_fields'].append('gt_masks')
+        return results
+
     def _load_semantic_seg(self, results):
         """Private function to load semantic segmentation annotations.
 
@@ -395,7 +417,10 @@ class LoadAnnotations:
         if self.with_label:
             results = self._load_labels(results)
         if self.with_mask:
-            results = self._load_masks(results)
+            if 'bitmap_masks' in results['ann_info']:
+                results = self._load_bitmap_masks(results)
+            else:
+                results = self._load_masks(results)
         if self.with_seg:
             results = self._load_semantic_seg(results)
         return results

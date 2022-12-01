@@ -88,9 +88,9 @@ class CocoDataset(CustomDataset):
             total_ann_ids), f"Annotation ids in '{ann_file}' are not unique!"
         print(f"Load coco annotations success.")
         if "train" in ann_file:
-            return data_infos[:100]
-        else:
             return data_infos
+        else:
+            return data_infos[:100]
 
     def get_ann_info(self, idx):
         """Get COCO annotation by index.

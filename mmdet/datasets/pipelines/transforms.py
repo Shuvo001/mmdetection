@@ -209,7 +209,7 @@ class Resize:
         else:
             raise NotImplementedError
 
-        results['scale'] = scale
+        results['scale'] = scale #(W,H)
         results['scale_idx'] = scale_idx
 
     def _resize_img(self, results):

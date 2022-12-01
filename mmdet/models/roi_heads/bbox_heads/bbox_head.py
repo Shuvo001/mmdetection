@@ -320,8 +320,6 @@ class BBoxHead(BaseModule):
                    cls_score,
                    bbox_pred,
                    img_shape,
-                   scale_factor,
-                   rescale=False,
                    cfg=None):
         """Transform network output for a batch into bbox predictions.
 
@@ -364,11 +362,6 @@ class BBoxHead(BaseModule):
             if img_shape is not None:
                 bboxes[:, [0, 2]].clamp_(min=0, max=img_shape[1])
                 bboxes[:, [1, 3]].clamp_(min=0, max=img_shape[0])
-
-        if rescale and bboxes.size(0) > 0 and scale_factor is not None:
-            scale_factor = bboxes.new_tensor(scale_factor)
-            bboxes = (bboxes.view(bboxes.size(0), -1, 4) / scale_factor).view(
-                bboxes.size()[0], -1)
 
         if cfg is None:
             return bboxes, scores

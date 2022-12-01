@@ -21,9 +21,14 @@ import wtorch.dist as wtd
 import numpy as np
 from mmdet.dataloader.build import build_dataloader
 from .base_trainer import BaseTrainer
+from thirdparty.registry import Registry
+from mmcv.parallel.scatter_gather import scatter_kwargs
 
 
-def default_data_processor(data_batch):
+DATAPROCESSOR_REGISTRY = Registry("DATAPROCESSOR")
+
+@DATAPROCESSOR_REGISTRY.register()
+def yolo_data_processor(data_batch,local_rank=0):
     inputs = {}
     inputs['img'] = data_batch[0]
     data = data_batch[1]
@@ -48,21 +53,28 @@ def default_data_processor(data_batch):
 
     return inputs
 
+@DATAPROCESSOR_REGISTRY.register()
+def mmdet_data_processor(data_batch,local_rank=0):
+    inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
+    return inputs[0]
+
 class SimpleTrainer(BaseTrainer):
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,data_processor=default_data_processor,use_fp16=False):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,use_fp16=False):
         super().__init__(cfg)
         self.model = model
         self.dataset = dataset
         self.rank = rank
         self.work_dir = cfg.work_dir
         self.estimate_time_cost = wmlu.EstimateTimeCost()
-        self.data_loader = build_dataloader(dataset,
-                                            batch_size=self.cfg.data.train.batch_size,
+        self.data_loader = build_dataloader(cfg.data.dataloader,
+                                            dataset,
+                                            samples_per_gpu=self.cfg.data.samples_per_gpu,
                                             num_workers=self.cfg.data.workers_per_gpu,
                                             pin_memory=self.cfg.data.pin_memory,
+                                            dist=world_size>1,
                                             )
         self.data_loader_iter = iter(self.data_loader)
-        self.data_processor = data_processor
+        self.data_processor = DATAPROCESSOR_REGISTRY.get(cfg.data.data_processor) 
         self.iter = 0
         self.max_iters = max_iters
         self.world_size = world_size
@@ -88,14 +100,12 @@ class SimpleTrainer(BaseTrainer):
         print(f"sync norm states")
         wtt.show_async_norm_states(model)
 
-        if osp.exists(cfg.load_from):
+        if cfg.load_from is not None and osp.exists(cfg.load_from):
             data = torch.load(cfg.load_from)
             if "state_dict" in data:
                 data = data["state_dict"]
             
             wtu.forgiving_state_restore(model,data) 
-
-
 
         self.optimizer = build_optimizer(self.cfg, model)
         lr_scheduler_args = self.cfg.lr_config
@@ -166,7 +176,7 @@ class SimpleTrainer(BaseTrainer):
     def fetch_iter_data(self):
         data_batch = next(self.data_loader_iter)
         if self.data_processor is not None:
-            data_batch = self.data_processor(data_batch)
+            data_batch = self.data_processor(data_batch,self.rank)
 
         #data_batch = wtu.to(data_batch,device=self.rank)
         #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
@@ -232,17 +242,24 @@ class SimpleTrainer(BaseTrainer):
         for idx in idxs:
             gt_bboxes = self.inputs['gt_bboxes']
             gt_labels = self.inputs['gt_labels']
+            gt_masks = self.inputs.get('gt_masks',None)
             img = imgs[idx].cpu()
             gt_bboxes = gt_bboxes[idx].cpu().numpy()
             gt_labels = gt_labels[idx].cpu().numpy()
+            if gt_masks is not None:
+                gt_masks = gt_masks[idx].masks
             img = unnormalize(img,mean=mean,std=std).cpu().numpy()
             img = np.transpose(img,[1,2,0])
             if not is_rgb:
                 img = img[...,::-1]
             gt_bboxes = odb.npchangexyorder(gt_bboxes)
             img = np.ascontiguousarray(img)
-            img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
             img = np.clip(img,0,255).astype(np.uint8)
+            if gt_masks is not None:
+                img = odv.draw_bboxes_and_maskv2(img,gt_labels,bboxes=gt_bboxes,masks=gt_masks,
+                                                 is_relative_coordinate=False,show_text=True)
+            else:
+                img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
             self.log_writer.add_image(f"input/img_with_bboxes{idx}",img,global_step=global_step,
                     dataformats="HWC")
         model = wtu.get_model(self.model)
@@ -262,7 +279,7 @@ class SimpleTrainer(BaseTrainer):
         wmlu.make_dir_for_file(output_path)
         print(f"Save ckpt {output_path}")
         torch.save(states, output_path)
-        sym_path = wmlu.change_name(output_path,"latest.pth")
+        sym_path = wmlu.change_name(output_path,basename="latest")
         wmlu.symlink(output_path,sym_path)
 
 

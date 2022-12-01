@@ -17,6 +17,7 @@ from .wider_face import WIDERFaceDataset
 from .xml_style import XMLDataset
 from .wxml_dataset import WXMLDataset
 from .mosaicdataset.mosaicdetectiondataset import MosaicDetectionDataset
+from .labelme import LabelmeDataset
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',
@@ -26,5 +27,5 @@ __all__ = [
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
     'NumClassCheckHook', 'CocoPanopticDataset', 'MultiImageMixDataset',
-    'OpenImagesDataset', 'OpenImagesChallengeDataset','WXMLDataset','build_dataloaderv2'
+    'OpenImagesDataset', 'OpenImagesChallengeDataset','WXMLDataset','build_dataloaderv2', "LabelmeDataset"
 ]
