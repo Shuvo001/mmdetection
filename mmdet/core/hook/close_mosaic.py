@@ -1,5 +1,6 @@
 import os
 from mmcv.runner.hooks import HOOKS, Hook
+import wtorch.utils as wtu
 
 
 @HOOKS.register_module()
@@ -51,3 +52,39 @@ class WCloseMosaic:
     
     def __repr__(self):
         return f"{type(self).__name__}: close_iter_or_epoch={self.close_iter_or_epoch}, by_epoch={self.by_epoch}" 
+
+
+@HOOKS.register_module()
+class WMMDetModelSwitch(Hook):
+    def __init__(self,
+                 close_iter =15,
+                 skip_type_keys=('WMosaic', 'WRandomCrop', 'WMixUpWithMask')):
+        self.close_iter = close_iter 
+        self.skip_type_keys = skip_type_keys
+        self._restart_dataloader = False
+    
+    def before_run(self, trainer):
+        if self.close_iter<0:
+            self.close_iter= trainer.max_iters+self.close_iter
+            print(f"Update to {self}")
+
+    def before_iter(self, runner):
+        iter = runner.iter
+        train_loader = runner.data_loader
+        model = runner.model
+        model = wtu.get_model(model)
+        if iter == self.close_iter:
+            print(f'No {self.skip_type_keys} aug now!')
+            train_loader.dataset.update_skip_type_keys(self.skip_type_keys)
+            train_loader._DataLoader__initialized = False
+            train_loader._iterator = None
+            self._restart_dataloader = True
+            print('Add additional L1 loss now!')
+        else:
+            # Once the restart is complete, we need to restore
+            # the initialization flag.
+            if self._restart_dataloader:
+                train_loader._DataLoader__initialized = True
+                self._restart_dataloader = False
+    def __repr__(self):
+        return f"{type(self).__name__}: close_iter={self.close_iter}" 

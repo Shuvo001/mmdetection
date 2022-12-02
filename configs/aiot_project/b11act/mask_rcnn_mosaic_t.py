@@ -78,35 +78,26 @@ model = dict(
 dataset_type = 'LabelmeDataset'
 data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 img_scale = (640, 1024)  # height, width
-mmdet_img_scale = (img_scale[1],img_scale[0])
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(type='Resize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
-    dict(type='RandomFlip', flip_ratio=0.5),
-    dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size_divisor=32),
-    dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
-]
-train_pipeline = [
-    dict(type='Mosaic', img_scale=mmdet_img_scale, pad_val=114.0,prob=1.0),
+    dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=1.0,skip_filter=False),
+    dict(type="WRandomCrop",crop_if=["mosaic"],crop_size=img_scale),
     dict(type='WRotate',
-        prob=1.0,
+        prob=0.3,
         max_rotate_angle=20.0,
         ),
     dict(type='WTranslate',
-        prob=1.0,
+        prob=0.3,
         max_translate_offset=200,
         ),
     dict(
         type='WMixUpWithMask',
-        img_scale=mmdet_img_scale,
+        img_scale=img_scale,
         ratio_range=(0.8, 1.6),
-        pad_val=114.0),
-    dict(type='WResize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
+        prob=1.0,
+        pad_val=114.0,skip_filter=False),
+    dict(type='WResize', img_scale=img_scale),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -117,7 +108,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(img_scale[1], img_scale[0]),
+        img_scale=img_scale,
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -139,7 +130,7 @@ train_dataset = dict(
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=True),
-            dict(type='WResize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
+            dict(type='WResize', img_scale=img_scale),
         ],
     ),
     pipeline=train_pipeline)
@@ -181,7 +172,12 @@ log_config = dict(
 checkpoint_config = dict(
     interval=1000,
 )
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic"
+hooks = [
+    dict(
+        type='WMMDetModelSwitch',
+        close_iter=6),
+]
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_t"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 finetune_model=True
 names_not2train = ["backbone"]

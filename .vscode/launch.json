@@ -55,7 +55,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic.py"  "--gpus" "0"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_t.py"  "--gpus" "0" "1"],
         },
         {
             "name": "Python: train b11 act",

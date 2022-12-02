@@ -72,6 +72,7 @@ class SimpleTrainer(BaseTrainer):
                                             num_workers=self.cfg.data.workers_per_gpu,
                                             pin_memory=self.cfg.data.pin_memory,
                                             dist=world_size>1,
+                                            persistent_workers=True,
                                             )
         self.data_loader_iter = iter(self.data_loader)
         self.data_processor = DATAPROCESSOR_REGISTRY.get(cfg.data.data_processor) 
@@ -174,6 +175,9 @@ class SimpleTrainer(BaseTrainer):
 
     
     def fetch_iter_data(self):
+        if not self.data_loader._DataLoader__initialized:
+            print(f"Reinit data loader iter")
+            self.data_loader_iter = iter(self.data_loader)
         data_batch = next(self.data_loader_iter)
         if self.data_processor is not None:
             data_batch = self.data_processor(data_batch,self.rank)
@@ -222,6 +226,12 @@ class SimpleTrainer(BaseTrainer):
             self.tblog()
     
     def tblog(self):
+        try:
+            self.__tblog()
+        except Exception as e:
+            print(f"ERROR: {e}")
+            
+    def __tblog(self):
         if self.rank!=0:
             return
         global_step = self.iter
@@ -255,6 +265,8 @@ class SimpleTrainer(BaseTrainer):
             gt_bboxes = odb.npchangexyorder(gt_bboxes)
             img = np.ascontiguousarray(img)
             img = np.clip(img,0,255).astype(np.uint8)
+            #debug
+            gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
             if gt_masks is not None:
                 img = odv.draw_bboxes_and_maskv2(img,gt_labels,bboxes=gt_bboxes,masks=gt_masks,
                                                  is_relative_coordinate=False,show_text=True)

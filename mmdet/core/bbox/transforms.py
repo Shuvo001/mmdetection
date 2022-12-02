@@ -2,7 +2,7 @@
 import numpy as np
 import torch
 import os
-
+import traceback
 
 def find_inside_bboxes(bboxes, img_h, img_w):
     """Find bboxes as long as a part of bboxes is inside the image.
@@ -90,7 +90,8 @@ def bbox2roi(bbox_list):
             rois = torch.cat([img_inds, bboxes[:, :4]], dim=-1)
         else:
             #在rpn中已经做了措施，防止poposals大小为0，这一步应该不会出现
-            print(f"ERROR: bbox2roi zero size bboxes.")
+            #print(f"ERROR: bbox2roi zero size bboxes.")
+            #print(traceback.format_exc())
             rois = bboxes.new_zeros((0, 5))
         rois_list.append(rois)
     rois = torch.cat(rois_list, 0)

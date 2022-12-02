@@ -173,6 +173,7 @@ class WCustomDataset(Dataset):
         results['img_prefix'] = None
 
     def _set_group_flag(self):
+        return
         """Set flag according to image aspect ratio.
 
         Images with aspect ratio greater than 1 will be set as group 1,

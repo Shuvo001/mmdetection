@@ -45,7 +45,7 @@ model = dict(
             out_channels=256,
             featmap_strides=[4]),
         bbox_head=dict(
-            type='Shared2FCBBoxHead',
+            type='Shared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
             in_channels=256,
             fc_out_channels=1024,
@@ -78,35 +78,26 @@ model = dict(
 dataset_type = 'LabelmeDataset'
 data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 img_scale = (640, 1024)  # height, width
-mmdet_img_scale = (img_scale[1],img_scale[0])
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(type='Resize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
-    dict(type='RandomFlip', flip_ratio=0.5),
-    dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size_divisor=32),
-    dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
-]
-train_pipeline = [
-    dict(type='Mosaic', img_scale=mmdet_img_scale, pad_val=114.0,prob=1.0),
+    dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False),
+    dict(type="WRandomCrop",crop_if=["mosaic"],crop_size=img_scale),
     dict(type='WRotate',
-        prob=1.0,
+        prob=0.3,
         max_rotate_angle=20.0,
         ),
     dict(type='WTranslate',
-        prob=1.0,
+        prob=0.3,
         max_translate_offset=200,
         ),
     dict(
         type='WMixUpWithMask',
-        img_scale=mmdet_img_scale,
+        img_scale=img_scale,
         ratio_range=(0.8, 1.6),
-        pad_val=114.0),
-    dict(type='WResize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
+        prob=0.3,
+        pad_val=114.0,skip_filter=False),
+    dict(type='WResize', img_scale=img_scale),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -117,7 +108,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(img_scale[1], img_scale[0]),
+        img_scale=img_scale,
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -139,7 +130,7 @@ train_dataset = dict(
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=True),
-            dict(type='WResize', img_scale=(img_scale[1], img_scale[0]), keep_ratio=True),
+            dict(type='WResize', img_scale=img_scale),
         ],
     ),
     pipeline=train_pipeline)
@@ -167,7 +158,7 @@ data = dict(
         pipeline=test_pipeline))
 evaluation = dict(metric=['bbox', 'segm'])
 max_iters=50000
-optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -177,10 +168,14 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=2)
+    tb_interval=200)
 checkpoint_config = dict(
     interval=1000,
 )
+hooks = [
+    dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask')),
+    dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop', 'WMixUpWithMask')),
+]
 work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 finetune_model=True

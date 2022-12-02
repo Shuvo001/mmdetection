@@ -8,7 +8,8 @@ from .compose import Compose
 import random
 from mmdet.core import find_inside_bboxes, BitmapMasks
 import wtorch.utils as wtu
-
+import img_utils as wmli
+import object_detection2.bboxes as odb
 
 
 
@@ -27,6 +28,106 @@ def bbox2fields():
         'gt_bboxes': 'gt_semantic_seg',
     }
     return bbox2label, bbox2mask, bbox2seg
+
+@PIPELINES.register_module()
+class WRandomCrop:
+    '''
+    '''
+
+    def __init__(self,
+                 crop_size=None, #(H,W)
+                 img_pad_value=127,
+                 mask_pad_value=0,
+                 bbox_keep_ratio=0.25,
+                 crop_if=None):
+        assert isinstance(crop_size, (list, tuple))
+        assert crop_size[0] > 0 and crop_size[1] > 0, (
+                'crop_size must > 0 in train mode')
+
+        self.crop_size = crop_size
+        self.img_pad_value = img_pad_value
+        self.mask_pad_value = mask_pad_value
+        self.bbox_keep_ratio = bbox_keep_ratio
+        self.crop_if = crop_if
+
+    def _train_aug(self, results):
+        """Random crop and around padding the original image.
+
+        Args:
+            results (dict): Image infomations in the augment pipeline.
+
+        Returns:
+            results (dict): The updated dict.
+        """
+        img = results['img']
+        h, w, c = img.shape
+        new_h = min(self.crop_size[0],h)
+        new_w = min(self.crop_size[1],w)
+        if new_w<w:
+            x_offset = np.random.randint(low=0, high=w - new_w)
+        else:
+            x_offset = 0
+        if new_h<h:
+            y_offset = np.random.randint(low=0, high=h - new_h)
+        else:
+            y_offset = 0
+        patch = [y_offset, x_offset,y_offset+new_h,x_offset+new_w]
+        cropped_img = wmli.crop_img_absolute(img, patch)
+
+
+        results['img'] = cropped_img
+        results['img_shape'] = cropped_img.shape
+        results['pad_shape'] = cropped_img.shape
+
+        # crop bboxes accordingly and clip to the image boundary
+        for key in results.get('bbox_fields', []):
+            bboxes = results[key]
+            old_bboxes = copy.deepcopy(bboxes)
+            old_area = odb.area(old_bboxes)
+            bboxes[:, 0:4:2] -= x_offset
+            bboxes[:, 1:4:2] -= y_offset
+            bboxes[:, 0:4:2] = np.clip(bboxes[:, 0:4:2], 0, new_w)
+            bboxes[:, 1:4:2] = np.clip(bboxes[:, 1:4:2], 0, new_h)
+            keep0 = (bboxes[:, 2] > bboxes[:, 0]) & (
+                bboxes[:, 3] > bboxes[:, 1])
+            new_area = odb.area(bboxes)
+            area_ratio = new_area/(old_area+1e-6)
+            keep1 = area_ratio>self.bbox_keep_ratio
+            keep = np.logical_and(keep0,keep1)
+            bboxes = bboxes[keep]
+            results[key] = bboxes
+            if key in ['gt_bboxes']:
+                if 'gt_labels' in results:
+                    labels = results['gt_labels']
+                    labels = labels[keep]
+                    results['gt_labels'] = labels
+                if 'gt_masks' in results:
+                    gt_masks = results['gt_masks'].masks
+                    gt_masks = gt_masks[keep]
+                    gt_masks = wmli.crop_masks_absolute(gt_masks,patch)
+                    results['gt_masks'] = BitmapMasks(gt_masks)
+
+            # crop semantic seg
+            for key in results.get('seg_fields', []):
+                raise NotImplementedError(
+                    'RandomCenterCropPad only supports bbox.')
+            return results
+
+    def __call__(self, results):
+        if self.crop_if is not None:
+            for key in self.crop_if:
+                if results.get(key,False):
+                    return self._train_aug(results)
+            return results
+        else:
+            return self._train_aug(results)
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(crop_size={self.crop_size}, '
+        repr_str += f'(bbox keep ratio ={self.bbox_keep_ratio}, '
+        return repr_str
+
 
 @PIPELINES.register_module()
 class WRotate:
@@ -446,7 +547,7 @@ class WMixUpWithMask:
     """
 
     def __init__(self,
-                 img_scale=(640, 640),
+                 img_scale=(640, 640), #(H,W)
                  ratio_range=(0.5, 1.5),
                  flip_ratio=0.5,
                  pad_val=114,
@@ -455,7 +556,8 @@ class WMixUpWithMask:
                  min_area_ratio=0.2,
                  max_aspect_ratio=20,
                  bbox_clip_border=True,
-                 skip_filter=True,prob=1.0):
+                 skip_filter=True,
+                 prob=1.0):
         assert isinstance(img_scale, tuple)
         self.dynamic_scale = img_scale
         self.ratio_range = ratio_range
@@ -734,36 +836,15 @@ class WResize:
     """
 
     def __init__(self,
-                 img_scale=None,
-                 multiscale_mode='range',
-                 ratio_range=None,
-                 keep_ratio=True,
+                 img_scale=None, #(H,W)
+                 multiscale_mode=False,
                  bbox_clip_border=True,
-                 backend='cv2',
-                 interpolation='bilinear',
                  override=False):
-        if img_scale is None:
-            self.img_scale = None
-        else:
-            if isinstance(img_scale, list):
-                self.img_scale = img_scale
-            else:
-                self.img_scale = [img_scale]
-            assert mmcv.is_list_of(self.img_scale, tuple)
 
-        if ratio_range is not None:
-            # mode 1: given a scale and a range of image ratio
-            assert len(self.img_scale) == 1
-        else:
-            # mode 2: given multiple scales or a range of scales
-            assert multiscale_mode in ['value', 'range']
+        self.img_scale = img_scale
 
-        self.backend = backend
         self.multiscale_mode = multiscale_mode
-        self.ratio_range = ratio_range
-        self.keep_ratio = keep_ratio
         # TODO: refactor the override option in Resize
-        self.interpolation = interpolation
         self.override = override
         self.bbox_clip_border = bbox_clip_border
 
@@ -780,64 +861,10 @@ class WResize:
                 ``scale_idx`` is the selected index in the given candidates.
         """
 
-        assert mmcv.is_list_of(img_scales, tuple)
         scale_idx = np.random.randint(len(img_scales))
         img_scale = img_scales[scale_idx]
         return img_scale, scale_idx
 
-    @staticmethod
-    def random_sample(img_scales):
-        """Randomly sample an img_scale when ``multiscale_mode=='range'``.
-
-        Args:
-            img_scales (list[tuple]): Images scale range for sampling.
-                There must be two tuples in img_scales, which specify the lower
-                and upper bound of image scales.
-
-        Returns:
-            (tuple, None): Returns a tuple ``(img_scale, None)``, where \
-                ``img_scale`` is sampled scale and None is just a placeholder \
-                to be consistent with :func:`random_select`.
-        """
-
-        assert mmcv.is_list_of(img_scales, tuple) and len(img_scales) == 2
-        img_scale_long = [max(s) for s in img_scales]
-        img_scale_short = [min(s) for s in img_scales]
-        long_edge = np.random.randint(
-            min(img_scale_long),
-            max(img_scale_long) + 1)
-        short_edge = np.random.randint(
-            min(img_scale_short),
-            max(img_scale_short) + 1)
-        img_scale = (long_edge, short_edge)
-        return img_scale, None
-
-    @staticmethod
-    def random_sample_ratio(img_scale, ratio_range):
-        """Randomly sample an img_scale when ``ratio_range`` is specified.
-
-        A ratio will be randomly sampled from the range specified by
-        ``ratio_range``. Then it would be multiplied with ``img_scale`` to
-        generate sampled scale.
-
-        Args:
-            img_scale (tuple): Images scale base to multiply with ratio.
-            ratio_range (tuple[float]): The minimum and maximum ratio to scale
-                the ``img_scale``.
-
-        Returns:
-            (tuple, None): Returns a tuple ``(scale, None)``, where \
-                ``scale`` is sampled ratio multiplied with ``img_scale`` and \
-                None is just a placeholder to be consistent with \
-                :func:`random_select`.
-        """
-
-        assert isinstance(img_scale, tuple) and len(img_scale) == 2
-        min_ratio, max_ratio = ratio_range
-        assert min_ratio <= max_ratio
-        ratio = np.random.random_sample() * (max_ratio - min_ratio) + min_ratio
-        scale = int(img_scale[0] * ratio), int(img_scale[1] * ratio)
-        return scale, None
 
     def _random_scale(self, results):
         """Randomly sample an img_scale according to ``ratio_range`` and
@@ -857,44 +884,28 @@ class WResize:
                 ``results``, which would be used by subsequent pipelines.
         """
 
-        if self.ratio_range is not None:
-            scale, scale_idx = self.random_sample_ratio(
-                self.img_scale[0], self.ratio_range)
-        elif len(self.img_scale) == 1:
-            scale, scale_idx = self.img_scale[0], 0
-        elif self.multiscale_mode == 'range':
-            scale, scale_idx = self.random_sample(self.img_scale)
-        elif self.multiscale_mode == 'value':
+        if self.multiscale_mode:
             scale, scale_idx = self.random_select(self.img_scale)
         else:
-            raise NotImplementedError
+            scale, scale_idx = self.img_scale, 0
 
-        results['scale'] = scale #(W,H)
+        results['scale'] = (scale[1],scale[0]) #(W,H)
         results['scale_idx'] = scale_idx
 
     def _resize_img(self, results):
         """Resize images with ``results['scale']``."""
         for key in results.get('img_fields', ['img']):
-            if self.keep_ratio:
-                img, scale_factor = mmcv.imrescale(
-                    results[key],
-                    results['scale'],
-                    return_scale=True,
-                    interpolation=self.interpolation,
-                    backend=self.backend)
-                # the w_scale and h_scale has minor difference
-                # a real fix should be done in the mmcv.imrescale in the future
-                new_h, new_w = img.shape[:2]
-                h, w = results[key].shape[:2]
-                w_scale = new_w / w
-                h_scale = new_h / h
-            else:
-                img, w_scale, h_scale = mmcv.imresize(
-                    results[key],
-                    results['scale'],
-                    return_scale=True,
-                    interpolation=self.interpolation,
-                    backend=self.backend)
+            img, scale_factor = wmli.resize_imgv2(results[key],
+                results['scale'],
+                return_scale=True,
+                )
+            # the w_scale and h_scale has minor difference
+            # a real fix should be done in the mmcv.imrescale in the future
+            new_h, new_w = img.shape[:2]
+            h, w = results[key].shape[:2]
+            w_scale = new_w / w
+            h_scale = new_h / h
+
             results[key] = img
 
             scale_factor = np.array([w_scale, h_scale, w_scale, h_scale],
@@ -903,7 +914,6 @@ class WResize:
             # in case that there is no padding
             results['pad_shape'] = img.shape
             results['scale_factor'] = scale_factor
-            results['keep_ratio'] = self.keep_ratio
 
     def _resize_bboxes(self, results):
         """Resize bounding boxes with ``results['scale_factor']``."""
@@ -917,25 +927,18 @@ class WResize:
 
     def _resize_masks(self, results):
         """Resize masks with ``results['scale']``"""
+        new_shape = results['img'].shape[:2][::-1]
         for key in results.get('mask_fields', []):
             if results[key] is None:
                 continue
-            if self.keep_ratio:
-                results[key] = results[key].rescale(results['scale'])
-            else:
-                results[key] = results[key].resize(results['img_shape'][:2])
+            masks = results[key].masks
+            masks = wtu.npresize_mask(masks,new_shape) 
+            results[key] = BitmapMasks(masks)
 
     def _resize_seg(self, results):
         """Resize semantic segmentation map with ``results['scale']``."""
         for key in results.get('seg_fields', []):
-            if self.keep_ratio:
-                gt_seg = mmcv.imrescale(
-                    results[key],
-                    results['scale'],
-                    interpolation='nearest',
-                    backend=self.backend)
-            else:
-                gt_seg = mmcv.imresize(
+            gt_seg = mmcv.imrescale(
                     results[key],
                     results['scale'],
                     interpolation='nearest',
@@ -968,4 +971,308 @@ class WResize:
         repr_str += f'ratio_range={self.ratio_range}, '
         repr_str += f'keep_ratio={self.keep_ratio}, '
         repr_str += f'bbox_clip_border={self.bbox_clip_border})'
+        return repr_str
+
+@PIPELINES.register_module()
+class WMosaic:
+    """Mosaic augmentation.
+
+    Given 4 images, mosaic transform combines them into
+    one output image. The output image is composed of the parts from each sub-
+    image.
+
+    .. code:: text
+
+                        mosaic transform
+                           center_x
+                +------------------------------+
+                |       pad        |  pad      |
+                |      +-----------+           |
+                |      |           |           |
+                |      |  image1   |--------+  |
+                |      |           |        |  |
+                |      |           | image2 |  |
+     center_y   |----+-------------+-----------|
+                |    |   cropped   |           |
+                |pad |   image3    |  image4   |
+                |    |             |           |
+                +----|-------------+-----------+
+                     |             |
+                     +-------------+
+
+     The mosaic transform steps are as follows:
+
+         1. Choose the mosaic center as the intersections of 4 images
+         2. Get the left top image according to the index, and randomly
+            sample another 3 images from the custom dataset.
+         3. Sub image will be cropped if image is larger than mosaic patch
+
+    Args:
+        img_scale (Sequence[int]): Image size after mosaic pipeline of single
+            image. The shape order should be (height, width).
+            Default to (640, 640).
+        center_ratio_range (Sequence[float]): Center ratio range of mosaic
+            output. Default to (0.5, 1.5).
+        min_bbox_size (int | float): The minimum pixel for filtering
+            invalid bboxes after the mosaic pipeline. Default to 0.
+        bbox_clip_border (bool, optional): Whether to clip the objects outside
+            the border of the image. In some dataset like MOT17, the gt bboxes
+            are allowed to cross the border of images. Therefore, we don't
+            need to clip the gt bboxes in these cases. Defaults to True.
+        skip_filter (bool): Whether to skip filtering rules. If it
+            is True, the filter rule will not be applied, and the
+            `min_bbox_size` is invalid. Default to True.
+        pad_val (int): Pad value. Default to 114.
+        prob (float): Probability of applying this transformation.
+            Default to 1.0.
+    """
+
+    def __init__(self,
+                 img_scale=(640, 640), #(H,W)
+                 center_ratio_range=(0.5, 1.5),
+                 min_bbox_size=0,
+                 bbox_clip_border=True,
+                 skip_filter=True,
+                 pad_val=114,
+                 prob=1.0):
+        assert isinstance(img_scale, tuple)
+        assert 0 <= prob <= 1.0, 'The probability should be in range [0,1]. '\
+            f'got {prob}.'
+
+        self.img_scale = img_scale
+        self.center_ratio_range = center_ratio_range
+        self.min_bbox_size = min_bbox_size
+        self.bbox_clip_border = bbox_clip_border
+        self.skip_filter = skip_filter
+        self.pad_val = pad_val
+        self.prob = prob
+
+    def __call__(self, results):
+        """Call function to make a mosaic of image.
+
+        Args:
+            results (dict): Result dict.
+
+        Returns:
+            dict: Result dict with mosaic transformed.
+        """
+
+        if random.uniform(0, 1) > self.prob:
+            results['mosaic'] = False
+            return results
+
+        results = self._mosaic_transform(results)
+        results['mosaic'] = True
+        return results
+
+    def get_indexes(self, dataset):
+        """Call function to collect indexes.
+
+        Args:
+            dataset (:obj:`MultiImageMixDataset`): The dataset.
+
+        Returns:
+            list: indexes.
+        """
+
+        indexes = [random.randint(0, len(dataset)-1) for _ in range(3)]
+        return indexes
+
+    def _mosaic_transform(self, results):
+        """Mosaic transform function.
+
+        Args:
+            results (dict): Result dict.
+
+        Returns:
+            dict: Updated result dict.
+        """
+
+        assert 'mix_results' in results
+        mosaic_labels = []
+        mosaic_bboxes = []
+        if len(results['img'].shape) == 3:
+            mosaic_img = np.full(
+                (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2), 3),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        else:
+            mosaic_img = np.full(
+                (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2)),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        
+        if 'gt_masks' in results:
+            mosaic_mask = []
+            mosaic_mask_shape = (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2))
+        else:
+            mosaic_mask = None
+
+        # mosaic center x, y
+        center_x = int(
+            random.uniform(*self.center_ratio_range) * self.img_scale[1])
+        center_y = int(
+            random.uniform(*self.center_ratio_range) * self.img_scale[0])
+        center_position = (center_x, center_y)
+
+        loc_strs = ('top_left', 'top_right', 'bottom_left', 'bottom_right')
+        for i, loc in enumerate(loc_strs):
+            if loc == 'top_left':
+                results_patch = copy.deepcopy(results)
+            else:
+                results_patch = copy.deepcopy(results['mix_results'][i - 1])
+
+            img_i = results_patch['img']
+            h_i, w_i = img_i.shape[:2]
+            # keep_ratio resize
+            scale_ratio_i = min(self.img_scale[0] / h_i,
+                                self.img_scale[1] / w_i)
+            img_i = mmcv.imresize(
+                img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+            
+            if mosaic_mask is not None:
+                mask_i = results_patch['gt_masks'].masks
+                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+
+            # compute the combine parameters
+            paste_coord, crop_coord = self._mosaic_combine(
+                loc, center_position, img_i.shape[:2][::-1])
+            x1_p, y1_p, x2_p, y2_p = paste_coord
+            x1_c, y1_c, x2_c, y2_c = crop_coord
+
+            # crop and paste image
+            mosaic_img[y1_p:y2_p, x1_p:x2_p] = img_i[y1_c:y2_c, x1_c:x2_c]
+            if mosaic_mask is not None:
+                n_mask_i[:,y1_p:y2_p, x1_p:x2_p] = mask_i[:,y1_c:y2_c, x1_c:x2_c]
+
+
+            # adjust coordinate
+            gt_bboxes_i = results_patch['gt_bboxes']
+            gt_labels_i = results_patch['gt_labels']
+
+            if gt_bboxes_i.shape[0] > 0:
+                padw = x1_p - x1_c
+                padh = y1_p - y1_c
+                gt_bboxes_i[:, 0::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 0::2] + padw
+                gt_bboxes_i[:, 1::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 1::2] + padh
+
+            mosaic_bboxes.append(gt_bboxes_i)
+            mosaic_labels.append(gt_labels_i)
+            if mosaic_mask is not None:
+                mosaic_mask.append(n_mask_i)
+
+        if len(mosaic_labels) > 0:
+            mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
+            mosaic_labels = np.concatenate(mosaic_labels, 0)
+            if mosaic_mask is not None:
+                mosaic_mask = np.concatenate(mosaic_mask, 0)
+
+            if self.bbox_clip_border:
+                mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
+                                                 2 * self.img_scale[1])
+                mosaic_bboxes[:, 1::2] = np.clip(mosaic_bboxes[:, 1::2], 0,
+                                                 2 * self.img_scale[0])
+
+            if not self.skip_filter:
+                mosaic_bboxes, mosaic_labels,valid_inds = \
+                    self._filter_box_candidates(mosaic_bboxes, mosaic_labels)
+                if mosaic_mask is not None:
+                    mosaic_mask = mosaic_mask[valid_inds]
+
+        # remove outside bboxes
+        inside_inds = find_inside_bboxes(mosaic_bboxes, 2 * self.img_scale[0],
+                                         2 * self.img_scale[1])
+        mosaic_bboxes = mosaic_bboxes[inside_inds]
+        mosaic_labels = mosaic_labels[inside_inds]
+        if mosaic_mask is not None:
+            mosaic_mask = mosaic_mask[inside_inds]
+            results['gt_masks'] = BitmapMasks(mosaic_mask)
+
+        results['img'] = mosaic_img
+        results['img_shape'] = mosaic_img.shape
+        results['gt_bboxes'] = mosaic_bboxes
+        results['gt_labels'] = mosaic_labels
+
+        return results
+
+    def _mosaic_combine(self, loc, center_position_xy, img_shape_wh):
+        """Calculate global coordinate of mosaic image and local coordinate of
+        cropped sub-image.
+
+        Args:
+            loc (str): Index for the sub-image, loc in ('top_left',
+              'top_right', 'bottom_left', 'bottom_right').
+            center_position_xy (Sequence[float]): Mixing center for 4 images,
+                (x, y).
+            img_shape_wh (Sequence[int]): Width and height of sub-image
+
+        Returns:
+            tuple[tuple[float]]: Corresponding coordinate of pasting and
+                cropping
+                - paste_coord (tuple): paste corner coordinate in mosaic image.
+                - crop_coord (tuple): crop corner coordinate in mosaic image.
+        """
+        assert loc in ('top_left', 'top_right', 'bottom_left', 'bottom_right')
+        if loc == 'top_left':
+            # index0 to top left part of image
+            x1, y1, x2, y2 = max(center_position_xy[0] - img_shape_wh[0], 0), \
+                             max(center_position_xy[1] - img_shape_wh[1], 0), \
+                             center_position_xy[0], \
+                             center_position_xy[1]
+            crop_coord = img_shape_wh[0] - (x2 - x1), img_shape_wh[1] - (
+                y2 - y1), img_shape_wh[0], img_shape_wh[1]
+
+        elif loc == 'top_right':
+            # index1 to top right part of image
+            x1, y1, x2, y2 = center_position_xy[0], \
+                             max(center_position_xy[1] - img_shape_wh[1], 0), \
+                             min(center_position_xy[0] + img_shape_wh[0],
+                                 self.img_scale[1] * 2), \
+                             center_position_xy[1]
+            crop_coord = 0, img_shape_wh[1] - (y2 - y1), min(
+                img_shape_wh[0], x2 - x1), img_shape_wh[1]
+
+        elif loc == 'bottom_left':
+            # index2 to bottom left part of image
+            x1, y1, x2, y2 = max(center_position_xy[0] - img_shape_wh[0], 0), \
+                             center_position_xy[1], \
+                             center_position_xy[0], \
+                             min(self.img_scale[0] * 2, center_position_xy[1] +
+                                 img_shape_wh[1])
+            crop_coord = img_shape_wh[0] - (x2 - x1), 0, img_shape_wh[0], min(
+                y2 - y1, img_shape_wh[1])
+
+        else:
+            # index3 to bottom right part of image
+            x1, y1, x2, y2 = center_position_xy[0], \
+                             center_position_xy[1], \
+                             min(center_position_xy[0] + img_shape_wh[0],
+                                 self.img_scale[1] * 2), \
+                             min(self.img_scale[0] * 2, center_position_xy[1] +
+                                 img_shape_wh[1])
+            crop_coord = 0, 0, min(img_shape_wh[0],
+                                   x2 - x1), min(y2 - y1, img_shape_wh[1])
+
+        paste_coord = x1, y1, x2, y2
+        return paste_coord, crop_coord
+
+    def _filter_box_candidates(self, bboxes, labels):
+        """Filter out bboxes too small after Mosaic."""
+        bbox_w = bboxes[:, 2] - bboxes[:, 0]
+        bbox_h = bboxes[:, 3] - bboxes[:, 1]
+        valid_inds = (bbox_w > self.min_bbox_size) & \
+                     (bbox_h > self.min_bbox_size)
+        valid_inds = np.nonzero(valid_inds)[0]
+        return bboxes[valid_inds], labels[valid_inds],valid_inds
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'img_scale={self.img_scale}, '
+        repr_str += f'center_ratio_range={self.center_ratio_range}, '
+        repr_str += f'pad_val={self.pad_val}, '
+        repr_str += f'min_bbox_size={self.min_bbox_size}, '
+        repr_str += f'skip_filter={self.skip_filter})'
         return repr_str

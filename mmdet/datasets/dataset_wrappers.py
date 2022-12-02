@@ -4,13 +4,16 @@ import collections
 import copy
 import math
 from collections import defaultdict
-
+import torch
 import numpy as np
 from mmcv.utils import build_from_cfg, print_log
 from torch.utils.data.dataset import ConcatDataset as _ConcatDataset
-
+import wml_utils as wmlu
 from .builder import DATASETS, PIPELINES
 from .coco import CocoDataset
+from mmcv.parallel import DataContainer as DC
+import os
+
 
 
 @DATASETS.register_module()
@@ -434,7 +437,7 @@ class MultiImageMixDataset:
                     break
             else:
                 raise RuntimeError(
-                    'The training pipeline of the dataset wrapper'
+                    f'The training pipeline {transform_type} of the dataset wrapper'
                     ' always return None.Please check the correctness '
                     'of the dataset and its pipeline.')
 
@@ -442,6 +445,23 @@ class MultiImageMixDataset:
                 results.pop('mix_results')
 
         return results
+    
+    def show_shape(self,results,name):
+        if results is None:
+            return
+        img = results['img']
+        if isinstance(img,DC):
+            return
+        print(f"{os.getpid()}{name}, {img.shape}")
+
+    def check_mask_shape(self,results,name):
+        if results is None:
+            return
+        img = results['img']
+        if isinstance(img,np.ndarray) or torch.is_tensor(img):
+            mask = results['gt_masks'].masks
+            if img.shape[0] != mask.shape[1] or img.shape[1] != mask.shape[2]:
+                print(f"ERROR shape, {name}: {img.shape}, {mask.shape}")
 
     def update_skip_type_keys(self, skip_type_keys):
         """Update skip_type_keys. It is called by an external hook.

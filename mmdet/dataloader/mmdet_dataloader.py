@@ -79,7 +79,7 @@ def mmdet_dataloader(dataset,
         # a mini-batch indices each time.
         # it can be used in both `DataParallel` and
         # `DistributedDataParallel`
-        if shuffle:
+        '''if shuffle:
             batch_sampler = InfiniteGroupBatchSampler(
                 dataset, batch_size, world_size, rank, seed=seed)
         else:
@@ -89,7 +89,14 @@ def mmdet_dataloader(dataset,
                 world_size,
                 rank,
                 seed=seed,
-                shuffle=False)
+                shuffle=False)'''
+        batch_sampler = InfiniteBatchSampler(
+                dataset,
+                batch_size,
+                world_size,
+                rank,
+                seed=seed,
+                shuffle=shuffle)
         batch_size = 1
         sampler = None
     else:

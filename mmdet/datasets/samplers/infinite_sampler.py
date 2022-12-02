@@ -93,6 +93,12 @@ class InfiniteGroupBatchSampler(Sampler):
             if len(group_buffer) == self.batch_size:
                 yield group_buffer[:]
                 del group_buffer[:]
+            elif len(group_buffer)>self.batch_size:
+                while len(group_buffer)>self.batch_size:
+                    cur_data = group_buffer[:self.batch_size]
+                    group_buffer = group_buffer[self.batch_size:]
+                    yield cur_data
+                    del cur_data
 
     def __len__(self):
         """Length of base dataset."""
@@ -176,6 +182,12 @@ class InfiniteBatchSampler(Sampler):
             if len(batch_buffer) == self.batch_size:
                 yield batch_buffer
                 batch_buffer = []
+            elif len(batch_buffer)>self.batch_size:
+                while len(batch_buffer)>self.batch_size:
+                    cur_data = batch_buffer[:self.batch_size]
+                    batch_buffer = batch_buffer[self.batch_size:]
+                    yield cur_data
+                    del cur_data
 
     def __len__(self):
         """Length of base dataset."""
