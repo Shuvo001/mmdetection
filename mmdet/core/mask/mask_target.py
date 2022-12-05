@@ -107,20 +107,24 @@ def mask_target_single(pos_proposals, pos_assigned_gt_inds, gt_masks, cfg):
     binarize = not cfg.get('soft_mask_target', False)
     num_pos = pos_proposals.size(0)
     if num_pos > 0:
-        proposals_np = pos_proposals.cpu().numpy()
+        '''proposals_np = pos_proposals.cpu().numpy()
         maxh, maxw = gt_masks.height, gt_masks.width
         proposals_np[:, [0, 2]] = np.clip(proposals_np[:, [0, 2]], 0, maxw)
         proposals_np[:, [1, 3]] = np.clip(proposals_np[:, [1, 3]], 0, maxh)
-        pos_assigned_gt_inds = pos_assigned_gt_inds.cpu().numpy()
+        pos_assigned_gt_inds = pos_assigned_gt_inds.cpu().numpy()'''
+        proposals = pos_proposals
+        maxh, maxw = gt_masks.height, gt_masks.width
+        proposals[:, [0, 2]] = torch.clip(proposals[:, [0, 2]], 0, maxw)
+        proposals[:, [1, 3]] = torch.clip(proposals[:, [1, 3]], 0, maxh)
 
-        mask_targets = gt_masks.crop_and_resize(
-            proposals_np,
+        mask_targets = gt_masks.crop_and_resize_torch(
+            proposals,
             mask_size,
             device=device,
             inds=pos_assigned_gt_inds,
-            binarize=binarize).to_ndarray()
+            binarize=binarize)
 
-        mask_targets = torch.from_numpy(mask_targets).float().to(device)
+        mask_targets = mask_targets.float().to(device)
     else:
         mask_targets = pos_proposals.new_zeros((0, ) + mask_size)
 

@@ -10,7 +10,8 @@ import torch
 from mmcv.parallel import collate
 from mmcv.runner import get_dist_info
 from mmcv.utils import TORCH_VERSION, Registry, build_from_cfg, digit_version
-from torch.utils.data import DataLoader
+#from torch.utils.data import DataLoader
+from wtorch.data import DataLoader
 from .build import DATALOADER_REGISTER
 
 from mmdet.datasets.samplers import (ClassAwareSampler, DistributedGroupSampler,
@@ -145,6 +146,7 @@ def mmdet_dataloader(dataset,
         collate_fn=partial(collate, samples_per_gpu=samples_per_gpu),
         pin_memory=kwargs.pop('pin_memory', False),
         worker_init_fn=init_fn,
+        batch_split_nr=1,
         **kwargs)
 
     return data_loader

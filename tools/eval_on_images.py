@@ -143,8 +143,8 @@ def main():
 
     for i,data in enumerate(items):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
-        if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-00_DUST_CAM00":
-            continue
+        #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-00_DUST_CAM00":
+            #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
@@ -156,18 +156,21 @@ def main():
             else:
                 shutil.copy(full_path,img_save_path)
     
-            img_save_path = os.path.join(save_path,name+"_a.jpg")
+            img_save_path = os.path.join(save_path,name+"_pred.jpg")
             img = wmli.imread(full_path)
             if save_size is not None:
                 img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
                 t_bboxes = bboxes*r
             else:
                 t_bboxes = bboxes
-            img = odv.draw_bboxes_xy(img,scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn)
+            img = odv.draw_bboxes_xy(img,
+                                     scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
+                                     show_text=False)
             if det_masks is not None:
                 img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
             wmli.imwrite(img_save_path,img)
-            img_save_path = os.path.join(save_path,name+"_b.jpg")
+
+            img_save_path = os.path.join(save_path,name+"_gt.jpg")
             img = wmli.imread(full_path)
             if save_size is not None:
                 img,r = wmli.resize_imgv2(img,save_size,return_scale=True)

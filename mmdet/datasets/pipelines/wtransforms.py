@@ -10,6 +10,7 @@ from mmdet.core import find_inside_bboxes, BitmapMasks
 import wtorch.utils as wtu
 import img_utils as wmli
 import object_detection2.bboxes as odb
+from collections import Iterable
 
 
 
@@ -841,7 +842,16 @@ class WResize:
                  bbox_clip_border=True,
                  override=False):
 
-        self.img_scale = img_scale
+        if multiscale_mode:
+            if not isinstance(img_scale[0],Iterable):
+                self.img_scale = [(x,x) for x in img_scale]
+            else:
+                self.img_scale = img_scale
+        else:
+            if not isinstance(img_scale,Iterable):
+                self.img_scale = (img_scale,img_scale)
+            else:
+                self.img_scale = img_scale
 
         self.multiscale_mode = multiscale_mode
         # TODO: refactor the override option in Resize

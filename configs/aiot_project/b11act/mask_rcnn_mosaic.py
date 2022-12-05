@@ -4,6 +4,7 @@ _base_ = [
 ]
 # dataset settings
 classes =  ("burnt","puncture","crease","scratch")
+random_resize_scales = [1024, 992, 960, 928, 896, 864]
 model = dict(
     type='MaskRCNN',
     backbone=dict(
@@ -97,7 +98,7 @@ train_pipeline = [
         ratio_range=(0.8, 1.6),
         prob=0.3,
         pad_val=114.0,skip_filter=False),
-    dict(type='WResize', img_scale=img_scale),
+    dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),

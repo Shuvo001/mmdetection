@@ -120,7 +120,10 @@ class WCustomDataset(Dataset):
             # set group flag for the sampler
             self._set_group_flag()
 
-        self.__data_cache = {}
+        self.__data_cache = []
+        for i in range(len(self._inner_dataset)):
+            self.__data_cache.append(self._inner_dataset[i])
+        print(f"Total cache {len(self.__data_cache)} data items.")
         # processing pipeline
         self.pipeline = Compose(pipeline)
 
@@ -210,12 +213,7 @@ class WCustomDataset(Dataset):
                 continue
             return data
     def _ann_item(self,idx):
-        if idx not in self.__data_cache:
-            cur_data = self._inner_dataset[idx]
-            self.__data_cache[idx] = cur_data
-        else:
-            cur_data = self.__data_cache[idx]
-        return cur_data
+        return self.__data_cache[idx]
 
     def prepare_train_img(self, idx):
         """Get training data and annotations after pipeline.
@@ -249,11 +247,7 @@ class WCustomDataset(Dataset):
             dict: Testing data after pipeline with new keys introduced by \
                 pipeline.
         """
-        if idx not in self.__data_cache:
-            cur_data = self._inner_dataset[idx]
-            self.__data_cache[idx] = cur_data
-        else:
-            cur_data = self.__data_cache[idx]
+        cur_data = self._ann_item(idx)
         img_file, img_shape,labels, labels_names, bboxes, masks, *_ = cur_data
         bboxes = odb.npchangexyorder(bboxes)
         labels = np.array(labels).astype(np.int32)
