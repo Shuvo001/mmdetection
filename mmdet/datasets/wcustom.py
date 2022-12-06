@@ -2,7 +2,7 @@
 import os.path as osp
 import warnings
 from collections import OrderedDict
-
+import copy
 import mmcv
 import numpy as np
 from mmcv.utils import print_log
@@ -65,7 +65,8 @@ class WCustomDataset(Dataset):
                  proposal_file=None,
                  test_mode=False,
                  filter_empty_gt=True,
-                 file_client_args=dict(backend='disk')):
+                 file_client_args=dict(backend='disk'),
+                 cache_processed_data=False):
         self.ann_file = ann_file
         self.data_root = data_root
         self.img_prefix = img_prefix
@@ -120,12 +121,23 @@ class WCustomDataset(Dataset):
             # set group flag for the sampler
             self._set_group_flag()
 
-        self.__data_cache = []
-        for i in range(len(self._inner_dataset)):
-            self.__data_cache.append(self._inner_dataset[i])
-        print(f"Total cache {len(self.__data_cache)} data items.")
         # processing pipeline
         self.pipeline = Compose(pipeline)
+
+        self._data_cache = None
+        self._processed_data_cache = None
+        if cache_processed_data:
+            self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
+            self._processed_data_cache = []
+            for i in range(len(self._inner_dataset)):
+                self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
+            print(f"Total cache {len(self._processed_data_cache)} processed data items.")
+        else:
+            self._data_cache = []
+            for i in range(len(self._inner_dataset)):
+                self._data_cache.append(self._inner_dataset[i])
+            print(f"Total cache {len(self._data_cache)} data items.")
+        self.cache_processed_data = cache_processed_data
 
     def __len__(self):
         """Total number of samples of data."""
@@ -203,6 +215,8 @@ class WCustomDataset(Dataset):
             dict: Training/test data (with annotation if `test_mode` is set \
                 True).
         """
+        if self.cache_processed_data:
+            return copy.deepcopy(self._processed_data_cache[idx])
 
         if self.test_mode:
             return self.prepare_test_img(idx)
@@ -212,8 +226,12 @@ class WCustomDataset(Dataset):
                 idx = self._rand_another(idx)
                 continue
             return data
+
     def _ann_item(self,idx):
-        return self.__data_cache[idx]
+        if self._data_cache is not None:
+            return self._data_cache[idx]
+        else:
+            return self._inner_dataset[idx]
 
     def prepare_train_img(self, idx):
         """Get training data and annotations after pipeline.

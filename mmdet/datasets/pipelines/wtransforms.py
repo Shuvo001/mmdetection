@@ -36,20 +36,18 @@ class WRandomCrop:
     '''
 
     def __init__(self,
-                 crop_size=None, #(H,W)
+                 crop_size=None, #(H,W) or list of (H,W)
                  img_pad_value=127,
                  mask_pad_value=0,
                  bbox_keep_ratio=0.25,
                  crop_if=None):
         assert isinstance(crop_size, (list, tuple))
-        assert crop_size[0] > 0 and crop_size[1] > 0, (
-                'crop_size must > 0 in train mode')
-
         self.crop_size = crop_size
         self.img_pad_value = img_pad_value
         self.mask_pad_value = mask_pad_value
         self.bbox_keep_ratio = bbox_keep_ratio
         self.crop_if = crop_if
+        self.multiscale_mode = isinstance(crop_size[0],Iterable)
 
     def _train_aug(self, results):
         """Random crop and around padding the original image.
@@ -62,8 +60,13 @@ class WRandomCrop:
         """
         img = results['img']
         h, w, c = img.shape
-        new_h = min(self.crop_size[0],h)
-        new_w = min(self.crop_size[1],w)
+        if not self.multiscale_mode:
+            crop_size = self.crop_size
+        else:
+            crop_size = random.choice(self.crop_size)
+
+        new_h = min(crop_size[0],h)
+        new_w = min(crop_size[1],w)
         if new_w<w:
             x_offset = np.random.randint(low=0, high=w - new_w)
         else:
@@ -116,8 +119,9 @@ class WRandomCrop:
 
     def __call__(self, results):
         if self.crop_if is not None:
+            process_pipline = results.get('process',[])
             for key in self.crop_if:
-                if results.get(key,False):
+                if key in process_pipline:
                     return self._train_aug(results)
             return results
         else:
@@ -581,7 +585,14 @@ class WMixUpWithMask:
         Returns:
             dict: Result dict with mixup transformed.
         """
-        if random.uniform(0, 1) > self.prob:
+        process_pipline = results.get('process',[])
+
+        if 'WMosaic' in process_pipline:
+            prob = self.prob/2
+        else:
+            prob = self.prob
+
+        if random.uniform(0, 1) > prob:
             return results
 
         results = self._mixup_transform(results)
@@ -1044,7 +1055,8 @@ class WMosaic:
                  bbox_clip_border=True,
                  skip_filter=True,
                  pad_val=114,
-                 prob=1.0):
+                 prob=1.0,
+                 two_imgs_directions=['horizontal', 'vertical']):
         assert isinstance(img_scale, tuple)
         assert 0 <= prob <= 1.0, 'The probability should be in range [0,1]. '\
             f'got {prob}.'
@@ -1056,6 +1068,15 @@ class WMosaic:
         self.skip_filter = skip_filter
         self.pad_val = pad_val
         self.prob = prob
+        directions = []
+        for sd in two_imgs_directions:
+            if sd== "horizontal":
+                directions.append(0)
+            elif sd == "vertical":
+                directions.append(1)
+            elif isinstance(sd,int):
+                directions.append(sd)
+        self.two_imgs_directions = directions
 
     def __call__(self, results):
         """Call function to make a mosaic of image.
@@ -1067,12 +1088,18 @@ class WMosaic:
             dict: Result dict with mosaic transformed.
         """
 
+        results.setdefault('process',[])
         if random.uniform(0, 1) > self.prob:
-            results['mosaic'] = False
+            results['process'].append(type(self).__name__)
             return results
 
-        results = self._mosaic_transform(results)
-        results['mosaic'] = True
+        if len(results['mix_results'])==3:
+            results = self._mosaic_transform_4imgs(results)
+        else:
+            funcs = [self._mosaic_transform_2imgsh,self._mosaic_transform_2imgsv]
+            t = random.choice(self.two_imgs_directions)
+            return funcs[t](results)
+        results['process'].append(type(self).__name__)
         return results
 
     def get_indexes(self, dataset):
@@ -1085,10 +1112,11 @@ class WMosaic:
             list: indexes.
         """
 
-        indexes = [random.randint(0, len(dataset)-1) for _ in range(3)]
+        nr = random.choice([1,3])
+        indexes = [random.randint(0, len(dataset)-1) for _ in range(nr)]
         return indexes
 
-    def _mosaic_transform(self, results):
+    def _mosaic_transform_4imgs(self, results):
         """Mosaic transform function.
 
         Args:
@@ -1126,6 +1154,244 @@ class WMosaic:
         center_position = (center_x, center_y)
 
         loc_strs = ('top_left', 'top_right', 'bottom_left', 'bottom_right')
+        for i, loc in enumerate(loc_strs):
+            if loc == 'top_left':
+                results_patch = copy.deepcopy(results)
+            else:
+                results_patch = copy.deepcopy(results['mix_results'][i - 1])
+
+            img_i = results_patch['img']
+            h_i, w_i = img_i.shape[:2]
+            # keep_ratio resize
+            scale_ratio_i = min(self.img_scale[0] / h_i,
+                                self.img_scale[1] / w_i)
+            img_i = mmcv.imresize(
+                img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+            
+            if mosaic_mask is not None:
+                mask_i = results_patch['gt_masks'].masks
+                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+
+            # compute the combine parameters
+            paste_coord, crop_coord = self._mosaic_combine(
+                loc, center_position, img_i.shape[:2][::-1])
+            x1_p, y1_p, x2_p, y2_p = paste_coord
+            x1_c, y1_c, x2_c, y2_c = crop_coord
+
+            # crop and paste image
+            mosaic_img[y1_p:y2_p, x1_p:x2_p] = img_i[y1_c:y2_c, x1_c:x2_c]
+            if mosaic_mask is not None:
+                n_mask_i[:,y1_p:y2_p, x1_p:x2_p] = mask_i[:,y1_c:y2_c, x1_c:x2_c]
+
+
+            # adjust coordinate
+            gt_bboxes_i = results_patch['gt_bboxes']
+            gt_labels_i = results_patch['gt_labels']
+
+            if gt_bboxes_i.shape[0] > 0:
+                padw = x1_p - x1_c
+                padh = y1_p - y1_c
+                gt_bboxes_i[:, 0::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 0::2] + padw
+                gt_bboxes_i[:, 1::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 1::2] + padh
+
+            mosaic_bboxes.append(gt_bboxes_i)
+            mosaic_labels.append(gt_labels_i)
+            if mosaic_mask is not None:
+                mosaic_mask.append(n_mask_i)
+
+        if len(mosaic_labels) > 0:
+            mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
+            mosaic_labels = np.concatenate(mosaic_labels, 0)
+            if mosaic_mask is not None:
+                mosaic_mask = np.concatenate(mosaic_mask, 0)
+
+            if self.bbox_clip_border:
+                mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
+                                                 2 * self.img_scale[1])
+                mosaic_bboxes[:, 1::2] = np.clip(mosaic_bboxes[:, 1::2], 0,
+                                                 2 * self.img_scale[0])
+
+            if not self.skip_filter:
+                mosaic_bboxes, mosaic_labels,valid_inds = \
+                    self._filter_box_candidates(mosaic_bboxes, mosaic_labels)
+                if mosaic_mask is not None:
+                    mosaic_mask = mosaic_mask[valid_inds]
+
+        # remove outside bboxes
+        inside_inds = find_inside_bboxes(mosaic_bboxes, 2 * self.img_scale[0],
+                                         2 * self.img_scale[1])
+        mosaic_bboxes = mosaic_bboxes[inside_inds]
+        mosaic_labels = mosaic_labels[inside_inds]
+        if mosaic_mask is not None:
+            mosaic_mask = mosaic_mask[inside_inds]
+            results['gt_masks'] = BitmapMasks(mosaic_mask)
+
+        results['img'] = mosaic_img
+        results['img_shape'] = mosaic_img.shape
+        results['gt_bboxes'] = mosaic_bboxes
+        results['gt_labels'] = mosaic_labels
+
+        return results
+
+    def _mosaic_transform_2imgsh(self, results):
+        """Mosaic transform function.
+
+        Args:
+            results (dict): Result dict.
+
+        Returns:
+            dict: Updated result dict.
+        """
+
+        assert 'mix_results' in results
+        mosaic_labels = []
+        mosaic_bboxes = []
+        if len(results['img'].shape) == 3:
+            mosaic_img = np.full(
+                (int(self.img_scale[0]), int(self.img_scale[1] * 2), 3),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        else:
+            mosaic_img = np.full(
+                (int(self.img_scale[0]), int(self.img_scale[1] * 2)),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        
+        if 'gt_masks' in results:
+            mosaic_mask = []
+            mosaic_mask_shape = (int(self.img_scale[0]), int(self.img_scale[1] * 2))
+        else:
+            mosaic_mask = None
+
+        # mosaic center x, y
+        center_x = int(
+            random.uniform(*self.center_ratio_range) * self.img_scale[1])
+        center_y = int(self.img_scale[0]-1)
+        center_position = (center_x, center_y)
+
+        loc_strs = ('top_left', 'top_right')
+        for i, loc in enumerate(loc_strs):
+            if loc == 'top_left':
+                results_patch = copy.deepcopy(results)
+            else:
+                results_patch = copy.deepcopy(results['mix_results'][i - 1])
+
+            img_i = results_patch['img']
+            h_i, w_i = img_i.shape[:2]
+            # keep_ratio resize
+            scale_ratio_i = min(self.img_scale[0] / h_i,
+                                self.img_scale[1] / w_i)
+            img_i = mmcv.imresize(
+                img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+            
+            if mosaic_mask is not None:
+                mask_i = results_patch['gt_masks'].masks
+                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+
+            # compute the combine parameters
+            paste_coord, crop_coord = self._mosaic_combine(
+                loc, center_position, img_i.shape[:2][::-1])
+            x1_p, y1_p, x2_p, y2_p = paste_coord
+            x1_c, y1_c, x2_c, y2_c = crop_coord
+
+            # crop and paste image
+            mosaic_img[y1_p:y2_p, x1_p:x2_p] = img_i[y1_c:y2_c, x1_c:x2_c]
+            if mosaic_mask is not None:
+                n_mask_i[:,y1_p:y2_p, x1_p:x2_p] = mask_i[:,y1_c:y2_c, x1_c:x2_c]
+
+
+            # adjust coordinate
+            gt_bboxes_i = results_patch['gt_bboxes']
+            gt_labels_i = results_patch['gt_labels']
+
+            if gt_bboxes_i.shape[0] > 0:
+                padw = x1_p - x1_c
+                padh = y1_p - y1_c
+                gt_bboxes_i[:, 0::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 0::2] + padw
+                gt_bboxes_i[:, 1::2] = \
+                    scale_ratio_i * gt_bboxes_i[:, 1::2] + padh
+
+            mosaic_bboxes.append(gt_bboxes_i)
+            mosaic_labels.append(gt_labels_i)
+            if mosaic_mask is not None:
+                mosaic_mask.append(n_mask_i)
+
+        if len(mosaic_labels) > 0:
+            mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
+            mosaic_labels = np.concatenate(mosaic_labels, 0)
+            if mosaic_mask is not None:
+                mosaic_mask = np.concatenate(mosaic_mask, 0)
+
+            if self.bbox_clip_border:
+                mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
+                                                 2 * self.img_scale[1])
+                mosaic_bboxes[:, 1::2] = np.clip(mosaic_bboxes[:, 1::2], 0,
+                                                 2 * self.img_scale[0])
+
+            if not self.skip_filter:
+                mosaic_bboxes, mosaic_labels,valid_inds = \
+                    self._filter_box_candidates(mosaic_bboxes, mosaic_labels)
+                if mosaic_mask is not None:
+                    mosaic_mask = mosaic_mask[valid_inds]
+
+        # remove outside bboxes
+        inside_inds = find_inside_bboxes(mosaic_bboxes, 2 * self.img_scale[0],
+                                         2 * self.img_scale[1])
+        mosaic_bboxes = mosaic_bboxes[inside_inds]
+        mosaic_labels = mosaic_labels[inside_inds]
+        if mosaic_mask is not None:
+            mosaic_mask = mosaic_mask[inside_inds]
+            results['gt_masks'] = BitmapMasks(mosaic_mask)
+
+        results['img'] = mosaic_img
+        results['img_shape'] = mosaic_img.shape
+        results['gt_bboxes'] = mosaic_bboxes
+        results['gt_labels'] = mosaic_labels
+
+        return results
+
+    def _mosaic_transform_2imgsv(self, results):
+        """Mosaic transform function.
+
+        Args:
+            results (dict): Result dict.
+
+        Returns:
+            dict: Updated result dict.
+        """
+
+        assert 'mix_results' in results
+        mosaic_labels = []
+        mosaic_bboxes = []
+        if len(results['img'].shape) == 3:
+            mosaic_img = np.full(
+                (int(self.img_scale[0] * 2), int(self.img_scale[1]), 3),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        else:
+            mosaic_img = np.full(
+                (int(self.img_scale[0] * 2), int(self.img_scale[1])),
+                self.pad_val,
+                dtype=results['img'].dtype)
+        
+        if 'gt_masks' in results:
+            mosaic_mask = []
+            mosaic_mask_shape = (int(self.img_scale[0] * 2), int(self.img_scale[1]))
+        else:
+            mosaic_mask = None
+
+        # mosaic center x, y
+        center_x = int(self.img_scale[1]-1)
+        center_y = int(
+            random.uniform(*self.center_ratio_range) * self.img_scale[0])
+        center_position = (center_x, center_y)
+
+        loc_strs = ('top_left', 'bottom_left')
         for i, loc in enumerate(loc_strs):
             if loc == 'top_left':
                 results_patch = copy.deepcopy(results)

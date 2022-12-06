@@ -9,6 +9,7 @@ from .build import *
 import logging
 import time
 import os
+import sys
 import wtorch.summary as summary
 import random
 from wtorch.utils import unnormalize
@@ -222,6 +223,8 @@ class SimpleTrainer(BaseTrainer):
             model_time = self.run_info['model_time']
             iter_time = self.run_info['iter_time']
             print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, data_time={data_time:.3f}, model_time={model_time:.3f}, iter time={iter_time: .3f}, {self.estimate_time_cost}")
+            sys.stdout.flush()
+
         if self.iter%self.cfg.log_config.tb_interval == 0:
             self.tblog()
     

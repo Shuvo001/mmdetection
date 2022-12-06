@@ -376,6 +376,7 @@ class LoadAnnotations:
         gt_masks = BitmapMasks(gt_masks,height=h,width=w)
         results['gt_masks'] = gt_masks
         results['mask_fields'].append('gt_masks')
+        del results['ann_info']['bitmap_masks']
         return results
 
     def _load_semantic_seg(self, results):

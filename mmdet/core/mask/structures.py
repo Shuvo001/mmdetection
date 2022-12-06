@@ -369,9 +369,8 @@ class BitmapMasks(BaseInstanceMasks):
                 '''
                 maybe_mask = targets>1e-8
                 maybe_mask = torch.flatten(maybe_mask,start_dim=1)
-                base_div = out_shape[0]*out_shape[1]
-                percent = torch.count_nonzero(maybe_mask,dim=-1)/base_div
-                if torch.max(percent)>0.02:
+                nrs = torch.count_nonzero(maybe_mask,dim=-1)
+                if torch.max(nrs)>4:
                     resized_masks = (targets >= 0.01).cpu().numpy()
                 else:
                     resized_masks = (targets >= 0.5).cpu().numpy()
@@ -412,9 +411,8 @@ class BitmapMasks(BaseInstanceMasks):
                 '''
                 maybe_mask = targets>1e-8
                 maybe_mask = torch.flatten(maybe_mask,start_dim=1)
-                base_div = out_shape[0]*out_shape[1]
-                percent = torch.count_nonzero(maybe_mask,dim=-1)/base_div
-                if torch.max(percent)>0.02:
+                nrs = torch.count_nonzero(maybe_mask,dim=-1)
+                if torch.max(nrs)>4:
                     resized_masks = targets >= 0.01
                 else:
                     resized_masks = targets >= 0.5

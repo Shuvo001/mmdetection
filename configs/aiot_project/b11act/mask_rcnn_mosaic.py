@@ -4,7 +4,6 @@ _base_ = [
 ]
 # dataset settings
 classes =  ("burnt","puncture","crease","scratch")
-random_resize_scales = [1024, 992, 960, 928, 896, 864]
 model = dict(
     type='MaskRCNN',
     backbone=dict(
@@ -79,11 +78,13 @@ model = dict(
 dataset_type = 'LabelmeDataset'
 data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 img_scale = (640, 1024)  # height, width
+random_resize_scales = [1024, 992, 960, 928, 896, 864]
+random_crop_scales = [(640, 1024), (660, 1056), (680, 1088), (700, 1120), (720, 1152), (740, 1184)]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
-    dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False),
-    dict(type="WRandomCrop",crop_if=["mosaic"],crop_size=img_scale),
+    dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
+    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales),
     dict(type='WRotate',
         prob=0.3,
         max_rotate_angle=20.0,
@@ -133,6 +134,7 @@ train_dataset = dict(
             dict(type='LoadAnnotations', with_bbox=True,with_mask=True),
             dict(type='WResize', img_scale=img_scale),
         ],
+        cache_processed_data=True,
     ),
     pipeline=train_pipeline)
 
@@ -141,7 +143,7 @@ data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor",
     samples_per_gpu=samples_per_gpu,
-    workers_per_gpu=4,
+    workers_per_gpu=6,
     pin_memory=True,
     train= train_dataset,
     val=dict(
