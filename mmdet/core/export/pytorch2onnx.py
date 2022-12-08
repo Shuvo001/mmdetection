@@ -86,7 +86,7 @@ def build_model_from_cfg(config_path, checkpoint_path, cfg_options=None):
 
     # build the model
     cfg.model.train_cfg = None
-    model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
+    model = build_detector(cfg.model)
     checkpoint = load_checkpoint(model, checkpoint_path, map_location='cpu')
     if 'CLASSES' in checkpoint.get('meta', {}):
         model.CLASSES = checkpoint['meta']['CLASSES']
@@ -112,7 +112,7 @@ def preprocess_example_input(input_config):
     Examples:
         >>> from mmdet.core.export import preprocess_example_input
         >>> input_config = {
-        >>>         'input_shape': (1,3,224,224),
+        >>>         'input_shape': (1,3,224,224),   #(B,C,H,W)
         >>>         'input_path': 'demo/demo.jpg',
         >>>         'normalize_cfg': {
         >>>             'mean': (123.675, 116.28, 103.53),

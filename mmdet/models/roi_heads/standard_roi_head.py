@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import warnings
-from mmdet.core import bbox2result, bbox2roi, build_assigner, build_sampler
+from mmdet.core import bbox2result, bbox2roi,bbox2roi_one_img, build_assigner, build_sampler
 from mmdet.core.bbox.transforms import bbox2result_yolo_style
 from ..builder import HEADS, build_head, build_roi_extractor
 from .base_roi_head import BaseRoIHead
@@ -141,7 +141,7 @@ class StandardRoIHead(BaseRoIHead):
 
         Args:
             x (tuple[Tensor]): Feature maps of all scale level.
-            img_metas (list[dict]): Image meta info.
+            img_metas (list[dict]): Image meta info. 仅使用image_shape, 用于约束输出bboxes的范围
             proposals (List[Tensor]): tensor [N,5], (x0,y0,x1,y1,score) Region proposals.
             rcnn_test_cfg (obj:`ConfigDict`): `test_cfg` of R-CNN.
 
@@ -156,7 +156,7 @@ class StandardRoIHead(BaseRoIHead):
 
         rois = bbox2roi(proposals)
 
-        if rois.shape[0] == 0:
+        '''if rois.shape[0] == 0:
             batch_size = len(proposals)
             det_bbox = rois.new_zeros(0, 5)
             det_label = rois.new_zeros((0, ), dtype=torch.long)
@@ -165,7 +165,7 @@ class StandardRoIHead(BaseRoIHead):
                 det_label = rois.new_zeros(
                     (0, self.bbox_head.fc_cls.out_features))
             # There is no proposal in the whole batch
-            return [det_bbox] * batch_size, [det_label] * batch_size
+            return [det_bbox] * batch_size, [det_label] * batch_size'''
 
         bbox_results = self._bbox_forward(x, rois)
         if img_metas is not None:
@@ -201,17 +201,7 @@ class StandardRoIHead(BaseRoIHead):
         det_bboxes = []
         det_labels = []
         for i in range(len(proposals)): #for each image
-            if rois[i].shape[0] == 0:
-                # There is no proposal in the single image
-                det_bbox = rois[i].new_zeros(0, 5)
-                det_label = rois[i].new_zeros((0, ), dtype=torch.long)
-                if rcnn_test_cfg is None:
-                    det_bbox = det_bbox[:, :4]
-                    det_label = rois[i].new_zeros(
-                        (0, self.bbox_head.fc_cls.out_features))
-
-            else:
-                det_bbox, det_label = self.bbox_head.get_bboxes(
+            det_bbox, det_label = self.bbox_head.get_bboxes(
                     rois[i],
                     cls_score[i],
                     bbox_pred[i],
@@ -279,6 +269,7 @@ class StandardRoIHead(BaseRoIHead):
                     img_metas,
                     proposals=None):
         """Test without augmentation.
+        ***This function one support test one image.***
 
         Args:
             x (tuple[Tensor]): Features from upstream network. Each
@@ -304,7 +295,6 @@ class StandardRoIHead(BaseRoIHead):
         det_bboxes, det_labels = self.simple_test_bboxes(
             x, img_metas, proposal_list, self.test_cfg)
 
-        max_bboxes_nr = 100
         i = 0
         bbox_results = bbox2result_yolo_style(det_bboxes[i], det_labels[i])
 
@@ -312,7 +302,7 @@ class StandardRoIHead(BaseRoIHead):
             return bbox_results,torch.zeros([0,28,28],dtype=torch.uint8)
         else:
             segm_results = self.simple_test_mask(
-                x, img_metas, det_bboxes, det_labels)
+                x, det_bboxes, det_labels)
             return bbox_results,segm_results
     
     def simple_test__(self,
@@ -362,32 +352,18 @@ class StandardRoIHead(BaseRoIHead):
 
     def simple_test_mask(self,
                          x,
-                         img_metas,
                          det_bboxes,
                          det_labels):
         """Simple test for mask head without augmentation."""
+        '''This function only support test one img'''
 
-        num_imgs = len(det_bboxes)
-        assert num_imgs==1,f"Only support test one img"
-        if all(det_bbox.shape[0] == 0 for det_bbox in det_bboxes):
-            segm_results = torch.zeros([0,28,28],dtype=torch.uint8)
-        else:
-            _bboxes = [det_bbox[...,:4] for det_bbox in det_bboxes]
-            mask_rois = bbox2roi(_bboxes)
-            mask_results = self._mask_forward(x, mask_rois)
-            mask_pred = mask_results['mask_pred']
-            # split batch mask prediction back to each image
-            num_mask_roi_per_img = [len(det_bbox) for det_bbox in det_bboxes]
-            mask_preds = mask_pred.split(num_mask_roi_per_img, 0)
-
-            # apply mask post-processing to each image individually
-            i = 0
-            if det_bboxes[i].shape[0] == 0:
-                segm_results = torch.zeros([0,28,28],dtype=torch.uint8)
-            else:
-                segm_results = self.mask_head.get_seg_masks(
-                    mask_preds[i], _bboxes[i], det_labels[i],
-                    self.test_cfg)
+        _bboxes = det_bboxes[0][...,:4]
+        mask_rois = bbox2roi_one_img(_bboxes,0)
+        mask_results = self._mask_forward(x, mask_rois)
+        mask_pred = mask_results['mask_pred']
+        segm_results = self.mask_head.get_seg_masks(
+                mask_pred, _bboxes, det_labels[0],
+                self.test_cfg)
         return segm_results
 
 

@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import os
 import traceback
+from typing import List
 
 def find_inside_bboxes(bboxes, img_h, img_w):
     """Find bboxes as long as a part of bboxes is inside the image.
@@ -72,8 +73,26 @@ def bbox_mapping_back(bboxes,
     new_bboxes = new_bboxes.view(-1, 4) / new_bboxes.new_tensor(scale_factor)
     return new_bboxes.view(bboxes.shape)
 
+@torch.jit.script
+def bbox2roi_one_img(bboxes,img_id:int):
+    """Convert bboxes to roi format.
 
-def bbox2roi(bbox_list):
+
+    Returns:
+        Tensor: shape (n, 5), [batch_ind, x1, y1, x2, y2]
+    """
+    if bboxes.size(0) > 0:
+        img_inds = bboxes.new_full((bboxes.size(0), 1), img_id)
+        rois = torch.cat([img_inds, bboxes[:, :4]], dim=-1)
+    else:
+        #在rpn中已经做了措施，防止poposals大小为0，这一步应该不会出现
+        #print(f"ERROR: bbox2roi zero size bboxes.")
+        #print(traceback.format_exc())
+        rois = bboxes.new_zeros((0, 5))
+    
+    return rois
+
+def bbox2roi(bbox_list:List[torch.Tensor]):
     """Convert a list of bboxes to roi format.
 
     Args:
@@ -85,14 +104,7 @@ def bbox2roi(bbox_list):
     """
     rois_list = []
     for img_id, bboxes in enumerate(bbox_list):
-        if bboxes.size(0) > 0:
-            img_inds = bboxes.new_full((bboxes.size(0), 1), img_id)
-            rois = torch.cat([img_inds, bboxes[:, :4]], dim=-1)
-        else:
-            #在rpn中已经做了措施，防止poposals大小为0，这一步应该不会出现
-            #print(f"ERROR: bbox2roi zero size bboxes.")
-            #print(traceback.format_exc())
-            rois = bboxes.new_zeros((0, 5))
+        rois = bbox2roi_one_img(bboxes,img_id)
         rois_list.append(rois)
     rois = torch.cat(rois_list, 0)
     return rois

@@ -74,6 +74,17 @@ model = dict(
             loss_mask=dict(
                 type='CrossEntropyLoss', use_mask=True, loss_weight=1.0))),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
+        test_cfg=dict(
+            rpn=dict(
+                nms_pre=1000,
+                max_per_img=1000,
+                nms=dict(type='nms', iou_threshold=0.7),
+                min_bbox_size=0),
+            rcnn=dict(
+                score_thr=0.05,
+                nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.5),
+                max_per_img=100,
+                mask_thr_binary=0.5))
 )
 dataset_type = 'LabelmeDataset'
 data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'

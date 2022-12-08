@@ -138,10 +138,7 @@ def main(rank,world_size,args):
     meta['seed'] = seed
     meta['exp_name'] = osp.basename(args.config)
 
-    model = build_detector(
-        cfg.model,
-        train_cfg=cfg.get('train_cfg'),
-        test_cfg=cfg.get('test_cfg'))
+    model = build_detector(cfg.model)
     model.init_weights()
     model.to(device)
 

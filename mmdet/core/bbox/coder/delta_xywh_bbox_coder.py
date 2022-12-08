@@ -91,7 +91,7 @@ class DeltaXYWHBBoxCoder(BaseBBoxCoder):
         if pred_bboxes.ndim == 3:
             assert pred_bboxes.size(1) == bboxes.size(1)
 
-        if pred_bboxes.ndim == 2 and not torch.onnx.is_in_onnx_export():
+        if pred_bboxes.ndim == 2:
             # single image decode
             decoded_bboxes = delta2bbox(bboxes, pred_bboxes, self.means,
                                         self.stds, max_shape, wh_ratio_clip,
@@ -160,7 +160,6 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
     return deltas
 
 
-@mmcv.jit(coderize=True)
 def delta2bbox(rois,
                deltas,
                means=(0., 0., 0., 0.),
@@ -187,7 +186,7 @@ def delta2bbox(rois,
         stds (Sequence[float]): Denormalizing standard deviation for delta
             coordinates. Default (1., 1., 1., 1.).
         max_shape (tuple[int, int]): Maximum bounds for boxes, specifies
-           (H, W). Default None.
+           (H, W). Default None. (可以为None)
         wh_ratio_clip (float): Maximum aspect ratio for boxes. Default
             16 / 1000.
         clip_border (bool, optional): Whether clip the objects outside the
@@ -222,7 +221,7 @@ def delta2bbox(rois,
                 [5.0000, 5.0000, 5.0000, 5.0000]])
     """
     num_bboxes, num_classes = deltas.size(0), deltas.size(1) // 4
-    if num_bboxes == 0:
+    if num_bboxes == 0 and not torch.jit.is_tracing():
         return deltas
 
     deltas = deltas.reshape(-1, 4)

@@ -46,18 +46,18 @@ def build_loss(cfg):
     return LOSSES.build(cfg)
 
 
-def build_detector(cfg, train_cfg=None, test_cfg=None):
+def build_detector(cfg):
     """Build detector."""
-    if train_cfg is not None or test_cfg is not None:
-        warnings.warn(
-            'train_cfg and test_cfg is deprecated, '
-            'please specify them in model', UserWarning)
-    assert cfg.get('train_cfg') is None or train_cfg is None, \
-        'train_cfg specified in both outer field and model field '
-    assert cfg.get('test_cfg') is None or test_cfg is None, \
-        'test_cfg specified in both outer field and model field '
-    return DETECTORS.build(
-        cfg, default_args=dict(train_cfg=train_cfg, test_cfg=test_cfg))
+    '''
+    cfg: 顶层config.model
+    train_cfg 默认使用config.model.train_cfg
+    test_cfg 默认使用config.model.test_cfg
+    '''
+    '''
+    禁止原实现通过外部输入,train_cfg,test_cfg
+    c
+    '''
+    return DETECTORS.build(cfg)
 
 def build_second_stage_hook(cfg):
     return SECOND_STAGE_HOOKS.build(cfg)

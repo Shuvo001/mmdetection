@@ -62,18 +62,8 @@ class SingleRoIExtractor(BaseRoIExtractor):
             out_size = (out_size,out_size)
         num_levels = len(feats)
         expand_dims = (-1, self.out_channels * out_size[0] * out_size[1])
-        if torch.onnx.is_in_onnx_export():
-            # Work around to export mask-rcnn to onnx
-            roi_feats = rois[:, :1].clone().detach()
-            roi_feats = roi_feats.expand(*expand_dims)
-            roi_feats = roi_feats.reshape(-1, self.out_channels, *out_size)
-            roi_feats = roi_feats * 0
 
         if num_levels == 1:
-            if len(rois) == 0:
-                roi_feats = feats[0].new_zeros(
-                    rois.size(0), self.out_channels, *out_size)
-                return roi_feats
             return self.roi_layers[0](feats[0], rois)
 
         roi_feats = feats[0].new_zeros(
@@ -89,18 +79,6 @@ class SingleRoIExtractor(BaseRoIExtractor):
 
         for i in range(num_levels):
             mask = target_lvls == i
-            if torch.onnx.is_in_onnx_export():
-                # To keep all roi_align nodes exported to onnx
-                # and skip nonzero op
-                mask = mask.float().unsqueeze(-1)
-                # select target level rois and reset the rest rois to zero.
-                rois_i = rois.clone().detach()
-                rois_i *= mask
-                mask_exp = mask.expand(*expand_dims).reshape(roi_feats.shape)
-                roi_feats_t = self.roi_layers[i](feats[i], rois_i)
-                roi_feats_t *= mask_exp
-                roi_feats += roi_feats_t
-                continue
             inds = mask.nonzero(as_tuple=False).squeeze(1)
             if inds.numel() > 0:
                 rois_ = rois[inds]

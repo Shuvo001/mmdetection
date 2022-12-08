@@ -3,6 +3,7 @@ import torch
 from mmcv.ops.nms import batched_nms
 import wtorch.nms as wnms
 from mmdet.core.bbox.iou_calculators import bbox_overlaps
+import torchvision
 
 
 def multiclass_nms(multi_bboxes,
@@ -100,7 +101,8 @@ def wmulticlass_nms(multi_bboxes,
                    nms_threshold,
                    max_num=-1,
                    score_factors=None,
-                   return_inds=False):
+                   return_inds=False,
+                   classes_wise_nms=True):
     """NMS for multi-class bboxes.
 
     Args:
@@ -152,8 +154,12 @@ def wmulticlass_nms(multi_bboxes,
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
 
 
-    dets,labels,inds = _wbatched_nms(bboxes,scores,labels,nms_threshold=nms_threshold,
-                                     max_num=max_num)
+    if classes_wise_nms:
+        dets,labels,inds = _wbatched_nms(bboxes,scores,labels,nms_threshold=nms_threshold,
+                                         max_num=max_num)
+    else:
+        dets,labels,inds = _wnms(bboxes,scores,labels,nms_threshold=nms_threshold,
+                                 max_num=max_num)
     if return_inds:
         return dets, labels, inds
     else:
@@ -161,6 +167,7 @@ def wmulticlass_nms(multi_bboxes,
 
 @torch.jit.script
 def _wbatched_nms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000):
+    #classes_wise = True
     if bboxes.numel() == 0:
         dets = torch.cat([bboxes, scores[:, None]], -1)
         return dets, labels,labels.new_zeros([0])
@@ -173,6 +180,20 @@ def _wbatched_nms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000)
     
     return dets,labels[keep],keep
 
+@torch.jit.script
+def _wnms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000):
+    #classes_wise = False
+    if bboxes.numel() == 0:
+        dets = torch.cat([bboxes, scores[:, None]], -1)
+        return dets, labels,labels.new_zeros([0])
+
+    keep = torchvision.ops.nms(bboxes,scores,iou_threshold=nms_threshold)
+    if max_num>0:
+        keep = keep[:max_num]
+
+    dets = torch.cat([bboxes[keep],scores[keep].unsqueeze(-1)],dim=-1)
+    
+    return dets,labels[keep],keep
 
 def fast_nms(multi_bboxes,
              multi_scores,

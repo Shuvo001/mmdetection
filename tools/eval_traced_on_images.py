@@ -1,7 +1,7 @@
 # coding=utf-8
 from argparse import ArgumentParser
-
-from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
+import torch
+from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,inference_traced_detector,
                         init_detector, show_result_pyplot)
 from object_detection2.standard_names import *
 import object_detection2.bboxes as odb
@@ -16,11 +16,12 @@ from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
 import shutil
+from thirdparty.pyconfig.config import Config as PyConfig
 
 def parse_args():
     parser = ArgumentParser()
+    parser.add_argument('model', help='model file')
     parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
     parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
@@ -98,30 +99,13 @@ def main():
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, args.checkpoint, device=args.device)
-    '''
-    nms_pre: 为每一层nms之前的最大值
-    nms: 仅在每一层内部做
-    min_bbox_size: 为宽高的最小值
-    max_per_img: 上述处理后排序，最很分最高的max_per_img候选
-    '''
-    print("RPN Head test config")
-    #rpn_head.test_cfg 配置时通过config.model.test_cfg.rpn配置
-    wmlu.show_dict(model.rpn_head.test_cfg)
-    '''
-    score_thr: 仅当score大于score_thr才会留下
-    nms: iou_threshold, nms iou阀值
-    max_per_img: nms后只留下最多max_per_img个目标
-    mask_thr_binary: mask threshold
-    '''
-    print("RCNN test config")
-    #roi_head.test_cfg 配置时通过config.model.test_cfg.rcnn配置
-    wmlu.show_dict(model.roi_head.test_cfg)
+    config = PyConfig.fromfile(args.config)
+    model = torch.jit.load(args.model)
 
-    if hasattr(model.cfg,"classes"):
-        classes = model.cfg.classes
+    if hasattr(config,"classes"):
+        classes = config.classes
 
-    work_dir = model.cfg.work_dir
+    work_dir = config.work_dir
     save_path = args.save_data_dir
     if save_path is None:
         save_path = osp.join(work_dir,"tmp","eval_on_images")
@@ -129,7 +113,7 @@ def main():
     test_data_dir = args.test_data_dir
 
     if test_data_dir is None:
-        test_data_dir = model.cfg.data.val.data_dirs
+        test_data_dir = config.data.val.data_dirs
     
     print(f"test_data_dir: {test_data_dir}")
 
@@ -137,9 +121,9 @@ def main():
     metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     dataset = eval_dataset(test_data_dir,classes=classes)
-    mean = model.cfg.img_norm_cfg.mean
-    std = model.cfg.img_norm_cfg.std
-    input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
+    mean = config.img_norm_cfg.mean
+    std = config.img_norm_cfg.std
+    input_size = tuple(list(config.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"mean = {mean}, std={std}, input size={input_size}")
     save_size = (1024,640) 
 
@@ -148,7 +132,7 @@ def main():
         #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
             #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
-        bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
+        bboxes,labels,scores,det_masks,result = inference_traced_detector(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")

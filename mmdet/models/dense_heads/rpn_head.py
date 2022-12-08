@@ -226,7 +226,7 @@ class RPNHead(AnchorHead):
             h = proposals[:, 3] - proposals[:, 1]
             valid_mask = (w > cfg.min_bbox_size) & (h > cfg.min_bbox_size)
             valid_mask[0] = True #防止出现proposals.numel()==0
-            if not valid_mask.all():
+            if not valid_mask.all() or torch.jit.is_tracing():
                 proposals = proposals[valid_mask]
                 scores = scores[valid_mask]
                 ids = ids[valid_mask]
