@@ -73,7 +73,7 @@ class SimpleTrainer(BaseTrainer):
                                             num_workers=self.cfg.data.workers_per_gpu,
                                             pin_memory=self.cfg.data.pin_memory,
                                             dist=world_size>1,
-                                            persistent_workers=True,
+                                            persistent_workers=False,
                                             )
         self.data_loader_iter = iter(self.data_loader)
         self.data_processor = DATAPROCESSOR_REGISTRY.get(cfg.data.data_processor) 
@@ -178,6 +178,12 @@ class SimpleTrainer(BaseTrainer):
     def fetch_iter_data(self):
         if not self.data_loader._DataLoader__initialized:
             print(f"Reinit data loader iter")
+            if self.data_loader_iter is not None:
+                try:
+                    self.data_loader_iter._shutdown_workers()
+                except:
+                    pass
+                del self.data_loader_iter
             self.data_loader_iter = iter(self.data_loader)
         data_batch = next(self.data_loader_iter)
         if self.data_processor is not None:

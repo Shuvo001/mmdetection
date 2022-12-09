@@ -77,7 +77,6 @@ class WMMDetModelSwitch(Hook):
             print(f'No {self.skip_type_keys} aug now!')
             train_loader.dataset.update_skip_type_keys(self.skip_type_keys)
             train_loader._DataLoader__initialized = False
-            train_loader._iterator = None
             self._restart_dataloader = True
             print('Add additional L1 loss now!')
         else:
