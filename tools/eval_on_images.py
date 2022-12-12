@@ -62,7 +62,7 @@ def eval_dataset(data_dir,classes):
 
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
-    data = LabelMeData(label_text2id=label_text2id,is_relative_coordinate=False)
+    data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
     data.read_data(data_dir,img_suffix="bmp")
 
     return data

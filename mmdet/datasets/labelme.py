@@ -50,7 +50,7 @@ class LabelmeDataset(WCustomDataset):
         self.img_suffix = kwargs.pop("img_suffix","jpg")
         self.classes = kwargs.get("classes")
         self.label_text2id = dict(zip(self.classes,count()))
-        self.__dataset = LabelMeData(label_text2id=self.label_text2id)
+        self.__dataset = LabelMeData(label_text2id=self.label_text2id,absolute_coord=True)
         super().__init__(*args,**kwargs)
 
     def load_annotations(self, ann_file):
