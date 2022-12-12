@@ -182,10 +182,8 @@ def _wbatched_nms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000)
 
 @torch.jit.script
 def _wnms(bboxes,scores,labels,nms_threshold:float=0.5,max_num:int=1000):
-    #classes_wise = False
     if bboxes.numel() == 0:
-        dets = torch.cat([bboxes, scores[:, None]], -1)
-        return dets, labels,labels.new_zeros([0])
+        return bboxes.new_zeros([0,5]), labels,labels.new_zeros([0])
 
     keep = torchvision.ops.nms(bboxes,scores,iou_threshold=nms_threshold)
     if max_num>0:

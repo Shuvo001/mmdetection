@@ -12,6 +12,7 @@ import object_detection2.visualization as odv
 import numpy as np
 from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
+from iotoolkit.labelme_toolkit import LabelMeData
 from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
@@ -59,8 +60,10 @@ def eval_dataset(data_dir,classes):
     def label_text2id(x):
         return text2label[x]
 
-    data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
-    data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
+    #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
+    #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
+    data = LabelMeData(label_text2id=label_text2id,is_relative_coordinate=False)
+    data.read_data(data_dir,img_suffix="bmp")
 
     return data
 
@@ -91,6 +94,25 @@ def get_results(result,score_thr=0.05):
     
 def label_trans(labels):
     return np.array([x+1 for x in labels])
+
+imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
+"B68G1X0012C3AAM05-02_ALL_CAM00.bmp",
+"B68G190084B5BAC03-02_ALL_CAM00.bmp",
+"B68G1X0012B6AAC02-02_ALL_CAM00.bmp",
+"B68G1X0010B5BAK04-02_ALL_CAM00.bmp",
+"B68G1X0004B7AAE01-02_ALL_CAM00.bmp",
+"B68G190100B7AAK04-02_ALL_CAM00.bmp",
+"B68G190100BXAAS02-02_ALL_CAM00.bmp",
+"B68G190089A6BAP01-02_ALL_CAM00.bmp",
+"B68G1X0029C6BAK02-02_ALL_CAM00.bmp",
+"B68G190084C1BAF03-02_ALL_CAM00.bmp",
+"B68G190084C4BAE04-02_ALL_CAM00.bmp",
+"B68G190084B8BAP03-02_ALL_CAM00.bmp",
+"B68G190084B7BAG02-02_ALL_CAM00.bmp",
+"B68G190084B7BAC05-02_ALL_CAM00.bmp",
+"B68G190084B7BAH04-02_ALL_CAM00.bmp",
+"B68G190084B8BAG05-02_ALL_CAM00.bmp",
+]
 
 def main():
     args = parse_args()
@@ -134,8 +156,10 @@ def main():
     print(f"test_data_dir: {test_data_dir}")
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
-    metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
+    #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
+    model_args={"threshold":0.3})
     dataset = eval_dataset(test_data_dir,classes=classes)
     mean = model.cfg.img_norm_cfg.mean
     std = model.cfg.img_norm_cfg.std
@@ -144,9 +168,12 @@ def main():
     save_size = (1024,640) 
 
     for i,data in enumerate(dataset.get_items()):
+        print(f"process {i}/{len(dataset)}")
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
             #continue
+        if osp.basename(full_path) not in imgs17:
+            continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
@@ -198,6 +225,7 @@ def main():
     print(f"Image save path: {save_path}, total process {len(dataset)}")
         
     metrics.show()
+    print(classes)
 
 if __name__ == "__main__":
     main()

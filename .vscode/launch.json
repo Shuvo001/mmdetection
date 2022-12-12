@@ -113,6 +113,16 @@
             "args":["configs/aiot_project/b11act/mask_rcnn_mosaic.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic/weights/latest.pth" "--gpus" "1" "--save_results"],
         },
         {
+            "name": "Python: eval b11act mask large",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/eval_on_images.py",
+            "console": "integratedTerminal",
+            //"args":["configs/aiot_project/b11act/mask_rcnn_org.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask/weights/checkpoint_3000.pth" "--gpus" "1" "--save_results"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_large.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_large1/weights/checkpoint_50000.pth" "--gpus" "1" "--save_results"],
+        },
+        {
             "name": "Python: eval b11act traced mask",
             "type": "python",
             "justMyCode": true,
