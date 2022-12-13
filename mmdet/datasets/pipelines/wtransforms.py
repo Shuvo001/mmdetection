@@ -10,6 +10,7 @@ from mmdet.core import find_inside_bboxes, BitmapMasks
 import wtorch.utils as wtu
 import img_utils as wmli
 import object_detection2.bboxes as odb
+from object_detection2.standard_names import *
 from collections import Iterable
 
 
@@ -40,14 +41,67 @@ class WRandomCrop:
                  img_pad_value=127,
                  mask_pad_value=0,
                  bbox_keep_ratio=0.25,
-                 crop_if=None):
+                 crop_if=None,
+                 try_crop_around_gtbboxes=False,
+                 crop_around_gtbboxes_prob=0.5):
         assert isinstance(crop_size, (list, tuple))
         self.crop_size = crop_size
         self.img_pad_value = img_pad_value
         self.mask_pad_value = mask_pad_value
         self.bbox_keep_ratio = bbox_keep_ratio
         self.crop_if = crop_if
+        self.try_crop_around_gtbboxes = try_crop_around_gtbboxes
+        self.crop_around_gtbboxes_prob = crop_around_gtbboxes_prob
         self.multiscale_mode = isinstance(crop_size[0],Iterable)
+
+    def get_crop_bbox(self,crop_size,img_shape,gtbboxes):
+        '''
+        crop_size: (h,w)
+        '''
+        if not self.try_crop_around_gtbboxes or gtbboxes is None or len(gtbboxes)==0:
+            return self.get_random_crop_bbox(crop_size,img_shape)
+        if np.random.rand() > self.crop_around_gtbboxes_prob:
+            return self.get_random_crop_bbox(crop_size,img_shape)
+
+        return self.random_crop_around_gtbboxes(crop_size,img_shape,gtbboxes)
+
+    def get_random_crop_bbox(self,crop_size,img_shape):
+        h, w, c = img_shape
+        new_h = min(crop_size[0],h)
+        new_w = min(crop_size[1],w)
+        if new_w<w:
+            x_offset = np.random.randint(low=0, high=w - new_w)
+        else:
+            x_offset = 0
+        if new_h<h:
+            y_offset = np.random.randint(low=0, high=h - new_h)
+        else:
+            y_offset = 0
+
+        patch = [x_offset, y_offset,x_offset+new_w,y_offset+new_h]
+
+        return patch
+
+    def random_crop_around_gtbboxes(self,crop_size,img_shape,gtbboxes):
+        h, w, c = img_shape
+
+        bbox = random.choice(gtbboxes)
+        cx = random.randint(bbox[0],bbox[2]-1)
+        cy = random.randint(bbox[1],bbox[3]-1)
+        x_offset = max(cx-crop_size[1]//2,0)
+        y_offset = max(cy-crop_size[0]//2,0)
+
+        x_offset = max(min(x_offset,w-crop_size[1]),0)
+        y_offset = max(min(y_offset,h-crop_size[0]),0)
+
+        new_h = min(crop_size[0],h)
+        new_w = min(crop_size[1],w)
+
+        patch = [x_offset, y_offset,x_offset+new_w,y_offset+new_h]
+
+        return patch
+
+
 
     def _train_aug(self, results):
         """Random crop and around padding the original image.
@@ -59,26 +113,18 @@ class WRandomCrop:
             results (dict): The updated dict.
         """
         img = results['img']
-        h, w, c = img.shape
         if not self.multiscale_mode:
             crop_size = self.crop_size
         else:
             crop_size = random.choice(self.crop_size)
+        gtbboxes = results.get('gt_bboxes',None)
+        patch = self.get_crop_bbox(crop_size,img.shape,gtbboxes)
+        cropped_img = wmli.crop_img_absolute_xy(img, patch)
 
-        new_h = min(crop_size[0],h)
-        new_w = min(crop_size[1],w)
-        if new_w<w:
-            x_offset = np.random.randint(low=0, high=w - new_w)
-        else:
-            x_offset = 0
-        if new_h<h:
-            y_offset = np.random.randint(low=0, high=h - new_h)
-        else:
-            y_offset = 0
-        patch = [y_offset, x_offset,y_offset+new_h,x_offset+new_w]
-        cropped_img = wmli.crop_img_absolute(img, patch)
-
-
+        x_offset = patch[0]
+        y_offset = patch[1]
+        new_w = patch[2]-x_offset
+        new_h = patch[3]-y_offset
         results['img'] = cropped_img
         results['img_shape'] = cropped_img.shape
         results['pad_shape'] = cropped_img.shape
@@ -108,7 +154,7 @@ class WRandomCrop:
                 if 'gt_masks' in results:
                     gt_masks = results['gt_masks'].masks
                     gt_masks = gt_masks[keep]
-                    gt_masks = wmli.crop_masks_absolute(gt_masks,patch)
+                    gt_masks = wmli.crop_masks_absolute_xy(gt_masks,patch)
                     results['gt_masks'] = BitmapMasks(gt_masks)
 
             # crop semantic seg
@@ -909,7 +955,7 @@ class WResize:
             scale, scale_idx = self.random_select(self.img_scale)
         else:
             scale, scale_idx = self.img_scale, 0
-
+        
         results['scale'] = (scale[1],scale[0]) #(W,H)
         results['scale_idx'] = scale_idx
 
@@ -1551,4 +1597,53 @@ class WMosaic:
         repr_str += f'pad_val={self.pad_val}, '
         repr_str += f'min_bbox_size={self.min_bbox_size}, '
         repr_str += f'skip_filter={self.skip_filter})'
+        return repr_str
+
+@PIPELINES.register_module()
+class WGetBBoxesByMask:
+    '''
+    '''
+
+    def __init__(self,
+                 min_bbox_area=4):
+        self.min_bbox_area = min_bbox_area
+
+
+    def _get_bbox_by_mask(self, results):
+        masks = results['gt_masks'].masks
+        if len(masks) == 0:
+            return results
+        gtbboxes = []
+        for i in range(masks.shape[0]):
+            cur_mask = masks[i]
+            idx = np.nonzero(cur_mask)
+            if len(idx)==0:
+                gtbboxes.append(np.zeros([4],dtype=np.float32))
+            else:
+                xs = idx[1]
+                ys = idx[0]
+                x0 = np.min(xs)
+                y0 = np.min(ys)
+                x1 = np.max(xs)
+                y1 = np.max(ys)
+                gtbboxes.append(np.array([x0,y0,x1,y1],dtype=np.float32))
+        
+        gtbboxes = np.array(gtbboxes)
+        bboxes_area = odb.area(gtbboxes)
+        keep = bboxes_area>self.min_bbox_area
+        masks = masks[keep]
+        gtbboxes = gtbboxes[keep]
+        gtlabels = results[GT_LABELS][keep]
+        results[GT_BOXES] = gtbboxes 
+        results[GT_LABELS] = gtlabels
+        results[GT_MASKS] = BitmapMasks(masks)
+
+        return results
+
+    def __call__(self, results):
+        return self._get_bbox_by_mask(results)
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(min_bbox_area={self.min_bbox_area}, '
         return repr_str

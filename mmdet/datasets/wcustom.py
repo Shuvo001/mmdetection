@@ -58,6 +58,7 @@ class WCustomDataset(Dataset):
     def __init__(self,
                  ann_file=None,
                  pipeline=None,
+                 pipeline2=None,
                  classes=None,
                  data_root=None,
                  img_prefix='',
@@ -121,8 +122,14 @@ class WCustomDataset(Dataset):
             # set group flag for the sampler
             self._set_group_flag()
 
+
+        if not cache_processed_data and pipeline2 is not None:
+            print(f"Auto merge pipeline and pipline2")
+            pipeline = pipeline+pipeline2
+            pipeline2 = None
         # processing pipeline
         self.pipeline = Compose(pipeline)
+        self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
 
         self._data_cache = None
         self._processed_data_cache = None
@@ -206,6 +213,14 @@ class WCustomDataset(Dataset):
         return np.random.choice(pool)
 
     def __getitem__(self, idx):
+        data = self.get_base_item(idx)
+
+        if self.pipeline2 is not None:
+            return self.pipeline2(data)
+        else:
+            return data
+
+    def get_base_item(self, idx):
         """Get training/test data after pipeline.
 
         Args:

@@ -37,7 +37,7 @@ resutls:
 处理后增加以下字段
 
 ```
-gt_bboxes: 从results['ann_info']['bboxes']中拷贝
+gt_bboxes: 从results['ann_info']['bboxes']中拷贝(N,4) (x0,y0,x1,y1)
 gt_bboxes_ignore:[可选] 从results['ann_info']['bboxes_ignore']中拷贝
 resutls['bbox_fileds']增加gt_bboxes,gt_bboxes_ignore
 
