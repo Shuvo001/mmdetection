@@ -1617,11 +1617,11 @@ class WGetBBoxesByMask:
         for i in range(masks.shape[0]):
             cur_mask = masks[i]
             idx = np.nonzero(cur_mask)
-            if len(idx)==0:
+            xs = idx[1]
+            ys = idx[0]
+            if len(xs)==0:
                 gtbboxes.append(np.zeros([4],dtype=np.float32))
             else:
-                xs = idx[1]
-                ys = idx[0]
                 x0 = np.min(xs)
                 y0 = np.min(ys)
                 x1 = np.max(xs)
