@@ -1647,3 +1647,71 @@ class WGetBBoxesByMask:
         repr_str = self.__class__.__name__
         repr_str += f'(min_bbox_area={self.min_bbox_area}, '
         return repr_str
+
+@PIPELINES.register_module()
+class WGradAguImg:
+    def __init__(self):
+        pass
+
+
+    def img_fft(img):
+        fft = np.fft.fft2(img)
+        fftshift = np.fft.fftshift(fft)
+        width = fftshift.shape[1]
+        height = fftshift.shape[0]
+        dh = height*3//8
+        dw = width*3//8
+        fftshift[:dh] = 0
+        fftshift[-dh:] = 0
+        fftshift[:,:dw] = 0
+        fftshift[:,-dw:] = 0
+    
+        fft = np.fft.ifftshift(fftshift)
+        n_img = np.fft.ifft2(fft)
+        n_img = np.abs(n_img)
+        n_img = np.clip(n_img,0,255).astype(np.uint8)
+        return n_img
+
+    @staticmethod
+    def agu_img(img):
+        img = WGradAguImg.img_fft(img)
+        grad_x = cv2.Sobel(img,cv2.CV_32F,1,0)
+        grad_y = cv2.Sobel(img,cv2.CV_32F,0,1)
+        grad_x = cv2.convertScaleAbs(grad_x)
+        grad_y = cv2.convertScaleAbs(grad_y)
+        grad_xy = cv2.addWeighted(grad_x,0.5,grad_y,0.5,0)
+        dilate_kernel = np.ones((15,15),dtype=np.float32)
+        grad_xy = cv2.dilate(grad_xy,dilate_kernel,1)
+        img = wmli.normal_image(grad_xy)
+        return img
+
+
+    @staticmethod
+    def apply(img):
+        gray_img = wmli.nprgb_to_gray(img)
+        grad_img = WGradAguImg.agu_img(gray_img)
+        n_img = np.stack([gray_img,gray_img,grad_img],axis=-1)
+        return n_img
+
+    def __call__(self,results):
+        img = results['img']
+        results['img'] = WGradAguImg.apply(img)
+
+        return results
+
+@PIPELINES.register_module()
+class W2Gray:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def apply(img):
+        gray_img = wmli.nprgb_to_gray(img)
+        gray_img = np.expand_dims(gray_img,axis=-1)
+        return gray_img
+
+    def __call__(self,results):
+        img = results['img']
+        results['img'] = W2Gray.apply(img)
+
+        return results

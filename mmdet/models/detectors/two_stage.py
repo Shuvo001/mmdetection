@@ -43,6 +43,11 @@ class TwoStageDetector(BaseDetector):
             rpn_head_.update(train_cfg=rpn_train_cfg, test_cfg=test_cfg.rpn)
             self.rpn_head = build_head(rpn_head_)
 
+        if second_stage_hook is not None:
+            self.second_stage_hook = build_second_stage_hook(second_stage_hook)
+        else:
+            self.second_stage_hook = None
+
         if roi_head is not None:
             # update train and test cfg here for now
             # TODO: refactor assigner & sampler
@@ -51,11 +56,6 @@ class TwoStageDetector(BaseDetector):
             roi_head.update(test_cfg=test_cfg.rcnn)
             roi_head.pretrained = pretrained
             self.roi_head = build_head(roi_head)
-        
-        if second_stage_hook is not None:
-            self.second_stage_hook = build_second_stage_hook(second_stage_hook)
-        else:
-            self.second_stage_hook = None
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg

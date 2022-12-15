@@ -70,7 +70,8 @@ def parse_args():
 
 
 def main(rank,world_size,args):
-    wtd.setup_dist_group(rank,world_size,port=args.dist_port)
+    if world_size>1:
+        wtd.setup_dist_group(rank,world_size,port=args.dist_port)
     torch.cuda.set_device(rank)
     device = rank
 
@@ -146,7 +147,9 @@ def main(rank,world_size,args):
 
     model.CLASSES = dataset.CLASSES
 
-    trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,use_fp16=args.use_fp16)
+    trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,
+                            use_fp16=args.use_fp16,
+                            world_size=world_size)
     trainer.run()
 
 

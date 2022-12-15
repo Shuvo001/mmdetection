@@ -60,7 +60,7 @@ def mmdet_data_processor(data_batch,local_rank=0):
     return inputs[0]
 
 class SimpleTrainer(BaseTrainer):
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size=1,use_fp16=False):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False):
         super().__init__(cfg)
         self.model = model
         self.dataset = dataset
@@ -96,6 +96,7 @@ class SimpleTrainer(BaseTrainer):
 
         if dist.is_available():
             model = wtd.convert_sync_batchnorm(model)
+            pass
 
         print("model parameters info")
         wtt.show_model_parameters_info(model)
@@ -123,8 +124,9 @@ class SimpleTrainer(BaseTrainer):
 
 
         if self.world_size>1:
-            model = DDP(model)
-
+            print(f"Use DDP model.")
+            model = DDP(model,device_ids=[self.rank],output_device=self.rank)
+        self._raw_model = wtu.get_model(model)
         self.model = model
 
         if self.use_fp16:
@@ -191,13 +193,12 @@ class SimpleTrainer(BaseTrainer):
 
         #data_batch = wtu.to(data_batch,device=self.rank)
         #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
-
         self.inputs = data_batch
     
 
     def train_one_iter(self):
         data_batch = self.inputs
-        outputs = self.model.train_step(data_batch, self.optimizer)
+        outputs = self._raw_model.train_step(data_batch, self.optimizer)
         if not isinstance(outputs, dict):
             raise TypeError('model.train_step() must return a dict')
         self.outputs = outputs
@@ -210,7 +211,7 @@ class SimpleTrainer(BaseTrainer):
     def train_amp_one_iter(self):
         data_batch = self.inputs
         with torch.cuda.amp.autocast():
-            outputs = self.model.train_step(data_batch, self.optimizer)
+            outputs = self._raw_model.train_step(data_batch, self.optimizer)
         if not isinstance(outputs, dict):
             raise TypeError('model.train_step() must return a dict')
         self.outputs = outputs
@@ -274,14 +275,17 @@ class SimpleTrainer(BaseTrainer):
             gt_bboxes = odb.npchangexyorder(gt_bboxes)
             img = np.ascontiguousarray(img)
             img = np.clip(img,0,255).astype(np.uint8)
+            raw_img = img.copy()
             #debug
-            gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
+            #gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
             if gt_masks is not None:
                 img = odv.draw_bboxes_and_maskv2(img,gt_labels,bboxes=gt_bboxes,masks=gt_masks,
                                                  is_relative_coordinate=False,show_text=True)
             else:
                 img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
             self.log_writer.add_image(f"input/img_with_bboxes{idx}",img,global_step=global_step,
+                    dataformats="HWC")
+            self.log_writer.add_image(f"input/img{idx}",raw_img,global_step=global_step,
                     dataformats="HWC")
         model = wtu.get_model(self.model)
         summary.log_all_variable(self.log_writer,model,global_step=global_step)

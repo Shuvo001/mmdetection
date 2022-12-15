@@ -113,7 +113,7 @@ imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
 "B68G190084B7BAH04-02_ALL_CAM00.bmp",
 "B68G190084B8BAG05-02_ALL_CAM00.bmp",
 ]
-imgs17 = ["B68G1X0004B7AAE01-02_ALL_CAM00.bmp"]
+#imgs17 = ["B68G1X0004B7AAE01-02_ALL_CAM00.bmp"]
 
 def main():
     args = parse_args()
@@ -158,9 +158,9 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
-    model_args={"threshold":0.3})
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
+                                          #model_args={"threshold":0.3})
     dataset = eval_dataset(test_data_dir,classes=classes)
     mean = model.cfg.img_norm_cfg.mean
     std = model.cfg.img_norm_cfg.std
@@ -174,13 +174,17 @@ def main():
     for i,data in enumerate(dataset.get_items()):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         print(f"process {osp.basename(full_path)} {i}/{len(dataset)}")
-        #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
+        if wmlu.base_name(full_path) != "B68G1X0029C6BAK02-02_ALL_CAM00":
+            continue
+        #if 1 in gt_labels:
             #continue
         if osp.basename(full_path) not in imgs17:
             continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,det_masks,result = detector(model, full_path,mean=mean,std=std,input_size=None,
                                                          score_thr=args.score_thr)
+        #if 1 not in labels:
+            #continue
         name = wmlu.base_name(full_path)
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")
@@ -188,7 +192,7 @@ def main():
             if save_size is not None:
                 wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
             else:
-                shutil.copy(full_path,img_save_path)
+                wmli.read_and_write_img(full_path,img_save_path)
     
             img_save_path = os.path.join(save_path,name+"_pred.jpg")
             img = wmli.imread(full_path)

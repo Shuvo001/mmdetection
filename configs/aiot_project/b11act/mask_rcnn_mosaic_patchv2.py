@@ -14,8 +14,8 @@ model = dict(
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
+        in_channels=3,
         style='pytorch',
-        in_channels=1,
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
         type='FPN',
@@ -121,7 +121,6 @@ train_pipeline = [
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
-    dict(type='W2Gray'),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
@@ -151,6 +150,7 @@ train_dataset = dict(
         pipeline=[
             dict(type='LoadImageFromFile'),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=True),
+            dict(type="WGradAguImg"),
         ],
         pipeline2=[
             dict(type="WRandomCrop",crop_size=random_crop_scales,try_crop_around_gtbboxes=True,crop_around_gtbboxes_prob=0.6),
@@ -200,7 +200,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patchv2"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 finetune_model=True
 names_not2train = ["backbone"]
