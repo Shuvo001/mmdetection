@@ -55,7 +55,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch.py"  "--gpus" "0" "1"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch2.py"  "--gpus" "0" "1"],
         },
         {
             "name": "Python: train b11 act",
@@ -127,10 +127,10 @@
             "type": "python",
             "justMyCode": true,
             "request": "launch",
-            "program": "./tools/eval_on_images_patch.py",
+            "program": "./tools/eval_on_images_patch_pl.py",
             "console": "integratedTerminal",
             //"args":["configs/aiot_project/b11act/mask_rcnn_org.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask/weights/checkpoint_3000.pth" "--gpus" "1" "--save_results"],
-            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch/weights/latest.pth" "--gpus" "1" "--save_results"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch2.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch2_fp16/weights/latest.pth" "--gpus" "1" "--save_results"],
         },
         {
             "name": "Python: eval b11act traced mask",

@@ -251,13 +251,21 @@ class SimpleTrainer(BaseTrainer):
             else:
                 self.log_writer.add_scalar(tag, val, global_step)
         imgs = self.inputs['img']
+        if imgs.shape[1] == 1:
+            imgs = torch.tile(imgs,[1,3,1,1])
         #print(imgs.shape)
         idxs = list(range(imgs.shape[0]))
         random.shuffle(idxs)
         idxs = idxs[:4]
-        mean = self.cfg.img_norm_cfg.mean
-        std = self.cfg.img_norm_cfg.std
-        is_rgb = self.cfg.img_norm_cfg.to_rgb
+
+        if 'img_norm_cfg' in self.cfg:
+            mean = self.cfg.img_norm_cfg.mean
+            std = self.cfg.img_norm_cfg.std
+            is_rgb = self.cfg.img_norm_cfg.to_rgb
+        else:
+            mean = None
+            std = None
+            is_rgb = None
 
         for idx in idxs:
             gt_bboxes = self.inputs['gt_bboxes']
@@ -268,10 +276,12 @@ class SimpleTrainer(BaseTrainer):
             gt_labels = gt_labels[idx].cpu().numpy()
             if gt_masks is not None:
                 gt_masks = gt_masks[idx].masks
-            img = unnormalize(img,mean=mean,std=std).cpu().numpy()
-            img = np.transpose(img,[1,2,0])
-            if not is_rgb:
+            if mean is not None:
+                img = unnormalize(img,mean=mean,std=std).cpu().numpy()
+                img = np.transpose(img,[1,2,0])
                 img = img[...,::-1]
+            else:
+                img = np.transpose(img,[1,2,0])
             gt_bboxes = odb.npchangexyorder(gt_bboxes)
             img = np.ascontiguousarray(img)
             img = np.clip(img,0,255).astype(np.uint8)

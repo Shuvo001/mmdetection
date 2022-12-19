@@ -1,8 +1,9 @@
 # coding=utf-8
 from argparse import ArgumentParser
 
-from mmdet.apis import (async_inference_detector, inference_detector,ImagePatchInference,
+from mmdet.apis import (async_inference_detector, inference_detector,
                         init_detector, show_result_pyplot)
+from mmdet.apis.img_patch_inference import *
 from object_detection2.standard_names import *
 import object_detection2.bboxes as odb
 import os
@@ -17,6 +18,7 @@ from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
 import shutil
+import pickle
 
 def parse_args():
     parser = ArgumentParser()
@@ -169,13 +171,15 @@ def main():
     #save_size = (1024,640) 
     save_size = None
 
-    detector = ImagePatchInference(patch_size=input_size[::-1])
+    detector = ImagePatchInference(patch_size=input_size[::-1],img_process=None,use_gray_img=True)
+
+    pyresults = []
 
     for i,data in enumerate(dataset.get_items()):
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         print(f"process {osp.basename(full_path)} {i}/{len(dataset)}")
-        if wmlu.base_name(full_path) != "B68G1X0029C6BAK02-02_ALL_CAM00":
-            continue
+        #if wmlu.base_name(full_path) != "B68G1X0029C6BAK02-02_ALL_CAM00":
+            #continue
         #if 1 in gt_labels:
             #continue
         if osp.basename(full_path) not in imgs17:
@@ -226,12 +230,17 @@ def main():
         kwargs['probability'] =  scores
         kwargs['img_size'] = shape
         kwargs['use_relative_coord'] = False
+
+        pyresults.append(copy.deepcopy(kwargs))
         metrics(**kwargs)
         
         if i%100 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")
+
+    with open(osp.join(save_path,"results.pk"),"wb") as f:
+        pickle.dump(pyresults,f)
         
     metrics.show()
     print(classes)

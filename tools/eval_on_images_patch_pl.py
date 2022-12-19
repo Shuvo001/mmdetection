@@ -1,8 +1,9 @@
 # coding=utf-8
 from argparse import ArgumentParser
 
-from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,
+from mmdet.apis import (async_inference_detector, inference_detector,
                         init_detector, show_result_pyplot)
+from mmdet.apis.img_patch_inference import *
 from object_detection2.standard_names import *
 import object_detection2.bboxes as odb
 import os
@@ -16,8 +17,9 @@ from iotoolkit.labelme_toolkit import LabelMeData
 from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
-import cv2
 import shutil
+import pickle
+from mmdet.datasets.pipelines import Compose
 
 def parse_args():
     parser = ArgumentParser()
@@ -114,6 +116,7 @@ imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
 "B68G190084B7BAH04-02_ALL_CAM00.bmp",
 "B68G190084B8BAG05-02_ALL_CAM00.bmp",
 ]
+#imgs17 = ["B68G1X0004B7AAE01-02_ALL_CAM00.bmp"]
 
 def main():
     args = parse_args()
@@ -158,34 +161,34 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
-    model_args={"threshold":0.3})
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
+                                          #model_args={"threshold":0.3})
     dataset = eval_dataset(test_data_dir,classes=classes)
-    mean = model.cfg.img_norm_cfg.mean
-    std = model.cfg.img_norm_cfg.std
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
-    print(f"mean = {mean}, std={std}, input size={input_size}")
-    save_size = (1024,640) 
+    #save_size = (1024,640) 
+    save_size = None
+
+    pipeline = Compose(model.cfg.test_pipeline)
+    detector = ImagePatchInferencePipeline(patch_size=input_size[::-1],
+                                          pipeline=pipeline)
+
+    pyresults = []
 
     for i,data in enumerate(dataset.get_items()):
-        print(f"process {i}/{len(dataset)}")
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
-        #
-        '''if 0 not in gt_labels:
-            continue
-        contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        print(contours)
-        tmp_img = wmli.imread(full_path)
-        cv2.drawContours(tmp_img,contours,-1,(255,0,0),2)
-        wmli.imwrite("a.jpg",tmp_img)'''
-        #
-        #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
+        print(f"process {osp.basename(full_path)} {i}/{len(dataset)}")
+        #if wmlu.base_name(full_path) != "B68G1X0029C6BAK02-02_ALL_CAM00":
             #continue
-        if osp.basename(full_path) not in imgs17:
+        if 1 not in gt_labels:
             continue
+        #if osp.basename(full_path) not in imgs17:
+            #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
-        bboxes,labels,scores,det_masks,result = inference_detectorv2(model, full_path,mean=mean,std=std,input_size=input_size,score_thr=args.score_thr)
+        bboxes,labels,scores,det_masks,result = detector(model, full_path,input_size=None,
+                                                         score_thr=args.score_thr)
+        #if 1 not in labels:
+            #continue
         name = wmlu.base_name(full_path)
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")
@@ -193,7 +196,7 @@ def main():
             if save_size is not None:
                 wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
             else:
-                shutil.copy(full_path,img_save_path)
+                wmli.read_and_write_img(full_path,img_save_path)
     
             img_save_path = os.path.join(save_path,name+"_pred.jpg")
             img = wmli.imread(full_path)
@@ -227,12 +230,17 @@ def main():
         kwargs['probability'] =  scores
         kwargs['img_size'] = shape
         kwargs['use_relative_coord'] = False
+
+        pyresults.append(copy.deepcopy(kwargs))
         metrics(**kwargs)
         
         if i%100 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")
+
+    with open(osp.join(save_path,"results.pk"),"wb") as f:
+        pickle.dump(pyresults,f)
         
     metrics.show()
     print(classes)

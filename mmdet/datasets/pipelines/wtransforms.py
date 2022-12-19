@@ -414,7 +414,7 @@ class WTranslate:
                  prob=0.5,
                  img_fill_val=128,
                  seg_ignore_label=255,
-                 direction='horizontal',
+                 directions='horizontal',
                  max_translate_offset=250.,
                  min_size=0):
         assert 0 <= prob <= 1.0, \
@@ -429,8 +429,8 @@ class WTranslate:
             raise ValueError('img_fill_val must be type float or tuple.')
         assert np.all([0 <= val <= 255 for val in img_fill_val]), \
             'all elements of img_fill_val should between range [0,255].'
-        assert direction in ('horizontal', 'vertical'), \
-            'direction should be "horizontal" or "vertical".'
+        #assert direction in ('horizontal', 'vertical'), \
+            #'direction should be "horizontal" or "vertical".'
         assert isinstance(max_translate_offset, (int, float)), \
             'The max_translate_offset must be type int or float.'
         # the offset used for translation
@@ -438,7 +438,8 @@ class WTranslate:
         self.prob = prob
         self.img_fill_val = img_fill_val
         self.seg_ignore_label = seg_ignore_label
-        self.direction = direction
+        self.directions = directions
+        self._direction = None
         self.max_translate_offset = max_translate_offset
         self.min_size = min_size
 
@@ -463,10 +464,10 @@ class WTranslate:
         for key in results.get('bbox_fields', []):
             min_x, min_y, max_x, max_y = np.split(
                 results[key], results[key].shape[-1], axis=-1)
-            if self.direction == 'horizontal':
+            if self._direction == 'horizontal':
                 min_x = np.maximum(0, min_x + offset)
                 max_x = np.minimum(w, max_x + offset)
-            elif self.direction == 'vertical':
+            elif self._direction == 'vertical':
                 min_y = np.maximum(0, min_y + offset)
                 max_y = np.minimum(h, max_y + offset)
 
@@ -529,14 +530,18 @@ class WTranslate:
         if np.random.rand() > self.prob:
             return results
         offset = np.random.uniform(-self.offset,self.offset)
-        self._translate_img(results, offset, self.direction)
+        if isinstance(self.directions,str):
+            self._direction = self.directions
+        else:
+            self._direction = random.choice(self.directions)
+        self._translate_img(results, offset, self._direction)
         self._translate_bboxes(results, offset)
         # fill_val defaultly 0 for BitmapMasks and None for PolygonMasks.
-        self._translate_masks(results, offset, self.direction)
+        self._translate_masks(results, offset, self._direction)
         # fill_val set to ``seg_ignore_label`` for the ignored value
         # of segmentation map.
         self._translate_seg(
-            results, offset, self.direction, fill_val=self.seg_ignore_label)
+            results, offset, self._direction, fill_val=self.seg_ignore_label)
         self._filter_invalid(results, min_size=self.min_size)
         return results
 
@@ -694,7 +699,7 @@ class WMixUpWithMask:
 
         if len(retrieve_img.shape) == 3:
             out_img = np.ones(
-                (self.dynamic_scale[0], self.dynamic_scale[1], 3),
+                (self.dynamic_scale[0], self.dynamic_scale[1], retrieve_img.shape[-1]),
                 dtype=retrieve_img.dtype) * self.pad_val
         else:
             out_img = np.ones(
@@ -1177,7 +1182,7 @@ class WMosaic:
         mosaic_bboxes = []
         if len(results['img'].shape) == 3:
             mosaic_img = np.full(
-                (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2), 3),
+                (int(self.img_scale[0] * 2), int(self.img_scale[1] * 2), results['img'].shape[-1]),
                 self.pad_val,
                 dtype=results['img'].dtype)
         else:
@@ -1297,7 +1302,7 @@ class WMosaic:
         mosaic_bboxes = []
         if len(results['img'].shape) == 3:
             mosaic_img = np.full(
-                (int(self.img_scale[0]), int(self.img_scale[1] * 2), 3),
+                (int(self.img_scale[0]), int(self.img_scale[1] * 2), results['img'].shape[-1]),
                 self.pad_val,
                 dtype=results['img'].dtype)
         else:
@@ -1700,6 +1705,45 @@ class WGradAguImg:
         return results
 
 @PIPELINES.register_module()
+class WFFTSmooth:
+    def __init__(self):
+        pass
+
+
+    @staticmethod
+    def fft_smooth(img):
+        fft = np.fft.fft2(img)
+        fftshift = np.fft.fftshift(fft)
+        width = fftshift.shape[1]
+        height = fftshift.shape[0]
+        dh = height*3//8
+        dw = width*3//8
+        fftshift[:dh] = 0
+        fftshift[-dh:] = 0
+        fftshift[:,:dw] = 0
+        fftshift[:,-dw:] = 0
+    
+        fft = np.fft.ifftshift(fftshift)
+        n_img = np.fft.ifft2(fft)
+        n_img = np.abs(n_img)
+        n_img = np.clip(n_img,0,255).astype(np.uint8)
+        return n_img
+
+
+    @staticmethod
+    def apply(img):
+        gray_img = wmli.nprgb_to_gray(img)
+        smooth_img = WFFTSmooth.fft_smooth(gray_img)
+        n_img = np.stack([smooth_img,smooth_img,smooth_img],axis=-1)
+        return n_img
+
+    def __call__(self,results):
+        img = results['img']
+        results['img'] = WFFTSmooth.apply(img)
+
+        return results
+
+@PIPELINES.register_module()
 class W2Gray:
     def __init__(self):
         pass
@@ -1715,3 +1759,84 @@ class W2Gray:
         results['img'] = W2Gray.apply(img)
 
         return results
+
+@PIPELINES.register_module()
+class WCutOut:
+    """CutOut operation.
+
+    Randomly drop some regions of image used in
+    `Cutout <https://arxiv.org/abs/1708.04552>`_.
+
+    Args:
+        n_holes (int | tuple[int, int]): Number of regions to be dropped.
+            If it is given as a list, number of holes will be randomly
+            selected from the closed interval [`n_holes[0]`, `n_holes[1]`].
+        cutout_shape (tuple[int, int] | list[tuple[int, int]]): The candidate
+            shape of dropped regions. It can be `tuple[int, int]` to use a
+            fixed cutout shape, or `list[tuple[int, int]]` to randomly choose
+            shape from the list.
+        cutout_ratio (tuple[float, float] | list[tuple[float, float]]): The
+            candidate ratio of dropped regions. It can be `tuple[float, float]`
+            to use a fixed ratio or `list[tuple[float, float]]` to randomly
+            choose ratio from the list. Please note that `cutout_shape`
+            and `cutout_ratio` cannot be both given at the same time.
+        fill_in (tuple[float, float, float] | tuple[int, int, int]): The value
+            of pixel to fill in the dropped regions. Default: (0, 0, 0).
+    """
+
+    def __init__(self,
+                 prob=0.5,
+                 n_holes=[1,5],
+                 cutout_size_range=None,
+                 cutout_shape=None,
+                 cutout_ratio=None,
+                 fill_in=(127, 127, 127)):
+
+        if isinstance(n_holes, tuple):
+            assert len(n_holes) == 2 and 0 <= n_holes[0] < n_holes[1]
+        else:
+            n_holes = (n_holes, n_holes)
+        self.prob = prob
+        self.n_holes = n_holes
+        self.fill_in = fill_in
+        if cutout_size_range is not None:
+            assert cutout_shape is None, f"ERROR: can't set cutout_shape and cutout_size range at the same time."
+            cutout_shape = []
+            for s in range(cutout_size_range[0],cutout_size_range[1]+1):
+                cutout_shape.append((s,s))
+
+        self.with_ratio = cutout_ratio is not None
+        self.candidates = cutout_ratio if self.with_ratio else cutout_shape
+        if not isinstance(self.candidates, list):
+            self.candidates = [self.candidates]
+
+    def __call__(self, results):
+        """Call function to drop some regions of image."""
+        if np.random.rand()>self.prob:
+            return results
+        h, w, c = results['img'].shape
+        n_holes = np.random.randint(self.n_holes[0], self.n_holes[1] + 1)
+        for _ in range(n_holes):
+            x1 = np.random.randint(0, w-1)
+            y1 = np.random.randint(0, h-1)
+            index = np.random.randint(0, len(self.candidates))
+            if not self.with_ratio:
+                cutout_w, cutout_h = self.candidates[index]
+            else:
+                cutout_w = int(self.candidates[index][0] * w)
+                cutout_h = int(self.candidates[index][1] * h)
+
+            x2 = np.clip(x1 + cutout_w, 0, w)
+            y2 = np.clip(y1 + cutout_h, 0, h)
+            results['img'][y1:y2, x1:x2, :] = self.fill_in
+
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(n_holes={self.n_holes}, '
+        repr_str += (f'cutout_ratio={self.candidates}, ' if self.with_ratio
+                     else f'cutout_shape={self.candidates}, ')
+        repr_str += f'fill_in={self.fill_in})'
+        return repr_str
+

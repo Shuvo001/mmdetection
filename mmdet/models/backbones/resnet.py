@@ -637,7 +637,7 @@ class ResNet(BaseModule):
             try:
                 x = self.conv1(x)
             except:
-                print(f"ERROR:{self.conv1.weight.device}, {x.device}, {wtd.get_rank()}")
+                print(f"ERROR:{x.shape}, {self.conv1.weight.shape}, {self.conv1.weight.device}, {x.device}, {wtd.get_rank()}")
             x = self.norm1(x)
             x = self.relu(x)
         x = self.maxpool(x)
