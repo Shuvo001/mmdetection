@@ -24,7 +24,7 @@ from mmdet.datasets.pipelines import Compose
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
+    parser.add_argument('--checkpoint', default=None,help='Checkpoint file')
     parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
@@ -60,12 +60,11 @@ def eval_dataset(data_dir,classes):
     print(f"Text to label")
     wmlu.show_dict(text2label)
 
-    def label_text2id(x):
-        return text2label[x]
 
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
-    data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+    data = LabelMeData(label_text2id=text2label,
+                       absolute_coord=True,filter_empty_files=True)
     data.read_data(data_dir,img_suffix="bmp")
 
     return data
@@ -124,7 +123,17 @@ def main():
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, args.checkpoint, device=args.device)
+    model = init_detector(args.config, None, device=args.device)
+    if args.checkpoint is None:
+        checkpoint = osp.join(model.cfg.work_dir,"weights","latest.pth")
+        if not osp.exists(checkpoint):
+            checkpoint = osp.join(model.cfg.work_dir+"_fp16","weights","latest.pth")
+    else:
+        checkpoint = args.checkpoint
+
+    print(f"Load {checkpoint}")
+    checkpoint = torch.load(checkpoint,map_location="cpu")
+    wtu.forgiving_state_restore(model,checkpoint)
     '''
     nms_pre: 为每一层nms之前的最大值
     nms: 仅在每一层内部做
@@ -180,8 +189,8 @@ def main():
         print(f"process {osp.basename(full_path)} {i}/{len(dataset)}")
         #if wmlu.base_name(full_path) != "B68G1X0029C6BAK02-02_ALL_CAM00":
             #continue
-        if 1 not in gt_labels:
-            continue
+        #if 1 not in gt_labels:
+            #continue
         #if osp.basename(full_path) not in imgs17:
             #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)

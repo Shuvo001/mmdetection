@@ -1,6 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from functools import partial
-
 import mmcv
 import numpy as np
 import torch
@@ -87,14 +86,15 @@ def build_model_from_cfg(config_path, checkpoint_path, cfg_options=None):
     # build the model
     cfg.model.train_cfg = None
     model = build_detector(cfg.model)
-    checkpoint = load_checkpoint(model, checkpoint_path, map_location='cpu')
-    if 'CLASSES' in checkpoint.get('meta', {}):
-        model.CLASSES = checkpoint['meta']['CLASSES']
-    else:
-        from mmdet.datasets import DATASETS
-        dataset = DATASETS.get(cfg.data.test['type'])
-        assert (dataset is not None)
-        model.CLASSES = dataset.CLASSES
+    if checkpoint_path is not None:
+        checkpoint = load_checkpoint(model, checkpoint_path, map_location='cpu')
+        if 'CLASSES' in checkpoint.get('meta', {}):
+            model.CLASSES = checkpoint['meta']['CLASSES']
+        else:
+            from mmdet.datasets import DATASETS
+            dataset = DATASETS.get(cfg.data.test['type'])
+            assert (dataset is not None)
+            model.CLASSES = dataset.CLASSES
     model.cpu().eval()
     return model
 
@@ -157,3 +157,5 @@ def preprocess_example_input(input_config):
     }
 
     return one_img, one_meta
+
+

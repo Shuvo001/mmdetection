@@ -18,11 +18,13 @@ import os.path as osp
 from itertools import count
 import cv2
 import shutil
+import wtorch.utils as wtu
+import torch
 
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
+    parser.add_argument('--checkpoint', default=None,type=str,help='Checkpoint file')
     parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
@@ -121,7 +123,16 @@ def main():
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, args.checkpoint, device=args.device)
+    model = init_detector(args.config, None, device=args.device)
+    if args.checkpoint is None:
+        checkpoint = osp.join(model.cfg.work_dir,"weights","latest.pth")
+        if not osp.exists(checkpoint):
+            checkpoint = osp.join(model.cfg.work_dir+"_fp16","weights","latest.pth")
+    else:
+        checkpoint = args.checkpoint
+    print(f"Load {checkpoint}")
+    checkpoint = torch.load(checkpoint,map_location="cpu")
+    wtu.forgiving_state_restore(model,checkpoint)
     '''
     nms_pre: 为每一层nms之前的最大值
     nms: 仅在每一层内部做
@@ -157,10 +168,10 @@ def main():
     print(f"test_data_dir: {test_data_dir}")
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
-    #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
+    metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
-    model_args={"threshold":0.3})
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
+    #model_args={"threshold":0.3})
     dataset = eval_dataset(test_data_dir,classes=classes)
     mean = model.cfg.img_norm_cfg.mean
     std = model.cfg.img_norm_cfg.std

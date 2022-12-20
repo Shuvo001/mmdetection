@@ -12,6 +12,7 @@ import object_detection2.visualization as odv
 import numpy as np
 from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
+from iotoolkit.labelme_toolkit import LabelMeData
 from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
@@ -60,8 +61,10 @@ def eval_dataset(data_dir,classes):
     def label_text2id(x):
         return text2label[x]
 
-    data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
-    data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
+    #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
+    #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
+    data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+    data.read_data(data_dir,img_suffix="bmp")
 
     return data
 

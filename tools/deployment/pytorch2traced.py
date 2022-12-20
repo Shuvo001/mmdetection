@@ -6,8 +6,10 @@ from functools import partial
 import torch
 from mmcv import Config, DictAction
 import os
-from mmdet.core.export import build_model_from_cfg, preprocess_example_input
+import wml_utils as wmlu
+from mmdet.core.export import build_model_from_cfg, preprocess_2traced_example_input
 import wtorch.train_toolkit as wtt
+import wtorch.utils as wtu
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
@@ -27,7 +29,7 @@ def pytorch2traced(model,
         'normalize_cfg': normalize_cfg
     }
     # prepare input
-    one_img, one_meta = preprocess_example_input(input_config)
+    one_img = preprocess_2traced_example_input(input_config)
     #one_img = one_img.repeat(3,1,1,1)
     img_list = one_img.cuda()
     model.cuda()
@@ -74,7 +76,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Convert MMDetection models to traced')
     parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--checkpoint', default=None,type=str,help='checkpoint file')
     parser.add_argument('--input-img', type=str, help='Images for input')
     parser.add_argument(
         '--show',
@@ -161,12 +163,40 @@ if __name__ == '__main__':
     # build the model and load checkpoint
     model = build_model_from_cfg(args.config, args.checkpoint,
                                  args.cfg_options)
+    if args.checkpoint is None:
+        checkpoint = osp.join(cfg.work_dir,"weights","latest.pth")
+        if not osp.exists(checkpoint):
+            checkpoint = osp.join(cfg.work_dir+"_fp16","weights","latest.pth")
+    else:
+        checkpoint = args.checkpoint
+    
+    print(f"Load {checkpoint}")
+    checkpoint = torch.load(checkpoint,map_location="cpu")
+    wtu.forgiving_state_restore(model,checkpoint)
 
     if not args.input_img:
         args.input_img = osp.join(osp.dirname(__file__), '../../demo/demo.jpg')
 
-    normalize_cfg = cfg.img_norm_cfg
+    normalize_cfg = cfg.get("img_norm_cfg",None)
 
+    '''
+    nms_pre: 为每一层nms之前的最大值
+    nms: 仅在每一层内部做
+    min_bbox_size: 为宽高的最小值
+    max_per_img: 上述处理后排序，最很分最高的max_per_img候选
+    '''
+    print("RPN Head test config")
+    #rpn_head.test_cfg 配置时通过config.model.test_cfg.rpn配置
+    wmlu.show_dict(model.rpn_head.test_cfg)
+    '''
+    score_thr: 仅当score大于score_thr才会留下
+    nms: iou_threshold, nms iou阀值
+    max_per_img: nms后只留下最多max_per_img个目标
+    mask_thr_binary: mask threshold
+    '''
+    print("RCNN test config")
+    #roi_head.test_cfg 配置时通过config.model.test_cfg.rcnn配置
+    wmlu.show_dict(model.roi_head.test_cfg)
     # convert model to onnx file
     pytorch2traced(
         model,

@@ -1,6 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from warnings import warn
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,6 +17,12 @@ BYTES_PER_FLOAT = 4
 # determine it based on available resources.
 GPU_MEM_LIMIT = 1024**3  # 1 GB memory limit
 
+
+@torch.jit.script
+def gather_mask_by_labels(mask_pred,labels):
+     N = mask_pred.shape[0]
+     mask_pred = mask_pred[torch.arange(N), labels]
+     return mask_pred
 
 @HEADS.register_module()
 class FCNMaskHead(BaseModule):
@@ -229,15 +234,15 @@ class FCNMaskHead(BaseModule):
 
         if not self.class_agnostic:
             labels = det_labels
-            N = len(mask_pred)
-            mask_pred = mask_pred[range(N), labels]
+            mask_pred = gather_mask_by_labels(mask_pred,labels)
         else:
             mask_pred = torch.squeeze(mask_pred,dim=1)
 
         mask_pred = (mask_pred>=threshold).to(torch.uint8)
 
         return mask_pred
-
+    
+    
 
 def _do_paste_mask(masks, boxes, img_h, img_w, skip_empty=True):
     """Paste instance masks according to boxes.
