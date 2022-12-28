@@ -6,7 +6,7 @@ import torch
 from ..builder import PIPELINES
 from .compose import Compose
 import random
-from mmdet.core import find_inside_bboxes, BitmapMasks
+from mmdet.core import find_inside_bboxes, BitmapMasks,PolygonMasks
 import wtorch.utils as wtu
 import img_utils as wmli
 import object_detection2.bboxes as odb
@@ -43,7 +43,8 @@ class WRandomCrop:
                  bbox_keep_ratio=0.25,
                  crop_if=None,
                  try_crop_around_gtbboxes=False,
-                 crop_around_gtbboxes_prob=0.5):
+                 crop_around_gtbboxes_prob=0.5,
+                 name='WRandomCrop'):
         assert isinstance(crop_size, (list, tuple))
         self.crop_size = crop_size
         self.img_pad_value = img_pad_value
@@ -53,6 +54,7 @@ class WRandomCrop:
         self.try_crop_around_gtbboxes = try_crop_around_gtbboxes
         self.crop_around_gtbboxes_prob = crop_around_gtbboxes_prob
         self.multiscale_mode = isinstance(crop_size[0],Iterable)
+        self.name = name
 
     def get_crop_bbox(self,crop_size,img_shape,gtbboxes):
         '''
@@ -266,6 +268,8 @@ class WRotate:
             img = results[key].copy()
             img_rotated = mmcv.imrotate(
                 img, angle, center, scale, border_value=self.img_fill_val)
+            if len(img_rotated.shape)==2:
+                img_rotated = np.expand_dims(img_rotated,axis=-1)
             results[key] = img_rotated.astype(img.dtype)
             results['img_shape'] = results[key].shape
 
@@ -422,8 +426,6 @@ class WTranslate:
         if isinstance(img_fill_val, (float, int)):
             img_fill_val = tuple([float(img_fill_val)] * 3)
         elif isinstance(img_fill_val, tuple):
-            assert len(img_fill_val) == 3, \
-                'img_fill_val as tuple must have 3 elements.'
             img_fill_val = tuple([float(val) for val in img_fill_val])
         else:
             raise ValueError('img_fill_val must be type float or tuple.')
@@ -454,8 +456,11 @@ class WTranslate:
         """
         for key in results.get('img_fields', ['img']):
             img = results[key].copy()
-            results[key] = mmcv.imtranslate(
+            img = mmcv.imtranslate(
                 img, offset, direction, self.img_fill_val).astype(img.dtype)
+            if len(img.shape) == 2:
+                img = np.expand_dims(img,axis=-1)
+            results[key] = img
             results['img_shape'] = results[key].shape
 
     def _translate_bboxes(self, results, offset):
@@ -688,6 +693,7 @@ class WMixUpWithMask:
 
         retrieve_results = results['mix_results'][0]
         retrieve_img = retrieve_results['img']
+        img_channels = retrieve_img.shape[-1]
         if 'gt_masks' in retrieve_results:
             retrieve_masks = retrieve_results['gt_masks'].masks
             out_masks = []
@@ -711,7 +717,7 @@ class WMixUpWithMask:
         # 1. keep_ratio resize
         scale_ratio = min(self.dynamic_scale[0] / retrieve_img.shape[0],
                           self.dynamic_scale[1] / retrieve_img.shape[1])
-        retrieve_img = mmcv.imresize(
+        retrieve_img = wmli.resize_img(
             retrieve_img, (int(retrieve_img.shape[1] * scale_ratio),
                            int(retrieve_img.shape[0] * scale_ratio)))
         
@@ -726,7 +732,7 @@ class WMixUpWithMask:
 
         # 3. scale jit
         scale_ratio *= jit_factor
-        out_img = mmcv.imresize(out_img, (int(out_img.shape[1] * jit_factor),
+        out_img = wmli.resize_img(out_img, (int(out_img.shape[1] * jit_factor),
                                           int(out_img.shape[0] * jit_factor)))
         if retrieve_masks is not None:
             n_mask_i = wtu.npresize_mask(n_mask_i, (out_img.shape[1], out_img.shape[0]))
@@ -743,7 +749,7 @@ class WMixUpWithMask:
         target_h, target_w = ori_img.shape[:2]
         padded_img = np.zeros(
             (max(origin_h, target_h), max(origin_w,
-                                          target_w), 3)).astype(np.uint8)
+                                          target_w), img_channels)).astype(np.uint8)
         padded_img[:origin_h, :origin_w] = out_img
         if retrieve_masks is not None:
             nn_mask_i = np.zeros((n_mask_i.shape[0],max(origin_h, target_h), max(origin_w,
@@ -1216,13 +1222,13 @@ class WMosaic:
             # keep_ratio resize
             scale_ratio_i = min(self.img_scale[0] / h_i,
                                 self.img_scale[1] / w_i)
-            img_i = mmcv.imresize(
+            img_i = wmli.resize_img(
                 img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
                 mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
-                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
             paste_coord, crop_coord = self._mosaic_combine(
@@ -1257,7 +1263,7 @@ class WMosaic:
             mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
             mosaic_labels = np.concatenate(mosaic_labels, 0)
             if mosaic_mask is not None:
-                mosaic_mask = np.concatenate(mosaic_mask, 0)
+                mosaic_mask = np.concatenate(mosaic_mask, 0).astype(np.uint8)
 
             if self.bbox_clip_border:
                 mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
@@ -1335,13 +1341,13 @@ class WMosaic:
             # keep_ratio resize
             scale_ratio_i = min(self.img_scale[0] / h_i,
                                 self.img_scale[1] / w_i)
-            img_i = mmcv.imresize(
+            img_i = wmli.resize_img(
                 img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
                 mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
-                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
             paste_coord, crop_coord = self._mosaic_combine(
@@ -1376,7 +1382,7 @@ class WMosaic:
             mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
             mosaic_labels = np.concatenate(mosaic_labels, 0)
             if mosaic_mask is not None:
-                mosaic_mask = np.concatenate(mosaic_mask, 0)
+                mosaic_mask = np.concatenate(mosaic_mask, 0).astype(np.uint8)
 
             if self.bbox_clip_border:
                 mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
@@ -1454,13 +1460,13 @@ class WMosaic:
             # keep_ratio resize
             scale_ratio_i = min(self.img_scale[0] / h_i,
                                 self.img_scale[1] / w_i)
-            img_i = mmcv.imresize(
+            img_i = wmli.resize_img(
                 img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
                 mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
-                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]])
+                n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
             paste_coord, crop_coord = self._mosaic_combine(
@@ -1495,7 +1501,7 @@ class WMosaic:
             mosaic_bboxes = np.concatenate(mosaic_bboxes, 0)
             mosaic_labels = np.concatenate(mosaic_labels, 0)
             if mosaic_mask is not None:
-                mosaic_mask = np.concatenate(mosaic_mask, 0)
+                mosaic_mask = np.concatenate(mosaic_mask, 0).astype(np.uint8)
 
             if self.bbox_clip_border:
                 mosaic_bboxes[:, 0::2] = np.clip(mosaic_bboxes[:, 0::2], 0,
@@ -1840,3 +1846,122 @@ class WCutOut:
         repr_str += f'fill_in={self.fill_in})'
         return repr_str
 
+
+@PIPELINES.register_module()
+class WFixData:
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self,results):
+        if len(results['img'].shape) == 2:
+            results['img'] = np.expand_dims(results['img'],axis=-1)
+            results['img_shape'] = results['img'].shape
+      
+
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        return repr_str
+
+@PIPELINES.register_module()
+class WCompressMask:
+    def __init__(self,allow_overlap=False) -> None:
+        '''
+        allow_overlap: 是否允许mask重叠，如果允许，那么uint8最多编码8个mask,否则最多可编码255个
+        '''
+        self.allow_overlap = allow_overlap
+
+    @staticmethod
+    def encode(mask,allow_overlap):
+        '''
+        mask: [N,H,W]
+        '''
+        if allow_overlap:
+            if mask.shape[0]<=1 or mask.shape[0]>=8:
+                return mask
+            res_mask = np.zeros([1,mask.shape[1],mask.shape[2]],dtype=np.uint8)
+            cur_v = 1
+            for i in range(mask.shape[0]):
+                cur_mask = (np.expand_dims(mask[i],axis=0)*cur_v).astype(np.uint8)
+                res_mask += cur_mask
+                cur_v *= 2
+            return res_mask
+        else:
+            if mask.shape[0]<=1 or mask.shape[0]>=256:
+                return mask
+            res_mask = np.zeros([1,mask.shape[1],mask.shape[2]],dtype=np.uint8)
+            for i in range(mask.shape[0]):
+                cur_mask = (np.expand_dims(mask[i],axis=0)*(i+1)).astype(np.uint8)
+                res_mask = np.where(cur_mask>0,cur_mask,res_mask)
+            return res_mask
+    
+    @staticmethod
+    def decode(mask,nr,allow_overlap):
+        '''
+        mask: [1,H,W]
+        '''
+        if nr<=1 or mask.shape[0]>1:
+            return mask
+        res_mask = np.zeros([nr,mask.shape[1],mask.shape[2]],dtype=np.uint8)
+        if allow_overlap:
+            cur_v = 1
+            for i in range(nr):
+                t_m = (np.ones_like(mask)*cur_v).astype(np.uint8)
+                cur_mask  = (mask&t_m).astype(np.uint8)
+                res_mask[i] = cur_mask[0]
+                cur_v *= 2
+        else:
+            for i in range(nr):
+                t_m = np.ones_like(mask)*(i+1)
+                cur_mask = (mask==t_m).astype(np.uint8)
+                res_mask[i] = cur_mask[0]
+        
+        return res_mask
+
+    def __call__(self,results):
+        if GT_MASKS in results:
+            masks = results[GT_MASKS].masks
+            if masks.shape[0]<=1:
+                return results
+            masks = self.encode(masks,self.allow_overlap)
+            results[GT_MASKS] = BitmapMasks(masks)
+        
+        return results
+            
+@PIPELINES.register_module()
+class W2PolygonMask:
+    def __init__(self) -> None:
+        pass
+
+    @staticmethod
+    def encode(mask):
+        if mask.dtype != np.uint8:
+            print("ERROR")
+        t_masks = []
+        for i in range(mask.shape[0]):
+            contours,hierarchy = cv2.findContours(mask[i],cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+            t_masks.append(contours)
+        return PolygonMasks(t_masks,mask.shape[1],mask.shape[2])
+
+    
+    @staticmethod
+    def decode(mask,nr):
+        '''
+        mask: [1,H,W]
+        '''
+        r_mask = mask.masks
+        res_mask = np.zeros([nr,mask.height,mask.width],dtype=np.uint8)
+        for i in range(nr):
+            res_mask[i] = cv2.drawContours(res_mask[i],mask.masks[i],-1,color=(1,),thickness=cv2.FILLED)
+
+        
+        return BitmapMasks(res_mask,mask.height,mask.width)
+
+    def __call__(self,results):
+        if GT_MASKS in results:
+            masks = results[GT_MASKS].masks
+            masks = self.encode(masks)
+            results[GT_MASKS] = masks
+        
+        return results

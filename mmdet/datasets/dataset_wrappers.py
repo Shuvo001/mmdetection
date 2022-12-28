@@ -408,6 +408,10 @@ class MultiImageMixDataset:
             if self._skip_type_keys is not None and \
                     transform_type in self._skip_type_keys:
                 continue
+            if self._skip_type_keys is not None and \
+                    hasattr(transform,"name") and transform.name in self._skip_type_keys:
+                continue
+            
 
             if hasattr(transform, 'get_indexes'):
                 for i in range(self.max_refetch):
@@ -432,6 +436,11 @@ class MultiImageMixDataset:
                 # To confirm the results passed the training pipeline
                 # of the wrapper is not None.
                 updated_results = transform(copy.deepcopy(results))
+                try:
+                    if updated_results['gt_masks'].masks.dtype != np.uint8:
+                        print("ERROR")
+                except:
+                    pass
                 if updated_results is not None:
                     results = updated_results
                     break

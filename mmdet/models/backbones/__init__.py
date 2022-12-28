@@ -14,3 +14,4 @@ from .resnet import ResNet, ResNetV1d
 from .resnext import ResNeXt
 from .swin import SwinTransformer
 from .trident_resnet import TridentResNet
+from .wresnet import WResNet

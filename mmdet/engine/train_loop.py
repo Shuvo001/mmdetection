@@ -16,6 +16,7 @@ from wtorch.utils import unnormalize
 import object_detection2.visualization as odv
 import object_detection2.bboxes as odb
 import wtorch.bboxes as wbb
+from mmdet.core import BitmapMasks
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 import wtorch.dist as wtd
@@ -24,6 +25,9 @@ from mmdet.dataloader.build import build_dataloader
 from .base_trainer import BaseTrainer
 from thirdparty.registry import Registry
 from mmcv.parallel.scatter_gather import scatter_kwargs
+from mmdet.datasets.pipelines.wtransforms import WCompressMask, W2PolygonMask
+from object_detection2.standard_names import *
+
 
 
 DATAPROCESSOR_REGISTRY = Registry("DATAPROCESSOR")
@@ -59,6 +63,40 @@ def mmdet_data_processor(data_batch,local_rank=0):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
     return inputs[0]
 
+@DATAPROCESSOR_REGISTRY.register()
+def mmdet_data_processor_dm(data_batch,local_rank=0):
+    inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
+    inputs = inputs[0]
+    if GT_MASKS in inputs:
+        new_masks = []
+        for i,masks in enumerate(inputs[GT_MASKS]):
+            data_nr = len(inputs[GT_BOXES][i])
+            if data_nr>1:
+                masks = masks.masks
+                n_masks = WCompressMask.decode(masks,data_nr,True)
+                n_masks = BitmapMasks(n_masks)
+                new_masks.append(n_masks)
+            else:
+                new_masks.append(masks)
+        inputs[GT_MASKS] = new_masks
+    
+    return inputs
+
+@DATAPROCESSOR_REGISTRY.register()
+def mmdet_data_processor_dm1(data_batch,local_rank=0):
+    inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
+    inputs = inputs[0]
+    inputs['img'] = inputs['img'].to(torch.float32)
+    if GT_MASKS in inputs:
+        new_masks = []
+        for i,masks in enumerate(inputs[GT_MASKS]):
+            data_nr = len(inputs[GT_BOXES][i])
+            n_masks = W2PolygonMask.decode(masks,data_nr)
+            new_masks.append(n_masks)
+        inputs[GT_MASKS] = new_masks
+    
+    return inputs
+
 class SimpleTrainer(BaseTrainer):
     def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False):
         super().__init__(cfg)
@@ -69,6 +107,7 @@ class SimpleTrainer(BaseTrainer):
         self.estimate_time_cost = wmlu.EstimateTimeCost()
         self.data_loader = build_dataloader(cfg.data.dataloader,
                                             dataset,
+                                            cfg=cfg.data,
                                             samples_per_gpu=self.cfg.data.samples_per_gpu,
                                             num_workers=self.cfg.data.workers_per_gpu,
                                             pin_memory=self.cfg.data.pin_memory,
@@ -94,7 +133,7 @@ class SimpleTrainer(BaseTrainer):
                   names2train=cfg.names_2train,
                   names_not2train=cfg.names_not2train)
 
-        if dist.is_available():
+        if dist.is_available() and self.world_size>1:
             model = wtd.convert_sync_batchnorm(model)
             pass
 

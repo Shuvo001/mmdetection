@@ -21,6 +21,7 @@ from mmdet.datasets.samplers import (ClassAwareSampler, DistributedGroupSampler,
 #def yolo_dataloader(dataset,batch_size,num_workers=16,seed=None,pin_memory=False,dist=True):
 @DATALOADER_REGISTER.register()
 def mmdet_dataloader(dataset,
+                     cfg,
                      samples_per_gpu,
                      num_workers,
                      num_gpus=1,
@@ -137,6 +138,7 @@ def mmdet_dataloader(dataset,
         warnings.warn('persistent_workers is invalid because your pytorch '
                       'version is lower than 1.7.0')
 
+    batch_split_nr = cfg.pop('batch_split_nr',1)
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -146,7 +148,7 @@ def mmdet_dataloader(dataset,
         collate_fn=partial(collate, samples_per_gpu=samples_per_gpu),
         pin_memory=kwargs.pop('pin_memory', False),
         worker_init_fn=init_fn,
-        batch_split_nr=1,
+        batch_split_nr=batch_split_nr,
         **kwargs)
 
     return data_loader
