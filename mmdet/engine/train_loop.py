@@ -98,7 +98,7 @@ def mmdet_data_processor_dm1(data_batch,local_rank=0):
     return inputs
 
 class SimpleTrainer(BaseTrainer):
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=0):
         super().__init__(cfg)
         self.model = model
         self.dataset = dataset
@@ -116,7 +116,7 @@ class SimpleTrainer(BaseTrainer):
                                             )
         self.data_loader_iter = iter(self.data_loader)
         self.data_processor = DATAPROCESSOR_REGISTRY.get(cfg.data.data_processor) 
-        self.iter = 0
+        self.iter = begin_iter
         self.max_iters = max_iters
         self.world_size = world_size
         self.use_fp16 = use_fp16

@@ -696,6 +696,7 @@ class WMixUpWithMask:
         img_channels = retrieve_img.shape[-1]
         if 'gt_masks' in retrieve_results:
             retrieve_masks = retrieve_results['gt_masks'].masks
+            retrieve_bboxes = retrieve_results[GT_BOXES]
             out_masks = []
         else:
             retrieve_masks = None
@@ -726,7 +727,8 @@ class WMixUpWithMask:
         out_img[:retrieve_img.shape[0], :retrieve_img.shape[1]] = retrieve_img
 
         if retrieve_masks is not None:
-            retrieve_masks = wtu.npresize_mask(retrieve_masks, (retrieve_img.shape[1], retrieve_img.shape[0]))
+            #retrieve_masks = wtu.npresize_mask(retrieve_masks, (retrieve_img.shape[1], retrieve_img.shape[0]))
+            retrieve_masks,retrieve_bboxes = wtu.npresize_mask_in_bboxes(retrieve_masks, retrieve_bboxes,(retrieve_img.shape[1], retrieve_img.shape[0]))
             n_mask_i = np.zeros([retrieve_masks.shape[0],retrieve_masks_shape[0],retrieve_masks_shape[1]],dtype=retrieve_masks.dtype)
             n_mask_i[:,:retrieve_img.shape[0], :retrieve_img.shape[1]] = retrieve_masks 
 
@@ -735,7 +737,8 @@ class WMixUpWithMask:
         out_img = wmli.resize_img(out_img, (int(out_img.shape[1] * jit_factor),
                                           int(out_img.shape[0] * jit_factor)))
         if retrieve_masks is not None:
-            n_mask_i = wtu.npresize_mask(n_mask_i, (out_img.shape[1], out_img.shape[0]))
+            #n_mask_i = wtu.npresize_mask(n_mask_i, (out_img.shape[1], out_img.shape[0]))
+            n_mask_i,_ = wtu.npresize_mask_in_bboxes(n_mask_i,retrieve_bboxes, (out_img.shape[1], out_img.shape[0]))
 
         # 4. flip
         if is_filp:
@@ -1010,7 +1013,7 @@ class WResize:
             if results[key] is None:
                 continue
             masks = results[key].masks
-            masks = wtu.npresize_mask(masks,new_shape) 
+            masks,resized_bboxes = wtu.npresize_mask_in_bboxes(masks,self.old_bboxes,new_shape) 
             results[key] = BitmapMasks(masks)
 
     def _resize_seg(self, results):
@@ -1034,7 +1037,7 @@ class WResize:
             dict: Resized results, 'img_shape', 'pad_shape', 'scale_factor', \
                 'keep_ratio' keys are added into result dict.
         """
-
+        self.old_bboxes = results[GT_BOXES]
         self._random_scale(results)
         self._resize_img(results)
         self._resize_bboxes(results)
@@ -1046,8 +1049,6 @@ class WResize:
         repr_str = self.__class__.__name__
         repr_str += f'(img_scale={self.img_scale}, '
         repr_str += f'multiscale_mode={self.multiscale_mode}, '
-        repr_str += f'ratio_range={self.ratio_range}, '
-        repr_str += f'keep_ratio={self.keep_ratio}, '
         repr_str += f'bbox_clip_border={self.bbox_clip_border})'
         return repr_str
 
@@ -1227,7 +1228,8 @@ class WMosaic:
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
-                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                gt_bboxes_i = results_patch[GT_BOXES]
+                mask_i,_ =  wtu.npresize_mask_in_bboxes(mask_i, gt_bboxes_i,(int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
                 n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
@@ -1346,7 +1348,8 @@ class WMosaic:
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
-                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                gt_bboxes_i = results_patch[GT_BOXES]
+                mask_i,_ =  wtu.npresize_mask_in_bboxes(mask_i, gt_bboxes_i,(int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
                 n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
@@ -1465,7 +1468,8 @@ class WMosaic:
             
             if mosaic_mask is not None:
                 mask_i = results_patch['gt_masks'].masks
-                mask_i =  wtu.npresize_mask(mask_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
+                gt_bboxes_i = results_patch[GT_BOXES]
+                mask_i,_ =  wtu.npresize_mask_in_bboxes(mask_i, gt_bboxes_i,(int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
                 n_mask_i = np.zeros([mask_i.shape[0],mosaic_mask_shape[0],mosaic_mask_shape[1]],dtype=np.uint8)
 
             # compute the combine parameters
@@ -1935,14 +1939,42 @@ class W2PolygonMask:
         pass
 
     @staticmethod
-    def encode(mask):
+    def get_bboxes_by_contours(contours):
+        if len(contours)==0:
+            return np.zeros([4],dtype=np.float32)
+        cn0 = np.reshape(contours[0],[-1,2])
+        x0 = np.min(cn0[:,0])
+        x1 = np.max(cn0[:,0])
+        y0 = np.min(cn0[:,1])
+        y1 = np.max(cn0[:,1])
+        for cn in contours[1:]:
+            cn = np.reshape(cn,[-1,2])
+            x0 = min(np.min(cn[:,0]),x0)
+            x1 = max(np.max(cn[:,0]),x1)
+            y0 = min(np.min(cn[:,1]),y0)
+            y1 = max(np.max(cn[:,1]),y1)
+        
+        return np.array([x0,y0,x1,y1],dtype=np.float32)
+
+    @staticmethod
+    def encode(mask,bboxes):
         if mask.dtype != np.uint8:
             print("ERROR")
         t_masks = []
+        keep = np.zeros([mask.shape[0]],dtype=np.bool)
+        res_bboxes = []
         for i in range(mask.shape[0]):
-            contours,hierarchy = cv2.findContours(mask[i],cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-            t_masks.append(contours)
-        return PolygonMasks(t_masks,mask.shape[1],mask.shape[2])
+            #contours,hierarchy = cv2.findContours(mask[i],cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+            contours = wtu.find_contours_in_bbox(mask[i],bboxes[i])
+            if len(contours)>0:
+                t_masks.append(contours)
+                keep[i] = True
+                res_bboxes.append(W2PolygonMask.get_bboxes_by_contours(contours))
+        if len(res_bboxes) == 0:
+            res_bboxes = np.zeros([0,4],dtype=np.float32)
+        else:
+            res_bboxes = np.array(res_bboxes,dtype=np.float32)
+        return PolygonMasks(t_masks,mask.shape[1],mask.shape[2]),res_bboxes,keep
 
     
     @staticmethod
@@ -1955,13 +1987,16 @@ class W2PolygonMask:
         for i in range(nr):
             res_mask[i] = cv2.drawContours(res_mask[i],mask.masks[i],-1,color=(1,),thickness=cv2.FILLED)
 
-        
         return BitmapMasks(res_mask,mask.height,mask.width)
 
     def __call__(self,results):
         if GT_MASKS in results:
             masks = results[GT_MASKS].masks
-            masks = self.encode(masks)
+            masks,bboxes,keep = self.encode(masks,results[GT_BOXES])
+            if GT_BOXES in results:
+                results[GT_BOXES] = bboxes
+            if GT_LABELS in results:
+                results[GT_LABELS] = results[GT_LABELS][keep.tolist()]
             results[GT_MASKS] = masks
         
         return results

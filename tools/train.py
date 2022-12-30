@@ -62,6 +62,7 @@ def parse_args():
         action='store_true',
         help='Whether or not use fp16 for training')
     parser.add_argument('--dist-port', default="12355", help='port for disttribute training')
+    parser.add_argument('--begin_iter', type=int, default=0)
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -149,7 +150,8 @@ def main(rank,world_size,args):
 
     trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,
                             use_fp16=args.use_fp16,
-                            world_size=world_size)
+                            world_size=world_size,
+                            begin_iter=args.begin_iter)
     trainer.run()
 
 

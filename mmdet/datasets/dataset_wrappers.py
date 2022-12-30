@@ -436,11 +436,6 @@ class MultiImageMixDataset:
                 # To confirm the results passed the training pipeline
                 # of the wrapper is not None.
                 updated_results = transform(copy.deepcopy(results))
-                try:
-                    if updated_results['gt_masks'].masks.dtype != np.uint8:
-                        print("ERROR")
-                except:
-                    pass
                 if updated_results is not None:
                     results = updated_results
                     break

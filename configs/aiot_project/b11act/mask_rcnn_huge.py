@@ -124,7 +124,6 @@ train_pipeline = [
     dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2"),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Pad', size_divisor=256),
-    dict(type="WGetBBoxesByMask",min_bbox_area=4),
     dict(type='WFixData'),
     dict(type='W2PolygonMask'),
     dict(type='DefaultFormatBundle',img_to_float=False),
@@ -158,7 +157,7 @@ train_dataset = dict(
             dict(type='W2Gray'),
             dict(type='WResize', img_scale=img_scale),
         ],
-        cache_processed_data=False,
+        cache_processed_data=True,
     ),
     pipeline=train_pipeline)
 
@@ -205,7 +204,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
 work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge"
-load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
+#load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
+load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint_11000.pth'
 finetune_model=True
 names_not2train = ["backbone"]
 names_2train = ["backbone.conv1","backbone.bn1"]

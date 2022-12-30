@@ -139,6 +139,8 @@ class WCustomDataset(Dataset):
             for i in range(len(self._inner_dataset)):
                 self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
             print(f"Total cache {len(self._processed_data_cache)} processed data items.")
+            print(f"Pipeline for cache is {self.pipeline}")
+            print(f"Pipeline not cache is {self.pipeline2}")
         else:
             self._data_cache = []
             for i in range(len(self._inner_dataset)):
