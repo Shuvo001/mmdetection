@@ -16,6 +16,7 @@ from mmdet.utils import (get_device, get_root_logger,
 from mmdet.engine.train_loop import *
 import wtorch.train_toolkit as wtt
 import wtorch.dist as wtd
+from mmdet.utils.datadef import *
 
 
 def parse_args():
@@ -81,6 +82,7 @@ def main(rank,world_size,args):
     # replace the ${key} with the value of cfg.key
     cfg = replace_cfg_vals(cfg)
 
+    #set_debug()
 
     if args.auto_scale_lr:
         if 'auto_scale_lr' in cfg and \

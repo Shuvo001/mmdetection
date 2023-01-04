@@ -3,9 +3,11 @@ import torch
 import warnings
 from mmdet.core import bbox2result, bbox2roi,bbox2roi_one_img, build_assigner, build_sampler
 from mmdet.core.bbox.transforms import bbox2result_yolo_style
+import math
 from ..builder import HEADS, build_head, build_roi_extractor
 from .base_roi_head import BaseRoIHead
 import numpy as np
+from mmdet.utils.datadef import *
 
 
 @HEADS.register_module()
@@ -33,6 +35,7 @@ class StandardRoIHead(BaseRoIHead):
     def init_mask_head(self, mask_roi_extractor, mask_head):
         """Initialize ``mask_head``"""
         if mask_roi_extractor is not None:
+            #bbox_roi_extractor default is mmdet.models.roi_heads.roi_extractors.single_level_roi_extractor.SingleRoIExtractor
             self.mask_roi_extractor = build_roi_extractor(mask_roi_extractor)
             self.share_roi_extractor = False
         else:
@@ -70,6 +73,8 @@ class StandardRoIHead(BaseRoIHead):
             dict[str, Tensor]: a dictionary of loss components
         """
         # assign gts and sample proposals
+        rcn_pos_inds_nr = 0
+        rcn_neg_inds_nr = 0
         if self.with_bbox or self.with_mask:
             num_imgs = len(img_metas)
             if gt_bboxes_ignore is None:
@@ -86,8 +91,40 @@ class StandardRoIHead(BaseRoIHead):
                     gt_labels[i],
                     feats=[lvl_feat[i][None] for lvl_feat in x])
                 sampling_results.append(sampling_result)
+                rcn_pos_inds_nr += sampling_result.pos_inds.numel()
+                rcn_neg_inds_nr += sampling_result.neg_inds.numel()
 
         losses = dict()
+
+        #for log
+        losses['rcn_pos_inds_nr'] = torch.tensor(rcn_pos_inds_nr,dtype=torch.float32).cuda()
+        losses['rcn_neg_inds_nr'] = torch.tensor(rcn_neg_inds_nr,dtype=torch.float32).cuda()
+        #end for log
+
+        if is_debug():
+            if self.with_bbox:
+                nr = min(len(x),len(self.bbox_roi_extractor.roi_layers))
+                fw_h,fw_w = img_metas[0]['forward_shape'][-2:]
+                for i in range(nr):
+                    delta = 1.0/self.bbox_roi_extractor.roi_layers[i].spatial_scale
+                    fm_h,fm_w = x[i].shape[-2:]
+                    if math.fabs(fm_h*delta-fw_h)>delta or \
+                        math.fabs(fm_w*delta-fw_w)>delta:
+                        print(f"ERROR bbox roialign spatial scale value {self.bbox_roi_extractor.roi_layers[i].spatial_scale} \
+                            for layer {i}, expected {fm_h/fw_h,fm_w/fw_w}")
+            if self.with_mask and not self.share_roi_extractor:
+                nr = min(len(x),len(self.mask_roi_extractor.roi_layers))
+                fw_h,fw_w = img_metas[0]['forward_shape'][-2:]
+                for i in range(nr):
+                    delta = 1.0/self.mask_roi_extractor.roi_layers[i].spatial_scale
+                    fm_h,fm_w = x[i].shape[-2:]
+                    if math.fabs(fm_h*delta-fw_h)>delta or \
+                        math.fabs(fm_w*delta-fw_w)>delta:
+                        print(f"ERROR mask roialign spatial scale value {self.mask_roi_extractor.roi_layers[i].spatial_scale} for layer {i},\
+                             expected {fm_h/fw_h,fm_w/fw_w}")
+
+
+
         # bbox head forward and loss
         if self.with_bbox:
             bbox_results = self._bbox_forward_train(x, sampling_results,

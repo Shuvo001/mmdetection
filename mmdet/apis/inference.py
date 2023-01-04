@@ -391,3 +391,71 @@ def show_result_pyplot(model,
         text_color=(200, 200, 200),
         mask_color=palette,
         out_file=out_file)
+
+class ImageInferencePipeline:
+    def __init__(self,pipeline) -> None:
+        self.pipeline = pipeline
+        pass
+
+    def __call__(self,model, img,input_size=(1024,1024),score_thr=0.05):
+        """Inference image(s) with the detector.
+
+        Args:
+            model (nn.Module): The loaded detector.
+            imgs (str/ndarray or list[str/ndarray] or tuple[str/ndarray]):
+               Either image files or loaded images.
+            input_size: (w,h)
+    
+        Returns:
+            If imgs is a list or tuple, the same length list type results
+            will be returned, otherwise return the detection results directly.
+        """
+    
+        filename = ""
+    
+        device = next(model.parameters()).device  # model device
+    
+        if not isinstance(img, np.ndarray):
+            filename = img
+            img = wmli.imread(img)
+        
+        ori_shape = [img.shape[0],img.shape[1]]
+        img,r = wmli.resize_imgv2(img,input_size,return_scale=True)
+        img = self.pipeline(img)
+        img = torch.tensor(img,dtype=torch.float32)
+        img = img.permute(2,0,1)
+        img = torch.unsqueeze(img,dim=0)
+        img = img.to(device)
+    
+        
+        img = wtu.pad_feature(img,input_size,pad_value=0)
+        #img = torch.zeros_like(img) #debug
+    
+        # forward the model
+        with torch.no_grad():
+            results = model(return_loss=False, img=img)
+    
+        det_bboxes = results[0].cpu().numpy()
+        det_masks = results[1].cpu().numpy()
+        if det_masks.shape[-1]==0:
+            det_masks = None
+        bboxes = det_bboxes[...,:4]
+        scores = det_bboxes[...,4]
+        labels = det_bboxes[...,5].astype(np.int32)
+    
+        bboxes = bboxes/r
+    
+        bboxes[...,0:4:2] = np.clip(bboxes[...,0:4:2],0,ori_shape[1])
+        bboxes[...,1:4:2] = np.clip(bboxes[...,1:4:2],0,ori_shape[0])
+        keep0 = scores>score_thr
+        keep1 = (bboxes[...,2]-bboxes[...,0])>1
+        keep2 = (bboxes[...,3]-bboxes[...,1])>1
+        keep = np.logical_and(keep0,keep1)
+        keep = np.logical_and(keep,keep2)
+        bboxes = bboxes[keep]
+        scores = scores[keep]
+        labels = labels[keep]
+        if det_masks is not None:
+            det_masks = det_masks[keep]
+    
+        return bboxes,labels,scores,det_masks,results

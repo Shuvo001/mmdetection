@@ -125,3 +125,5 @@ work_dirs/
 *.onnx
 *.traced
 *.swp
+x
+nohup.out

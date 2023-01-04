@@ -16,6 +16,7 @@ from mmdet.core import (MlvlPointGenerator, bbox_xyxy_to_cxcywh,
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
+from mmdet.utils.datadef import *
 
 
 @HEADS.register_module()
@@ -51,8 +52,8 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
     """
 
     def __init__(self,
-                 num_classes,
-                 in_channels,
+                 num_classes=1,
+                 in_channels=256,
                  feat_channels=256,
                  stacked_convs=2,
                  strides=[8, 16, 32],
@@ -79,7 +80,7 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
                      reduction='sum',
                      loss_weight=1.0),
                  loss_l1=dict(type='L1Loss', reduction='sum', loss_weight=1.0),
-                 train_cfg=None,
+                 train_cfg=dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5)),
                  test_cfg=None,
                  init_cfg=dict(
                      type='Kaiming',
@@ -90,6 +91,9 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
                      nonlinearity='leaky_relu')):
 
         super().__init__(init_cfg=init_cfg)
+        if train_cfg is not None and train_cfg['assigner']['type'] != 'SimOTAAssigner':
+            print(f"Force set assigner")
+            train_cfg['assigner'] = dict(type='SimOTAAssigner', center_radius=2.5)
         self.num_classes = num_classes
         self.cls_out_channels = num_classes
         self.in_channels = in_channels
@@ -324,14 +328,15 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
             dets, keep = batched_nms(bboxes, scores, labels, cfg.nms)
             return dets, labels[keep]
 
-    @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
+    #@force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
+    @torch.cuda.amp.autocast(False)
     def loss(self,
              cls_scores,
              bbox_preds,
              objectnesses,
              gt_bboxes,
              gt_labels,
-             img_metas,
+             img_metas=None,
              gt_bboxes_ignore=None):
         """Compute loss of the head.
         Args:
@@ -352,8 +357,18 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
             gt_bboxes_ignore (None | list[Tensor]): specify which bounding
                 boxes can be ignored when computing the loss.
         """
-        num_imgs = len(img_metas)
+        num_imgs = len(gt_bboxes)
         featmap_sizes = [cls_score.shape[2:] for cls_score in cls_scores]
+        if is_debug():
+            nr = min(len(self.prior_generator.strides),len(featmap_sizes))
+            fw_h,fw_w = img_metas[0]['forward_shape'][-2:]
+            for i in range(nr):
+                fm_h,fm_w = featmap_sizes[i]
+                stride_w,stride_h = self.prior_generator.strides[i]
+                if math.fabs(stride_w*fm_w-fw_w)>stride_w or \
+                    math.fabs(stride_h*fm_h-fw_h)>stride_h:
+                    print(f"ERROR strides {self.prior_generator.strides}, expected for level {i} is {fw_w/fm_w,fw_h/fm_h}")
+            
         mlvl_priors = self.prior_generator.grid_priors(
             featmap_sizes,
             dtype=cls_scores[0].dtype,

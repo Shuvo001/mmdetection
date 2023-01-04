@@ -40,13 +40,13 @@
             "args":["configs/mask_rcnn/mask_rcnn_r50_fpn_2x_coco.py"  "--gpus" "0"],
         },
         {
-            "name": "Python: train b11 mask-rcnn huge",
+            "name": "Python: train b11 mask-rcnn yolox huge",
             "type": "python",
             "justMyCode": true,
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_huge_t.py"  "--gpus" "0"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_yolox_huge_t.py"  "--gpus" "1" "--use-fp16"],
         },
         {
             "name": "Python: train b11 mask-rcnn mosaic",
@@ -55,7 +55,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch2.py"  "--gpus" "0" "1"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch2.py"  "--gpus" "0" ],
         },
         {
             "name": "Python: train b11 act",
@@ -85,13 +85,13 @@
             "args":["demo/demo.jpg" "configs/faster_rcnn/faster_rcnn_r50_fpn_2x_coco.py" "weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth" "--out-file" "a.jpg"],
         },
         {
-            "name": "Python: eval on images",
+            "name": "Python: eval on images b11act huge",
             "type": "python",
-            "justMyCode": false,
+            "justMyCode": true,
             "request": "launch",
-            "program": "./tools/eval_on_images.py",
+            "program": "./tools/eval_on_images_pl.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/gds1/faster_rcnn.py" "/home/wj/ai/mldata1/GDS1Crack/mmdet/weights/latest.pth" "--gpus" "1" "--save_data_dir" "/home/wj/ai/mldata1/GDS1Crack/tmp/eval_on_images"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_huge.py" "--gpus" "1" "--save_results"],
         },
         {
             "name": "Python: eval b11act",

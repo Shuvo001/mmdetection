@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
-
+import math
 import torch
 import torch.nn as nn
 from mmcv.runner import force_fp32
@@ -10,6 +10,7 @@ from mmdet.core import (anchor_inside_flags, build_assigner, build_bbox_coder,
                         multi_apply, unmap)
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
+from mmdet.utils.datadef import *
 
 
 @HEADS.register_module()
@@ -183,6 +184,18 @@ class AnchorHead(BaseDenseHead):
         """
         num_imgs = len(img_metas)
 
+        if is_debug():
+            '''
+            检测anchor stride设置是否正确, stride决定anchor的中心位置
+            '''
+            nr = min(len(featmap_sizes),len(self.prior_generator.strides))
+            fw_h,fw_w = img_metas[0]['forward_shape'][-2:]
+            for i in range(nr):
+                stride_w,stride_h = self.prior_generator.strides[i]
+                fm_h,fm_w = featmap_sizes[i]
+                if math.fabs(fm_w*stride_w-fw_w)>stride_w or \
+                   math.fabs(fm_h*stride_h-fw_h)>stride_h:
+                   print(f"ERROR anchor head strides: {self.anchor_generator.strides}, expect for level {i} is {fw_w/fm_w,fw_h/fm_h}")
         # since feature map sizes of all images are the same, we only compute
         # anchors for one time
         multi_level_anchors = self.prior_generator.grid_priors(

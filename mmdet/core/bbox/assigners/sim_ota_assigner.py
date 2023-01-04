@@ -68,7 +68,7 @@ class SimOTAAssigner(BaseAssigner):
                                          gt_bboxes, gt_labels,
                                          gt_bboxes_ignore, eps)
             return assign_result
-        except RuntimeError:
+        except RuntimeError as e:
             origin_device = pred_scores.device
             warnings.warn('OOM RuntimeError is raised due to the huge memory '
                           'cost during label assignment. CPU mode is applied '
@@ -92,6 +92,7 @@ class SimOTAAssigner(BaseAssigner):
 
             return assign_result
 
+    @torch.cuda.amp.autocast(False)
     def _assign(self,
                 pred_scores,
                 priors,
@@ -123,6 +124,8 @@ class SimOTAAssigner(BaseAssigner):
         num_gt = gt_bboxes.size(0)
         num_bboxes = decoded_bboxes.size(0)
 
+        if gt_labels is not None:
+            gt_labels = gt_labels.to(decoded_bboxes.device)
         # assign 0 by default
         assigned_gt_inds = decoded_bboxes.new_full((num_bboxes, ),
                                                    0,
@@ -154,7 +157,8 @@ class SimOTAAssigner(BaseAssigner):
         gt_onehot_label = (
             F.one_hot(gt_labels.to(torch.int64),
                       pred_scores.shape[-1]).float().unsqueeze(0).repeat(
-                          num_valid, 1, 1))
+                          num_valid, 1, 1)) #(num_valid,num_gt,C)
+        gt_onehot_label = gt_onehot_label.to(valid_pred_scores.device)
 
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
         cls_cost = (
@@ -162,7 +166,7 @@ class SimOTAAssigner(BaseAssigner):
                 valid_pred_scores.to(dtype=torch.float32).sqrt_(),
                 gt_onehot_label,
                 reduction='none',
-            ).sum(-1).to(dtype=valid_pred_scores.dtype))
+            ).sum(-1))
 
         cost_matrix = (
             cls_cost * self.cls_weight + iou_cost * self.iou_weight +
@@ -199,7 +203,7 @@ class SimOTAAssigner(BaseAssigner):
 
         deltas = torch.stack([l_, t_, r_, b_], dim=1)
         is_in_gts = deltas.min(dim=1).values > 0
-        is_in_gts_all = is_in_gts.sum(dim=1) > 0
+        is_in_gts_all = is_in_gts.sum(dim=1) > 0 #是否至少在一个gt bboxes内
 
         # is prior centers in gt centers
         gt_cxs = (gt_bboxes[:, 0] + gt_bboxes[:, 2]) / 2.0
@@ -216,7 +220,7 @@ class SimOTAAssigner(BaseAssigner):
 
         ct_deltas = torch.stack([cl_, ct_, cr_, cb_], dim=1)
         is_in_cts = ct_deltas.min(dim=1).values > 0
-        is_in_cts_all = is_in_cts.sum(dim=1) > 0
+        is_in_cts_all = is_in_cts.sum(dim=1) > 0 #是否至少在一个gt bboxes center内
 
         # in boxes or in centers, shape: [num_priors]
         is_in_gts_or_centers = is_in_gts_all | is_in_cts_all
@@ -224,7 +228,7 @@ class SimOTAAssigner(BaseAssigner):
         # both in boxes and centers, shape: [num_fg, num_gt]
         is_in_boxes_and_centers = (
             is_in_gts[is_in_gts_or_centers, :]
-            & is_in_cts[is_in_gts_or_centers, :])
+            & is_in_cts[is_in_gts_or_centers, :]) #同时在gt bboxes 与 gt bboxes center内
         return is_in_gts_or_centers, is_in_boxes_and_centers
 
     def dynamic_k_matching(self, cost, pairwise_ious, num_gt, valid_mask):
@@ -242,14 +246,14 @@ class SimOTAAssigner(BaseAssigner):
         del topk_ious, dynamic_ks, pos_idx
 
         prior_match_gt_mask = matching_matrix.sum(1) > 1
-        if prior_match_gt_mask.sum() > 0:
+        if prior_match_gt_mask.sum() > 0: #如果有一个anchor与多个gt bboxes匹配
             cost_min, cost_argmin = torch.min(
                 cost[prior_match_gt_mask, :], dim=1)
             matching_matrix[prior_match_gt_mask, :] *= 0
             matching_matrix[prior_match_gt_mask, cost_argmin] = 1
         # get foreground mask inside box and center prior
         fg_mask_inboxes = matching_matrix.sum(1) > 0
-        valid_mask[valid_mask.clone()] = fg_mask_inboxes
+        valid_mask[valid_mask.clone()] = fg_mask_inboxes #valid_mask 更新为可以匹配上gt bboxes的
 
         matched_gt_inds = matching_matrix[fg_mask_inboxes, :].argmax(1)
         matched_pred_ious = (matching_matrix *

@@ -1,5 +1,5 @@
 _base_ = [
-    '../../_base_/models/mask_rcnn_r50_fpn.py',
+    '../../_base_/models/mask_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
 ]
 # dataset settings
@@ -24,22 +24,10 @@ model = dict(
         out_channels=256,
         num_outs=5),
     rpn_head=dict(
-        type='RPNHead',
+        type='YOLOXRPNHead',
         in_channels=256,
-        feat_channels=256,
-        anchor_generator=dict(
-            type='AnchorGenerator',
-            scales=[2.5],
-            ratios=[0.5, 1.0, 2.0],
-            strides=[24,48,96,192,384],
-            ),
-        bbox_coder=dict(
-            type='DeltaXYWHBBoxCoder',
-            target_means=[.0, .0, .0, .0],
-            target_stds=[1.0, 1.0, 1.0, 1.0]),
-        loss_cls=dict(
-            type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        loss_bbox=dict(type='L1Loss', loss_weight=1.0)),
+        strides=[24,48,96,192,384],
+        feat_channels=256),
     roi_head=dict(
         type='StandardRoIHead',
         bbox_roi_extractor=dict(
@@ -89,9 +77,10 @@ model = dict(
                 max_per_img=100,
                 mask_thr_binary=0.5)),
         train_cfg=dict(
-        rcnn=dict(
-            mask_size=56,
-            ),
+            assigner=dict(type='SimOTAAssigner', center_radius=2.5),
+            rcnn=dict(
+                mask_size=56,
+             ),
         )
 )
 dataset_type = 'LabelmeDataset'
@@ -158,8 +147,8 @@ data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor_dm1",
     samples_per_gpu=samples_per_gpu,
-    workers_per_gpu=12,
-    batch_split_nr=4,
+    workers_per_gpu=7,
+    batch_split_nr=2,
     pin_memory=True,
     train= train_dataset,
     val=dict(
@@ -195,7 +184,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yolox_huge"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

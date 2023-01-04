@@ -80,16 +80,20 @@ class WRandomCrop:
         else:
             y_offset = 0
 
-        patch = [x_offset, y_offset,x_offset+new_w,y_offset+new_h]
+        patch = np.array([x_offset, y_offset,x_offset+new_w,y_offset+new_h],dtype=np.int32)
 
         return patch
 
     def random_crop_around_gtbboxes(self,crop_size,img_shape,gtbboxes):
         h, w, c = img_shape
 
-        bbox = random.choice(gtbboxes)
-        cx = random.randint(bbox[0],bbox[2]-1)
-        cy = random.randint(bbox[1],bbox[3]-1)
+        try:
+            bbox = random.choice(gtbboxes)
+            cx = random.randint(bbox[0],bbox[2]-1)
+            cy = random.randint(bbox[1],bbox[3]-1)
+        except:
+            cx = bbox[0]
+            cy = bbox[1]
         x_offset = max(cx-crop_size[1]//2,0)
         y_offset = max(cy-crop_size[0]//2,0)
 
@@ -99,7 +103,7 @@ class WRandomCrop:
         new_h = min(crop_size[0],h)
         new_w = min(crop_size[1],w)
 
-        patch = [x_offset, y_offset,x_offset+new_w,y_offset+new_h]
+        patch = np.array([x_offset, y_offset,x_offset+new_w,y_offset+new_h],dtype=np.int32)
 
         return patch
 
@@ -121,7 +125,10 @@ class WRandomCrop:
             crop_size = random.choice(self.crop_size)
         gtbboxes = results.get('gt_bboxes',None)
         patch = self.get_crop_bbox(crop_size,img.shape,gtbboxes)
-        cropped_img = wmli.crop_img_absolute_xy(img, patch)
+        try:
+            cropped_img = wmli.crop_img_absolute_xy(img, patch)
+        except:
+            print("Crop error:",patch)
 
         x_offset = patch[0]
         y_offset = patch[1]

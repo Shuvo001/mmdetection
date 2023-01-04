@@ -71,7 +71,7 @@ class BboxOverlaps2D:
             f'scale={self.scale}, dtype={self.dtype})'
         return repr_str
 
-
+@torch.cuda.amp.autocast(False)
 def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     """Calculate overlap between two set of bboxes.
 
@@ -193,6 +193,9 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     # Either the boxes are empty or the length of boxes' last dimension is 4
     assert (bboxes1.size(-1) == 4 or bboxes1.size(0) == 0)
     assert (bboxes2.size(-1) == 4 or bboxes2.size(0) == 0)
+
+    bboxes1 = bboxes1.to(torch.float32)
+    bboxes2 = bboxes2.to(torch.float32)
 
     # Batch dim must be the same
     # Batch dim: (B1, B2, ... Bn)

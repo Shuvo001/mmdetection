@@ -125,6 +125,9 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         kwargs['gt_bboxes'] #[N,4] (x0,y0,x1,y1)
         kwargs['gt_labels] #[N], 从0开始的label
         """
+        if img_metas is not None:
+            for im in img_metas:
+                im["forward_shape"] = img.shape[1:]
         if return_loss:
             return self.forward_train(img, img_metas, **kwargs)
         else:
