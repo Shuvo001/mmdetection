@@ -62,6 +62,10 @@ def parse_args():
         '--use-fp16',
         action='store_true',
         help='Whether or not use fp16 for training')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Whether or not use enable debug')
     parser.add_argument('--dist-port', default="12355", help='port for disttribute training')
     parser.add_argument('--begin_iter', type=int, default=0)
     args = parser.parse_args()
@@ -82,7 +86,7 @@ def main(rank,world_size,args):
     # replace the ${key} with the value of cfg.key
     cfg = replace_cfg_vals(cfg)
 
-    #set_debug()
+    set_debug(args.debug)
 
     if args.auto_scale_lr:
         if 'auto_scale_lr' in cfg and \

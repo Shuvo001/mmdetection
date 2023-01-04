@@ -427,7 +427,7 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
             cls_targets) / num_total_samples
 
         loss_dict = dict(
-            loss_cls=loss_cls, loss_bbox=loss_bbox, loss_obj=loss_obj)
+            loss_yolox_cls=loss_cls, loss_yolox_bbox=loss_bbox, loss_yolox_obj=loss_obj)
 
         if self.use_l1:
             loss_l1 = self.loss_l1(

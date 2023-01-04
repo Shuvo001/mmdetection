@@ -7,6 +7,7 @@ from .base import BaseDetector
 import numpy as np
 from wtorch.utils import unnormalize
 import wtorch.bboxes as wtb
+from mmdet.utils.datadef import *
 
 
 @DETECTORS.register_module()
@@ -160,6 +161,10 @@ class TwoStageDetector(BaseDetector):
                                                  gt_bboxes, gt_labels,
                                                  gt_bboxes_ignore, gt_masks,
                                                  **kwargs)
+        if is_debug():
+            for k in roi_losses.keys():
+                if k in losses:
+                    print(f"ERROR: loss key {k} already in losses")
         losses.update(roi_losses)
 
         return losses

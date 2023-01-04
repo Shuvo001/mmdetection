@@ -318,7 +318,8 @@ class SimpleTrainer(BaseTrainer):
             if mean is not None:
                 img = unnormalize(img,mean=mean,std=std).cpu().numpy()
                 img = np.transpose(img,[1,2,0])
-                img = img[...,::-1]
+                if not is_rgb:
+                    img = img[...,::-1]
             else:
                 img = np.transpose(img,[1,2,0])
             gt_bboxes = odb.npchangexyorder(gt_bboxes)

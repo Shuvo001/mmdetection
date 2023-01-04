@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 from mmcv.runner import BaseModule, auto_fp16
-
+from mmdet.utils.datadef import *
 from mmdet.core.visualization import imshow_det_bboxes
 
 
@@ -157,6 +157,10 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
 
         loss = sum(_value for _key, _value in log_vars.items()
                    if 'loss' in _key)
+        if is_debug():
+            pass_keys = [_key for _key, _value in log_vars.items()
+                   if 'loss' not in _key]
+            print(f"not used for loss: {pass_keys}")
 
         # If the loss_vars has different length, GPUs will wait infinitely
         if dist.is_available() and dist.is_initialized():
