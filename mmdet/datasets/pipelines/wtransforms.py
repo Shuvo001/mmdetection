@@ -1974,9 +1974,12 @@ class W2PolygonMask:
             #contours,hierarchy = cv2.findContours(mask[i],cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
             contours = wtu.find_contours_in_bbox(mask[i],bboxes[i])
             if len(contours)>0:
+                t_bbox = W2PolygonMask.get_bboxes_by_contours(contours)
+                if not np.all(t_bbox[2:]-t_bbox[:2]>1):
+                    continue
                 t_masks.append(contours)
                 keep[i] = True
-                res_bboxes.append(W2PolygonMask.get_bboxes_by_contours(contours))
+                res_bboxes.append(t_bbox)
         if len(res_bboxes) == 0:
             res_bboxes = np.zeros([0,4],dtype=np.float32)
         else:

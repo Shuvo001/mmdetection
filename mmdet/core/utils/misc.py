@@ -95,7 +95,9 @@ def select_single_mlvl(mlvl_tensors, batch_id, detach=True):
 
     Args:
         mlvl_tensors (list[Tensor]): Batch tensor for all scale levels,
-           each is a 4D-tensor.
+           each is a 4D-tensor, each list item is a tensor of a level with shape [B,...]
+           len(mlvl_tensors) == num_levels
+           mlvl_tensors[0].shape[0] == batch_size
         batch_id (int): Batch index.
         detach (bool): Whether detach gradient. Default True.
 

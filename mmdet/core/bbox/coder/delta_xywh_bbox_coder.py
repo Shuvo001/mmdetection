@@ -139,8 +139,8 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
     gt = gt.float()
     px = (proposals[..., 0] + proposals[..., 2]) * 0.5
     py = (proposals[..., 1] + proposals[..., 3]) * 0.5
-    pw = proposals[..., 2] - proposals[..., 0]
-    ph = proposals[..., 3] - proposals[..., 1]
+    pw = torch.maximum(proposals[..., 2] - proposals[..., 0],proposals.new_tensor(1e-8))
+    ph = torch.maximum(proposals[..., 3] - proposals[..., 1],proposals.new_tensor(1e-8))
 
     gx = (gt[..., 0] + gt[..., 2]) * 0.5
     gy = (gt[..., 1] + gt[..., 3]) * 0.5
@@ -149,8 +149,8 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
 
     dx = (gx - px) / pw
     dy = (gy - py) / ph
-    dw = torch.log(gw / pw)
-    dh = torch.log(gh / ph)
+    dw = torch.log(torch.maximum(gw / pw,gw.new_tensor(1e-8)))
+    dh = torch.log(torch.maximum(gh / ph,gh.new_tensor(1e-8)))
     deltas = torch.stack([dx, dy, dw, dh], dim=-1)
 
     means = deltas.new_tensor(means).unsqueeze(0)

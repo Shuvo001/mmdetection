@@ -65,7 +65,7 @@ def eval_dataset(data_dir,classes):
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
     data = LabelMeData(label_text2id=text2label,
                        absolute_coord=True,filter_empty_files=True)
-    data.read_data(data_dir,img_suffix="bmp")
+    data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
 
     return data
 

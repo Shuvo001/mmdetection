@@ -12,7 +12,7 @@ import object_detection2.bboxes as odb
 from mmdet.core import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
-
+import sys
 
 class WCustomDataset(Dataset):
     """Custom dataset for detection.
@@ -67,7 +67,8 @@ class WCustomDataset(Dataset):
                  test_mode=False,
                  filter_empty_gt=True,
                  file_client_args=dict(backend='disk'),
-                 cache_processed_data=False):
+                 cache_processed_data=False,
+                 cache_data_items=True):
         self.ann_file = ann_file
         self.data_root = data_root
         self.img_prefix = img_prefix
@@ -136,16 +137,28 @@ class WCustomDataset(Dataset):
         if cache_processed_data:
             self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
             self._processed_data_cache = []
+            print(f"Cache processed data")
+            sys.stdout.flush()
             for i in range(len(self._inner_dataset)):
                 self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
+                if i%100 == 0:
+                    sys.stdout.write(f"cache {i}/{len(self._inner_dataset)} \r")
+                    sys.stdout.flush()
             print(f"Total cache {len(self._processed_data_cache)} processed data items.")
             print(f"Pipeline for cache is {self.pipeline}")
             print(f"Pipeline not cache is {self.pipeline2}")
-        else:
+            sys.stdout.flush()
+        elif cache_data_items:
             self._data_cache = []
+            print("Cache data items")
+            sys.stdout.flush()
             for i in range(len(self._inner_dataset)):
                 self._data_cache.append(self._inner_dataset[i])
+                if i%100 == 0:
+                    sys.stdout.write(f"cache {i}/{len(self._inner_dataset)} \r")
+                    sys.stdout.flush()
             print(f"Total cache {len(self._data_cache)} data items.")
+            sys.stdout.flush()
         self.cache_processed_data = cache_processed_data
 
     def __len__(self):

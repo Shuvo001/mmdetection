@@ -68,7 +68,7 @@ def eval_dataset(data_dir,classes):
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
     data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
-    data.read_data(data_dir,img_suffix="bmp")
+    data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
 
     return data
 
@@ -199,8 +199,8 @@ def main():
         #
         #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
             #continue
-        if osp.basename(full_path) not in imgs17:
-            continue
+        #if osp.basename(full_path) not in imgs17:
+            #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
         bboxes,labels,scores,det_masks,result = detector(model,
                                                          full_path,
