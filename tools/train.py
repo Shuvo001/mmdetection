@@ -106,15 +106,17 @@ def main(rank,world_size,args):
 
     # work_dir is determined in this priority: CLI > segment in file > filename
     if args.work_dir is not None:
-        # update configs according to CLI args if args.work_dir is not None
         cfg.work_dir = args.work_dir
+        print(f"Update work dir to {cfg.work_dir}")
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
         cfg.work_dir = osp.join('./work_dirs',
                                 osp.splitext(osp.basename(args.config))[0])
+        print(f"Set work dir to {cfg.work_dir}")
     
     if args.use_fp16:
         cfg.work_dir = cfg.work_dir+"_fp16"
+        print(f"Update work dir to {cfg.work_dir}")
 
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
@@ -144,7 +146,7 @@ def main(rank,world_size,args):
     set_random_seed(seed, deterministic=args.deterministic)
     cfg.seed = seed
     meta['seed'] = seed
-    meta['exp_name'] = osp.basename(args.config)
+    meta['exp_name'] = wmlu.base_name(args.config)
 
     model = build_detector(cfg.model)
     model.init_weights()
@@ -157,7 +159,8 @@ def main(rank,world_size,args):
     trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,
                             use_fp16=args.use_fp16,
                             world_size=world_size,
-                            begin_iter=args.begin_iter)
+                            begin_iter=args.begin_iter,
+                            meta=meta)
     trainer.run()
 
 

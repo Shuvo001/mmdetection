@@ -307,17 +307,17 @@ class MultiBranchStem12X(nn.Module):
         super().__init__()
         self.out_channels = out_channels
         branch_channels = out_channels//4
-        self.branch0 = nn.Conv2d(in_channels,branch_channels,3,stride=2,padding=1)
+        self.branch0 = nn.Conv2d(in_channels,branch_channels,3,stride=2,padding=1,bias=False)
         self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels,4,3,3,0),
+            nn.Conv2d(in_channels,4,3,3,0,bias=False),
             nn.BatchNorm2d(num_features=4),
             nn.LeakyReLU(inplace=True),
-            nn.Conv2d(4,8,3,2,1),
+            nn.Conv2d(4,8,3,2,1,bias=False),
             nn.BatchNorm2d(num_features=8),
             nn.LeakyReLU(inplace=True),
-            nn.Conv2d(8,branch_channels,3,2,1))
-        self.branch2 = nn.Conv2d(in_channels,branch_channels,12,12,0)
-        self.branch3 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3)
+            nn.Conv2d(8,branch_channels,3,2,1,bias=False))
+        self.branch2 = nn.Conv2d(in_channels,branch_channels,12,12,0,bias=False)
+        self.branch3 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(inplace=True),

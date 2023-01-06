@@ -236,8 +236,6 @@ class WRotate:
         if isinstance(img_fill_val, (float, int)):
             img_fill_val = tuple([float(img_fill_val)] * 3)
         elif isinstance(img_fill_val, tuple):
-            assert len(img_fill_val) == 3, 'img_fill_val as tuple must '\
-                f'have 3 elements. got {len(img_fill_val)}.'
             img_fill_val = tuple([float(val) for val in img_fill_val])
         else:
             raise ValueError(

@@ -127,12 +127,13 @@ def main():
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device=args.device)
     if args.checkpoint is None:
-        checkpoint = osp.join(model.cfg.work_dir,"weights","latest.pth")
+        checkpoint = osp.join(model.cfg.work_dir+"_fp16","weights","latest.pth")
         if not osp.exists(checkpoint):
-            checkpoint = osp.join(model.cfg.work_dir+"_fp16","weights","latest.pth")
+            checkpoint = osp.join(model.cfg.work_dir,"weights","latest.pth")
     else:
         checkpoint = args.checkpoint
     print(f"Load {checkpoint}")
+    os.system(f"ls -l {checkpoint}")
     checkpoint = torch.load(checkpoint,map_location="cpu")
     wtu.forgiving_state_restore(model,checkpoint)
     '''

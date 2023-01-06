@@ -27,6 +27,7 @@ from thirdparty.registry import Registry
 from mmcv.parallel.scatter_gather import scatter_kwargs
 from mmdet.datasets.pipelines.wtransforms import WCompressMask, W2PolygonMask
 from object_detection2.standard_names import *
+import traceback
 
 
 
@@ -98,7 +99,7 @@ def mmdet_data_processor_dm1(data_batch,local_rank=0):
     return inputs
 
 class SimpleTrainer(BaseTrainer):
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=0):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=0,meta={'exp_name':"mmdet"}):
         super().__init__(cfg)
         self.model = model
         self.dataset = dataset
@@ -122,6 +123,7 @@ class SimpleTrainer(BaseTrainer):
         self.use_fp16 = use_fp16
         self.init_before_run()
         self.run_info = {}
+        self.meta = meta
         pass
 
     def init_before_run(self):
@@ -184,33 +186,41 @@ class SimpleTrainer(BaseTrainer):
 
     def run(self):
         while self.iter < self.max_iters:
-            self.run_info = {}
+            try:
+                self.run_info = {}
+    
+                self.call_hook('before_iter')
+    
+                time_b0 = time.time()
+                self.fetch_iter_data()
+                time_b1 = time.time()
+                self.run_info['data_time'] = time_b1-time_b0
 
-            self.call_hook('before_iter')
+                if self.use_fp16:
+                    self.train_amp_one_iter()
+                else:
+                    self.train_one_iter()
 
-            time_b0 = time.time()
-            self.fetch_iter_data()
-            time_b1 = time.time()
-            self.run_info['data_time'] = time_b1-time_b0
-
-            if self.use_fp16:
-                self.train_amp_one_iter()
-            else:
-                self.train_one_iter()
-
-            time_b2 = time.time()
-            self.estimate_time_cost.add_count()
-            self.run_info['model_time'] = time_b2-time_b1
-
-            self.call_hook('after_iter')
-
-            self.save_checkpoint()
-
-            self.run_info['iter_time'] = time.time()-time_b0
-
-            self.log_after_iter()
-
-            self.iter += 1
+                time_b2 = time.time()
+                self.estimate_time_cost.add_count()
+                self.run_info['model_time'] = time_b2-time_b1
+    
+                self.call_hook('after_iter')
+    
+                self.save_checkpoint()
+    
+                self.run_info['iter_time'] = time.time()-time_b0
+    
+                self.log_after_iter()
+    
+                self.iter += 1
+            except Exception as e:
+                print(f"Train error {e}")
+                traceback.print_exc()
+                continue
+            except:
+                traceback.print_exc()
+                continue
 
         self.save_checkpoint()
         self.after_run()
@@ -268,7 +278,7 @@ class SimpleTrainer(BaseTrainer):
             data_time = self.run_info['data_time']
             model_time = self.run_info['model_time']
             iter_time = self.run_info['iter_time']
-            print(f"[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, data_time={data_time:.3f}, model_time={model_time:.3f}, iter time={iter_time: .3f}, {self.estimate_time_cost}")
+            print(f"{self.meta['exp_name']}[{self.iter}/{self.max_iters}], loss={self.outputs['loss']:.3f}, data_time={data_time:.3f}, model_time={model_time:.3f}, iter time={iter_time: .3f}, {self.estimate_time_cost}")
             sys.stdout.flush()
 
         if self.iter%self.cfg.log_config.tb_interval == 0:
@@ -278,7 +288,7 @@ class SimpleTrainer(BaseTrainer):
         try:
             self.__tblog()
         except Exception as e:
-            print(f"ERROR: {e}")
+            print(f"TBLOG ERROR: {e}")
             
     def __tblog(self):
         if self.rank!=0:

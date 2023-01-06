@@ -109,19 +109,19 @@ data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
 img_scale = (3840, 6144)  # height, width
 random_resize_scales = [6720, 6528, 6336, 6144, 5952, 5760]
-random_crop_scales = [(4200, 6720), (4080, 6528), (3960, 6336), (3840, 6144), (3720, 5952), (3600, 5760)]
-random_crop_scales_min = [(2100, 3360), (2040, 3264), (1980, 3168), (1920, 3072), (1860, 2976), (1800, 2880)]
+random_crop_scales = [(4006, 6720), (3892, 6528), (3777, 6336), (3663, 6144), (3548, 5952), (3434, 5760)]
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='WRotate',
         prob=0.3,
         max_rotate_angle=20.0,
+        img_fill_val=0,
         ),
     dict(type='WTranslate',
         prob=0.3,
         max_translate_offset=200,
-        img_fill_val=(128,),
+        img_fill_val=(0,),
         ),
     dict(
         type='WMixUpWithMask',
