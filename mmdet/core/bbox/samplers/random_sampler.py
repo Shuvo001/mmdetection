@@ -28,6 +28,7 @@ class RandomSampler(BaseSampler):
         super(RandomSampler, self).__init__(num, pos_fraction, neg_pos_ub,
                                             add_gt_as_proposals)
         self.rng = demodata.ensure_rng(kwargs.get('rng', None))
+        print(self)
 
     def random_choice(self, gallery, num):
         """Random select some elements from the gallery.
@@ -80,3 +81,11 @@ class RandomSampler(BaseSampler):
             return neg_inds
         else:
             return self.random_choice(neg_inds, num_expected)
+
+    def __expr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += "("
+        repr_str += f"num={self.num},"
+        repr_str += f"pos_fraction={self.pos_fraction}"
+        repr_str += ")"
+        return repr_str

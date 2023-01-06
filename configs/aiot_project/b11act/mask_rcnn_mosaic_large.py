@@ -98,6 +98,8 @@ random_resize_scales = [1024, 992, 960, 928, 896, 864]
 random_crop_scales = [(640, 1024), (660, 1056), (680, 1088), (700, 1120), (720, 1152), (740, 1184)]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+img_norm_test_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=False)
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales),
@@ -123,19 +125,9 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(
-        type='MultiScaleFlipAug',
-        img_scale=img_scale,
-        flip=False,
-        transforms=[
-            dict(type='Resize', keep_ratio=True),
-            dict(type='RandomFlip'),
-            dict(type='Normalize', **img_norm_cfg),
-            dict(type='Pad', size_divisor=32),
-            dict(type='ImageToTensor', keys=['img']),
-            dict(type='Collect', keys=['img']),
-        ])
+    dict(type='WLoadImageFromFile'),
+    dict(type='Normalize', **img_norm_test_cfg),
+    dict(type="WGetImg"),
 ]
 
 train_dataset = dict(

@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
-
+import torch
 import torch.nn as nn
 import torch.utils.checkpoint as cp
 from mmcv.cnn import build_conv_layer, build_norm_layer, build_plugin_layer
@@ -302,6 +302,36 @@ class Bottleneck(BaseModule):
 
         return out
 
+class MultiBranchStem12X(nn.Module):
+    def __init__(self,in_channels,out_channels):
+        super().__init__()
+        self.out_channels = out_channels
+        branch_channels = out_channels//4
+        self.branch0 = nn.Conv2d(in_channels,branch_channels,3,stride=2,padding=1)
+        self.branch1 = nn.Sequential(
+            nn.Conv2d(in_channels,4,3,3,0),
+            nn.BatchNorm2d(num_features=4),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(4,8,3,2,1),
+            nn.BatchNorm2d(num_features=8),
+            nn.LeakyReLU(inplace=True),
+            nn.Conv2d(8,branch_channels,3,2,1))
+        self.branch2 = nn.Conv2d(in_channels,branch_channels,12,12,0)
+        self.branch3 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3)
+        self.norm = nn.Sequential(
+            nn.BatchNorm2d(out_channels),
+            nn.LeakyReLU(inplace=True),
+        )
+
+    def forward(self,x):
+        downsampled = torch.nn.functional.interpolate(x,(x.shape[-2]//6,x.shape[-1]//6),mode='bilinear')
+        x0 = self.branch0(downsampled)
+        x1 = self.branch1(x)
+        x2 = self.branch2(x)
+        x3 = self.branch3(downsampled)
+        x = torch.cat([x0,x1,x2,x3],dim=1)
+        x = self.norm(x)
+        return x
 
 @BACKBONES.register_module()
 class WResNet(BaseModule):
@@ -395,6 +425,7 @@ class WResNet(BaseModule):
                  with_cp=False,
                  zero_init_residual=True,
                  pretrained=None,
+                 deep_stem_mode="convs", #convs, MultiBranchStem12X
                  init_cfg=None):
         super(WResNet, self).__init__(init_cfg)
         self.zero_init_residual = zero_init_residual
@@ -432,6 +463,7 @@ class WResNet(BaseModule):
         else:
             raise TypeError('pretrained must be a str or None')
 
+        self.deep_stem_mode = deep_stem_mode
         self.depth = depth
         if stem_channels is None:
             stem_channels = base_channels
@@ -570,39 +602,33 @@ class WResNet(BaseModule):
         """nn.Module: the normalization layer named "norm1" """
         return getattr(self, self.norm1_name)
 
+    def _make_deep_stem_layer(self,in_channels,stem_channels):
+        if self.deep_stem_mode == "convs":
+            moduls = []
+            _in_channels = in_channels
+            for cf in self.conv_cfg:
+                _out_channels = cf['out_channels']
+                moduls.append(nn.Conv2d(in_channels=_in_channels,
+                out_channels=_out_channels,
+                kernel_size=cf['kernel_size'],
+                stride=cf.get('stride',1),
+                padding=cf.get('padding',0),
+                bias=cf.get('bias',False)
+                ))
+                moduls.append(nn.ReLU(inplace=True))
+                moduls.append(build_norm_layer(self.norm_cfg, _out_channels)[1])
+                _in_channels = _out_channels
+            return nn.Sequential(**moduls)
+        elif self.deep_stem_mode == "MultiBranchStem12X":
+            return MultiBranchStem12X(in_channels,stem_channels)
+        else:
+            print(f"Unknow deep stem model {self.deep_stem_mode}")
+
+        return None
+
     def _make_stem_layer(self, in_channels, stem_channels):
         if self.deep_stem:
-            self.stem = nn.Sequential(
-                build_conv_layer(
-                    self.conv_cfg,
-                    in_channels,
-                    stem_channels // 2,
-                    kernel_size=3,
-                    stride=2,
-                    padding=1,
-                    bias=False),
-                build_norm_layer(self.norm_cfg, stem_channels // 2)[1],
-                nn.ReLU(inplace=True),
-                build_conv_layer(
-                    self.conv_cfg,
-                    stem_channels // 2,
-                    stem_channels // 2,
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
-                    bias=False),
-                build_norm_layer(self.norm_cfg, stem_channels // 2)[1],
-                nn.ReLU(inplace=True),
-                build_conv_layer(
-                    self.conv_cfg,
-                    stem_channels // 2,
-                    stem_channels,
-                    kernel_size=3,
-                    stride=1,
-                    padding=1,
-                    bias=False),
-                build_norm_layer(self.norm_cfg, stem_channels)[1],
-                nn.ReLU(inplace=True))
+            self.stem = self._make_deep_stem_layer(in_channels,stem_channels)
         else:
             self.conv1 = build_conv_layer(
                 self.conv_cfg,

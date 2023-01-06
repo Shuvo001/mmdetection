@@ -9,13 +9,15 @@ model = dict(
     backbone=dict(
         type='WResNet',
         in_channels=1,
-        first_conv_cfg={'kernel_size':12,'stride':12,'padding':0},
+        first_conv_cfg=None,
         depth=50,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
+        deep_stem=True,
+        deep_stem_mode='MultiBranchStem12X',
         style='pytorch',
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
@@ -91,6 +93,12 @@ model = dict(
         train_cfg=dict(
         rcnn=dict(
             mask_size=56,
+            sampler=dict(
+                type='RandomSampler',
+                num=128,
+                pos_fraction=0.25,
+                neg_pos_ub=-1,
+                add_gt_as_proposals=False),
             ),
         )
 )
@@ -122,7 +130,7 @@ train_pipeline = [
         prob=0.3,
         pad_val=114.0,skip_filter=False),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
-    dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
+    #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Pad', size_divisor=192),
     dict(type='WFixData'),
@@ -201,5 +209,5 @@ load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_m
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True
 names_not2train = ["backbone"]
-names_2train = ["backbone.conv1","backbone.bn1"]
+names_2train = ["backbone.conv1","backbone.bn1","backbone.stem"]
 

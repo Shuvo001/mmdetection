@@ -63,6 +63,7 @@ class MaxIoUAssigner(BaseAssigner):
         self.match_low_quality = match_low_quality
         #default is BboxOverlaps2D in mmdet/core/bbox/iou_calculators/iou2d_calculator.py
         self.iou_calculator = build_iou_calculator(iou_calculator)
+        print(self)
 
     def assign(self, bboxes, gt_bboxes, gt_bboxes_ignore=None, gt_labels=None):
         """Assign gt to bboxes.
@@ -217,3 +218,11 @@ class MaxIoUAssigner(BaseAssigner):
 
         return AssignResult(
             num_gts, assigned_gt_inds, max_overlaps, labels=assigned_labels)
+
+    
+    def __expr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += "("
+        repr_str += f"match_low_quality={self.match_low_quality}"
+        repr_str += ")"
+        return repr_str

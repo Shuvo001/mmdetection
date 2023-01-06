@@ -40,6 +40,15 @@
             "args":["configs/mask_rcnn/mask_rcnn_r50_fpn_2x_coco.py"  "--gpus" "0"],
         },
         {
+            "name": "Python: train b11 mask-rcnn huge",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/train.py",
+            "console": "integratedTerminal",
+            "args":["configs/aiot_project/b11act/mask_rcnn_huge_t.py"  "--gpus" "1" "--use-fp16" "--debug"],
+        },
+        {
             "name": "Python: train b11 mask-rcnn yolox huge",
             "type": "python",
             "justMyCode": true,
@@ -122,14 +131,14 @@
             "args":["configs/aiot_project/b11act/mask_rcnn_mosaic.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic/weights/latest.pth" "--gpus" "1" "--save_results"],
         },
         {
-            "name": "Python: eval b11act mask large",
+            "name": "Python: eval b11act mask huge",
             "type": "python",
             "justMyCode": true,
             "request": "launch",
-            "program": "./tools/eval_on_images.py",
+            "program": "./tools/eval_on_images_pl.py",
             "console": "integratedTerminal",
             //"args":["configs/aiot_project/b11act/mask_rcnn_org.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask/weights/checkpoint_3000.pth" "--gpus" "1" "--save_results"],
-            "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_large.py" "--checkpoint" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_large1/weights/checkpoint_50000.pth" "--gpus" "1" "--save_results"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_huge.py" "--gpus" "1" "--save_results"],
         },
         {
             "name": "Python: eval b11act mask patch",
