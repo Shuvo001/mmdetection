@@ -382,7 +382,8 @@ class BBoxHead(BaseModule):
                 det_bboxes, det_labels = wmulticlass_nms(bboxes, scores,
                                                     cfg.score_thr, cfg.nms["iou_threshold"],
                                                     cfg.max_per_img,
-                                                    classes_wise_nms=cfg.nms.get("classes_wise_nms",True))
+                                                    classes_wise_nms=cfg.nms.get("classes_wise_nms",True),
+                                                    cfg=cfg)
 
             return det_bboxes, det_labels
 

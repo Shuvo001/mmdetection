@@ -81,6 +81,7 @@ model = dict(
                 nms=dict(type='nms', iou_threshold=0.7),
                 min_bbox_size=0),
             rcnn=dict(
+                min_nms_bboxes_size=4,
                 score_thr=0.05,
                 nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.33),
                 max_per_img=100,

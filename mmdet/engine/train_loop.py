@@ -217,9 +217,11 @@ class SimpleTrainer(BaseTrainer):
             except Exception as e:
                 print(f"Train error {e}")
                 traceback.print_exc()
+                sys.stdout.flush()
                 continue
             except:
                 traceback.print_exc()
+                sys.stdout.flush()
                 continue
 
         self.save_checkpoint()

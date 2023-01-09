@@ -102,7 +102,8 @@ def wmulticlass_nms(multi_bboxes,
                    max_num=-1,
                    score_factors=None,
                    return_inds=False,
-                   classes_wise_nms=True):
+                   classes_wise_nms=True,
+                   cfg=None):
     """NMS for multi-class bboxes.
 
     Args:
@@ -153,13 +154,28 @@ def wmulticlass_nms(multi_bboxes,
     inds = valid_mask.nonzero(as_tuple=False).squeeze(1)
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
 
+    if cfg is not None and "min_nms_bboxes_size" in cfg:
+        min_nms_bboxes_size = cfg['min_nms_bboxes_size']
+        bboxes_cxy = (bboxes[...,2:]+bboxes[...,:2])/2
+        bboxes_wh = (bboxes[...,2:]-bboxes[...,:2])/2
+        bboxes_size = torch.sqrt(torch.prod(bboxes_wh,dim=-1)*bboxes_wh.new_tensor(4))
+        scale = torch.maximum(bboxes_size.new_tensor(min_nms_bboxes_size)/bboxes_size,bboxes_size.new_tensor(1.0))
+        bboxes_wh = bboxes_wh*scale.unsqueeze_(-1)
+        nms_bboxes = torch.cat([bboxes_cxy-bboxes_wh,bboxes_cxy+bboxes_wh],dim=-1)
+        scale_bboxes = True
+    else:
+        nms_bboxes = bboxes
+        scale_bboxes = False
+
 
     if classes_wise_nms:
-        dets,labels,inds = _wbatched_nms(bboxes,scores,labels,nms_threshold=nms_threshold,
+        dets,labels,inds = _wbatched_nms(nms_bboxes,scores,labels,nms_threshold=nms_threshold,
                                          max_num=max_num)
     else:
-        dets,labels,inds = _wnms(bboxes,scores,labels,nms_threshold=nms_threshold,
+        dets,labels,inds = _wnms(nms_bboxes,scores,labels,nms_threshold=nms_threshold,
                                  max_num=max_num)
+    if scale_bboxes:
+        dets = torch.cat([bboxes,scores.unsqueeze(-1)],dim=-1)[inds]
     if return_inds:
         return dets, labels, inds
     else:

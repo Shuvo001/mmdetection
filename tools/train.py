@@ -80,7 +80,7 @@ def main(rank,world_size,args):
         wtd.setup_dist_group(rank,world_size,port=args.dist_port)
     torch.cuda.set_device(rank)
     device = rank
-
+    print(f"Config path {args.config}")
     cfg = Config.fromfile(args.config)
 
     # replace the ${key} with the value of cfg.key

@@ -162,6 +162,7 @@ def main():
     save_path = args.save_data_dir
     if save_path is None:
         save_path = osp.join(work_dir,"tmp","eval_on_images")
+    save_path += "1"
 
     test_data_dir = args.test_data_dir
 
@@ -171,10 +172,11 @@ def main():
     print(f"test_data_dir: {test_data_dir}")
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
-    metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
     #model_args={"threshold":0.3})
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
     dataset = eval_dataset(test_data_dir,classes=classes)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"input size={input_size}")
@@ -190,8 +192,9 @@ def main():
         print(f"process {i}/{len(dataset)}")
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         #
-        '''if 0 not in gt_labels:
-            continue
+        #if 1 not in gt_labels:
+            #continue
+        '''
         contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         print(contours)
         tmp_img = wmli.imread(full_path)
