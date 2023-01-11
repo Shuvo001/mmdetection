@@ -173,10 +173,10 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
     #model_args={"threshold":0.3})
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
     dataset = eval_dataset(test_data_dir,classes=classes)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"input size={input_size}")

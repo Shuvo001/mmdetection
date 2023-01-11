@@ -159,7 +159,8 @@ def wmulticlass_nms(multi_bboxes,
         bboxes_cxy = (bboxes[...,2:]+bboxes[...,:2])/2
         bboxes_wh = (bboxes[...,2:]-bboxes[...,:2])/2
         bboxes_size = torch.sqrt(torch.prod(bboxes_wh,dim=-1)*bboxes_wh.new_tensor(4))
-        scale = torch.maximum(bboxes_size.new_tensor(min_nms_bboxes_size)/bboxes_size,bboxes_size.new_tensor(1.0))
+        scale = bboxes_size.new_tensor(min_nms_bboxes_size)/bboxes_size
+        scale.clamp_(min=1.0)
         bboxes_wh = bboxes_wh*scale.unsqueeze_(-1)
         nms_bboxes = torch.cat([bboxes_cxy-bboxes_wh,bboxes_cxy+bboxes_wh],dim=-1)
         scale_bboxes = True

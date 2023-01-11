@@ -141,7 +141,7 @@ class WCustomDataset(Dataset):
             sys.stdout.flush()
             for i in range(len(self._inner_dataset)):
                 self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
-                if i%100 == 0:
+                if i%10 == 0:
                     sys.stdout.write(f"cache {i}/{len(self._inner_dataset)} \r")
                     sys.stdout.flush()
             print(f"Total cache {len(self._processed_data_cache)} processed data items.")

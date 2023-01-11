@@ -175,7 +175,7 @@ class SimpleTrainer(BaseTrainer):
             self.scaler = torch.cuda.amp.GradScaler()
 
         self.call_hook('before_run')
-        self.estimate_time_cost.reset(self.max_iters)
+        self.estimate_time_cost.reset(self.max_iters-self.iter)
 
         if self.rank != 0:
             return

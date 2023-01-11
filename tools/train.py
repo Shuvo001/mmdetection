@@ -17,6 +17,7 @@ from mmdet.engine.train_loop import *
 import wtorch.train_toolkit as wtt
 import wtorch.dist as wtd
 from mmdet.utils.datadef import *
+import socket
 
 
 def parse_args():
@@ -80,6 +81,7 @@ def main(rank,world_size,args):
         wtd.setup_dist_group(rank,world_size,port=args.dist_port)
     torch.cuda.set_device(rank)
     device = rank
+    print(f"Host name {socket.gethostname()}")
     print(f"Config path {args.config}")
     cfg = Config.fromfile(args.config)
 
@@ -170,6 +172,7 @@ if __name__ == '__main__':
     gpus_str = ",".join([str(x) for x in args.gpus])
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str
 
+    torch.set_num_threads(1)
     if len(args.gpus)>1:
         mp.spawn(main,args=(world_size,args),nprocs=world_size,join=True)
     else:

@@ -152,13 +152,13 @@ train_dataset = dict(
     ),
     pipeline=train_pipeline)
 
-samples_per_gpu = 7
+samples_per_gpu = 6
 data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor_dm1",
     samples_per_gpu=samples_per_gpu,
     workers_per_gpu=10,
-    batch_split_nr=7,
+    batch_split_nr=6,
     pin_memory=True,
     train= train_dataset,
     val=dict(
