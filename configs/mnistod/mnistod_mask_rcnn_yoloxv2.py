@@ -66,8 +66,8 @@ model = dict(
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
         test_cfg=dict(
             rpn=dict(
-                nms_pre=1000,
-                max_per_img=1000,
+                nms_pre=200,
+                max_per_img=100,
                 nms=dict(type='nms', iou_threshold=0.7),
                 min_bbox_size=0),
             rcnn=dict(
@@ -119,7 +119,6 @@ train_pipeline = [
 ]
 test_pipeline = [
     dict(type='WLoadImageFromFile'),
-    dict(type='W2Gray'),
     dict(type="WGetImg"),
 ]
 
@@ -182,7 +181,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-1000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-500,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/training_data/mmdet/mnistod_t"
+work_dir="/home/wj/ai/mldata1/training_data/mmdet/mnistodv2"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

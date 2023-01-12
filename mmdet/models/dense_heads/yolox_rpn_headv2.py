@@ -25,8 +25,8 @@ import wtorch.nms as wnms
 class YOLOXRPNHeadV2(YOLOXOneClassesHead):
     @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
     def get_bboxes(self,
-                   bbox_preds,
                    objectnesses,
+                   bbox_preds,
                    img_metas=None,
                    cfg=None,
                    rescale=False,
@@ -102,17 +102,6 @@ class YOLOXRPNHeadV2(YOLOXOneClassesHead):
         decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
         return decoded_bboxes
 
-    def loss(self,
-             bbox_preds,
-             objectnesses,
-             gt_bboxes,
-             img_metas=None,
-             gt_bboxes_ignore=None):
-        return super().loss(bbox_preds,
-                            objectnesses,
-                            gt_bboxes,
-                            img_metas,
-                            gt_bboxes_ignore)
 
     def _get_bboxes_single(self,
                            bbox_pred_list,

@@ -6,11 +6,8 @@ import img_utils as wmli
 import mmcv
 import numpy as np
 import torch
-from mmcv.ops import RoIPool
 from mmcv.parallel import collate, scatter
-from mmcv.runner import load_checkpoint
 import wtorch.utils as wtu
-from mmdet.core import get_classes
 from mmdet.datasets import replace_ImageToTensor
 from mmdet.datasets.pipelines import Compose
 from mmdet.models import build_detector
@@ -136,11 +133,6 @@ def inference_detector(model, imgs):
     if next(model.parameters()).is_cuda:
         # scatter to specified GPU
         data = scatter(data, [device])[0]
-    else:
-        for m in model.modules():
-            assert not isinstance(
-                m, RoIPool
-            ), 'CPU inference with RoIPool is not supported currently.'
 
     # forward the model
     with torch.no_grad():
@@ -342,11 +334,6 @@ async def async_inference_detector(model, imgs):
     if next(model.parameters()).is_cuda:
         # scatter to specified GPU
         data = scatter(data, [device])[0]
-    else:
-        for m in model.modules():
-            assert not isinstance(
-                m, RoIPool
-            ), 'CPU inference with RoIPool is not supported currently.'
 
     # We don't restore `torch.is_grad_enabled()` value during concurrent
     # inference since execution can overlap

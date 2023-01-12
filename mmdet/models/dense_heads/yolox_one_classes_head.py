@@ -184,7 +184,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
         bbox_pred = conv_reg(reg_feat)
         objectness = conv_obj(cls_feat)
 
-        return bbox_pred, objectness
+        return objectness, bbox_pred
 
     def forward(self, feats):
         """Forward features from the upstream network.
@@ -205,8 +205,8 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
     def get_bboxes(self,
-                   bbox_preds,
                    objectnesses,
+                   bbox_preds,
                    img_metas=None,
                    cfg=None,
                    rescale=False,
@@ -308,8 +308,8 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
     #@force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
     @torch.cuda.amp.autocast(False)
     def loss(self,
-             bbox_preds,
              objectnesses,
+             bbox_preds,
              gt_bboxes,
              img_metas=None,
              gt_bboxes_ignore=None):
@@ -424,7 +424,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
         num_priors = priors.size(0)
         num_gts = gt_bboxes.size(0)
-        gt_labels = gt_labels.zeros([gt_bboxes.size(0)],dtype=torch.int32)
+        gt_labels = gt_bboxes.new_zeros([gt_bboxes.size(0)],dtype=torch.int32)
         gt_bboxes = gt_bboxes.to(decoded_bboxes.dtype)
         # No target
         if num_gts == 0:

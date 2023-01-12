@@ -328,7 +328,7 @@ class StandardRoIHead(BaseRoIHead):
             of tuple is bbox results, second element is mask results.
         """
         assert self.with_bbox, 'Bbox head must be implemented.'
-
+        print(f"proposal size {[x.shape for x in proposal_list]}")
         det_bboxes, det_labels = self.simple_test_bboxes(
             x, img_metas, proposal_list, self.test_cfg)
 

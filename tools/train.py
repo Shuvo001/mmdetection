@@ -4,19 +4,12 @@ import os.path as osp
 import time
 import warnings
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
 from thirdparty.pyconfig.config import Config 
 import wtorch.train_toolkit as wtt
-from mmdet.apis import init_random_seed, set_random_seed, train_detectorv2
-from mmdet.datasets import build_dataset
-from mmdet.models import build_detector
-from mmdet.utils import (get_device, get_root_logger,
-                         replace_cfg_vals)
-from mmdet.engine.train_loop import *
-import wtorch.train_toolkit as wtt
+import wml_utils as wmlu
 import wtorch.dist as wtd
-from mmdet.utils.datadef import *
+import torch.distributed as dist
+import torch.multiprocessing as mp
 import socket
 
 
@@ -77,6 +70,14 @@ def parse_args():
 
 
 def main(rank,world_size,args):
+    from mmdet.utils import (get_device, get_root_logger,
+                             replace_cfg_vals)
+    from mmdet.utils.datadef import set_debug
+    from mmdet.apis import init_random_seed, set_random_seed 
+    from mmdet.datasets import build_dataset
+    from mmdet.models import build_detector
+    from mmdet.engine.train_loop import SimpleTrainer
+
     if world_size>1:
         wtd.setup_dist_group(rank,world_size,port=args.dist_port)
     torch.cuda.set_device(rank)
@@ -171,6 +172,8 @@ if __name__ == '__main__':
     world_size = len(args.gpus)
     gpus_str = ",".join([str(x) for x in args.gpus])
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str
+    print(os.environ['CUDA_VISIBLE_DEVICES'])
+
 
     torch.set_num_threads(1)
     if len(args.gpus)>1:

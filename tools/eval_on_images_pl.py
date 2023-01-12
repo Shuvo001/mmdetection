@@ -1,8 +1,5 @@
 # coding=utf-8
 from argparse import ArgumentParser
-
-from mmdet.apis import (async_inference_detector, inference_detector,inference_detectorv2,ImageInferencePipeline,
-                        init_detector, show_result_pyplot)
 from object_detection2.standard_names import *
 import object_detection2.bboxes as odb
 import os
@@ -18,9 +15,7 @@ import os.path as osp
 from itertools import count
 import cv2
 import shutil
-import wtorch.utils as wtu
 import torch
-from mmdet.datasets.pipelines import Compose
 
 
 def parse_args():
@@ -124,6 +119,13 @@ def main():
 
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
+        print(os.environ['CUDA_VISIBLE_DEVICES'])
+
+    import wtorch.utils as wtu
+    from mmdet.datasets.pipelines import Compose
+    from mmdet.apis import (ImageInferencePipeline,
+                        init_detector)
+
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device=args.device)
     if args.checkpoint is None:
