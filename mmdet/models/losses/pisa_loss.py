@@ -1,11 +1,9 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-import mmcv
 import torch
 
 from mmdet.core import bbox_overlaps
 
 
-@mmcv.jit(derivate=True, coderize=True)
 def isr_p(cls_score,
           bbox_pred,
           bbox_targets,
@@ -119,7 +117,6 @@ def isr_p(cls_score,
     return bbox_targets
 
 
-@mmcv.jit(derivate=True, coderize=True)
 def carl_loss(cls_score,
               labels,
               bbox_pred,

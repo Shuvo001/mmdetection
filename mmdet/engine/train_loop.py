@@ -6,7 +6,6 @@ from mmdet.utils.lr_scheduler_toolkit import *
 import wtorch.train_toolkit as wtt
 import wtorch.utils as wtu
 from .build import *
-import logging
 import time
 import os
 import sys
@@ -15,7 +14,6 @@ import random
 from wtorch.utils import unnormalize
 import object_detection2.visualization as odv
 import object_detection2.bboxes as odb
-import wtorch.bboxes as wbb
 from mmdet.core import BitmapMasks
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
@@ -62,12 +60,15 @@ def yolo_data_processor(data_batch,local_rank=0):
 @DATAPROCESSOR_REGISTRY.register()
 def mmdet_data_processor(data_batch,local_rank=0):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
-    return inputs[0]
+    inputs = inputs[0]
+    inputs['img'] = inputs['img'].to(torch.float32)
+    return inputs
 
 @DATAPROCESSOR_REGISTRY.register()
 def mmdet_data_processor_dm(data_batch,local_rank=0):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
     inputs = inputs[0]
+    inputs['img'] = inputs['img'].to(torch.float32)
     if GT_MASKS in inputs:
         new_masks = []
         for i,masks in enumerate(inputs[GT_MASKS]):
@@ -218,10 +219,12 @@ class SimpleTrainer(BaseTrainer):
                 print(f"Train error {e}")
                 traceback.print_exc()
                 sys.stdout.flush()
+                torch.cuda.empty_cache()
                 continue
             except:
                 traceback.print_exc()
                 sys.stdout.flush()
+                torch.cuda.empty_cache()
                 continue
 
         self.save_checkpoint()
@@ -285,6 +288,7 @@ class SimpleTrainer(BaseTrainer):
 
         if self.iter%self.cfg.log_config.tb_interval == 0:
             self.tblog()
+            torch.cuda.empty_cache()
     
     def tblog(self):
         try:

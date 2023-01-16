@@ -1,5 +1,4 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-import mmcv
 import torch
 import torch.nn as nn
 
@@ -7,7 +6,6 @@ from ..builder import LOSSES
 from .utils import weighted_loss
 
 
-@mmcv.jit(derivate=True, coderize=True)
 @weighted_loss
 @torch.cuda.amp.autocast(False)
 def smooth_l1_loss(pred, target, beta=1.0):
@@ -33,7 +31,6 @@ def smooth_l1_loss(pred, target, beta=1.0):
     return loss
 
 
-@mmcv.jit(derivate=True, coderize=True)
 @weighted_loss
 @torch.cuda.amp.autocast(False)
 def l1_loss(pred, target):

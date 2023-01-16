@@ -103,7 +103,6 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             img_metas = img_metas[0]
         return self.simple_test(imgs, img_metas, **kwargs)
 
-    @auto_fp16(apply_to=('img', ))
     def forward(self, img, img_metas=None, return_loss=True, **kwargs):
         """Calls either :func:`forward_train` or :func:`forward_test` depending
         on whether ``return_loss`` is ``True``.
@@ -169,8 +168,8 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             message = (f'rank {dist.get_rank()}' +
                        f' len(log_vars): {len(log_vars)}' + ' keys: ' +
                        ','.join(log_vars.keys()))
-            assert log_var_length == len(log_vars) * dist.get_world_size(), \
-                'loss log variables are different across GPUs!\n' + message
+            #assert log_var_length == len(log_vars) * dist.get_world_size(), \
+            #    'loss log variables are different across GPUs!\n' + message
 
         log_vars['loss'] = loss
         for loss_name, loss_value in log_vars.items():

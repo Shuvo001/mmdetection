@@ -1,7 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
 
-import mmcv
 import numpy as np
 import torch
 from torch.nn.modules.utils import _pair
@@ -513,7 +512,6 @@ class SSDAnchorGenerator(AnchorGenerator):
         if min_sizes is None and max_sizes is None:
             # use hard code to generate SSD anchors
             self.input_size = input_size
-            assert mmcv.is_tuple_of(basesize_ratio_range, float)
             self.basesize_ratio_range = basesize_ratio_range
             # calculate anchor ratios and sizes
             min_ratio, max_ratio = basesize_ratio_range

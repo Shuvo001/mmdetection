@@ -259,7 +259,6 @@ class BBoxHead(BaseModule):
             bbox_weights = torch.cat(bbox_weights, 0)
         return labels, label_weights, bbox_targets, bbox_weights
 
-    @force_fp32(apply_to=('cls_score', 'bbox_pred'))
     def loss(self,
              cls_score,
              bbox_pred,
@@ -271,7 +270,8 @@ class BBoxHead(BaseModule):
              reduction_override=None):
         losses = dict()
         if cls_score is not None:
-            avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
+            #avg_factor = max(torch.sum(label_weights > 0).detach().float().item(), 1.)
+            avg_factor = torch.sum(label_weights > 0).detach().float().clamp_(min=1.0)
             if cls_score.numel() > 0:
                 loss_cls_ = self.loss_cls(
                     cls_score,
@@ -293,6 +293,7 @@ class BBoxHead(BaseModule):
             # 0~self.num_classes-1 are FG, self.num_classes is BG
             pos_inds = (labels >= 0) & (labels < bg_class_ind)
             # do not perform bounding box regression for BG anymore.
+            t_shape = pos_inds.shape
             if pos_inds.any():
                 if self.reg_decoded_bbox:
                     # When the regression loss (e.g. `IouLoss`,

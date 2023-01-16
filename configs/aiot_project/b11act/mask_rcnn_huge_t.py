@@ -31,9 +31,9 @@ model = dict(
         feat_channels=256,
         anchor_generator=dict(
             type='AnchorGenerator',
-            scales=[15],
+            scales=[1.875],
             ratios=[0.5, 1.0, 2.0],
-            strides=[4, 8, 16, 32, 64]),
+            strides=[24, 48, 96, 192, 384]),
         bbox_coder=dict(
             type='DeltaXYWHBBoxCoder',
             target_means=[.0, .0, .0, .0],
@@ -96,7 +96,7 @@ model = dict(
         )
 )
 dataset_type = 'LabelmeDataset'
-data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
+data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg_test'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]

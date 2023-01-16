@@ -1,7 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import functools
 
-import mmcv
 import torch
 import torch.nn.functional as F
 
@@ -26,7 +25,6 @@ def reduce_loss(loss, reduction):
         return loss.sum()
 
 
-@mmcv.jit(derivate=True, coderize=True)
 def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
     """Apply element-wise weight and reduce loss.
 
@@ -51,7 +49,7 @@ def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
         if reduction == 'mean':
             # Avoid causing ZeroDivisionError when avg_factor is 0.0,
             # i.e., all labels of an image belong to ignore index.
-            eps = torch.finfo(torch.float32).eps
+            eps = 1e-6
             loss = loss.sum() / (avg_factor + eps)
         # if reduction is 'none', then do nothing, otherwise raise an error
         elif reduction != 'none':

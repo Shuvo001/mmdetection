@@ -36,7 +36,7 @@ def parse_args():
         '--async-test',
         action='store_true',
         help='whether to set async options for async inference.')
-    parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
+    parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument('--save_data_dir', type=str,help='Path to output file')
     parser.add_argument('--test_data_dir', type=str,help='Path to output file')
     parser.add_argument('--save_results',

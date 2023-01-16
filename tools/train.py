@@ -70,6 +70,9 @@ def parse_args():
 
 
 def main(rank,world_size,args):
+    #wtd.configure_nccl()
+    #wtd.configure_omp()
+    #wtd.configure_module()
     from mmdet.utils import (get_device, get_root_logger,
                              replace_cfg_vals)
     from mmdet.utils.datadef import set_debug
@@ -80,8 +83,10 @@ def main(rank,world_size,args):
 
     if world_size>1:
         wtd.setup_dist_group(rank,world_size,port=args.dist_port)
-    torch.cuda.set_device(rank)
-    device = rank
+        torch.cuda.set_device(rank)
+        device = rank
+    else:
+        device = torch.device('cuda')
     print(f"Host name {socket.gethostname()}")
     print(f"Config path {args.config}")
     cfg = Config.fromfile(args.config)
@@ -175,7 +180,7 @@ if __name__ == '__main__':
     print(os.environ['CUDA_VISIBLE_DEVICES'])
 
 
-    torch.set_num_threads(1)
+    #torch.set_num_threads(1)
     if len(args.gpus)>1:
         mp.spawn(main,args=(world_size,args),nprocs=world_size,join=True)
     else:
