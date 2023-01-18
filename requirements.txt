@@ -1,4 +1,11 @@
--r requirements/build.txt
--r requirements/optional.txt
--r requirements/runtime.txt
--r requirements/tests.txt
+addict
+yapf
+opencv_python
+mmcv-full==1.6.0
+scipy
+terminaltables
+pycocotools
+loguru
+tensorboard
+#apt install libgl1-mesa-glx
+#matplotlib
