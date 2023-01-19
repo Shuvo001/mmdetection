@@ -1,5 +1,12 @@
 #B11ACT
 
+##configs/aiot_project/b11act/mask_rcnn_yolox_huge.py
+||0.769|0.868|0.795|0.114|0.588|0.938|0.642|0.792|0.792|0.204|0.605|0.948|
+Per classes
+|配置|C1|C2|C3|C4|
+|---|---|---|---|---|
+||0.889/1.000|0.253/0.471|0.991/1.000|0.944/1.000|
+
 ##mask_rcnn_yolox_huges.py
 
 Per classes

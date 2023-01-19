@@ -63,6 +63,13 @@ class SimOTAAssigner(BaseAssigner):
         Returns:
             assign_result (obj:`AssignResult`): The assigned result.
         """
+        return self.assign_on_cpu(pred_scores,
+               priors,
+               decoded_bboxes,
+               gt_bboxes,
+               gt_labels,
+               gt_bboxes_ignore=None,
+               eps=1e-7)
         try:
             assign_result = self._assign(pred_scores, priors, decoded_bboxes,
                                          gt_bboxes, gt_labels,
@@ -91,6 +98,32 @@ class SimOTAAssigner(BaseAssigner):
             assign_result.labels = assign_result.labels.to(origin_device)
 
             return assign_result
+    
+    def assign_on_cpu(self,pred_scores,
+               priors,
+               decoded_bboxes,
+               gt_bboxes,
+               gt_labels,
+               gt_bboxes_ignore=None,
+               eps=1e-7):
+        origin_device = pred_scores.device
+        torch.cuda.empty_cache()
+
+        pred_scores = pred_scores.cpu()
+        priors = priors.cpu()
+        decoded_bboxes = decoded_bboxes.cpu()
+        gt_bboxes = gt_bboxes.cpu().float()
+        gt_labels = gt_labels.cpu()
+
+        assign_result = self._assign(pred_scores, priors, decoded_bboxes,
+                                     gt_bboxes, gt_labels,
+                                     gt_bboxes_ignore, eps)
+        assign_result.gt_inds = assign_result.gt_inds.to(origin_device)
+        assign_result.max_overlaps = assign_result.max_overlaps.to(
+            origin_device)
+        assign_result.labels = assign_result.labels.to(origin_device)
+
+        return assign_result
 
     @torch.cuda.amp.autocast(False)
     def _assign(self,

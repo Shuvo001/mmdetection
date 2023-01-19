@@ -61,7 +61,8 @@ def parse_args():
         action='store_true',
         help='Whether or not use enable debug')
     parser.add_argument('--dist-port', default="12355", help='port for disttribute training')
-    parser.add_argument('--begin_iter', type=int, default=0)
+    parser.add_argument('--begin-iter', type=int, default=0)
+    parser.add_argument('--workers-per-gpu', type=int, default=-1)
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -121,6 +122,10 @@ def main(rank,world_size,args):
         cfg.work_dir = osp.join('./work_dirs',
                                 osp.splitext(osp.basename(args.config))[0])
         print(f"Set work dir to {cfg.work_dir}")
+    
+    if args.workers_per_gpu >= 0:
+        cfg.data.workers_per_gpu = args.workers_per_gpu
+        print(f"Update data workers_per_gpu to {cfg.data.workers_per_gpu}")
     
     if args.use_fp16:
         cfg.work_dir = cfg.work_dir+"_fp16"
