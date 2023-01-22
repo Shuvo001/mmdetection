@@ -384,7 +384,7 @@ class BitmapMasks(BaseInstanceMasks):
             resized_masks = []
         return BitmapMasks(resized_masks, *out_shape)
 
-    def crop_and_resize_torch(self,
+    def crop_and_resize_torchv0(self,
                         bboxes,
                         out_shape,
                         inds,
@@ -396,14 +396,16 @@ class BitmapMasks(BaseInstanceMasks):
             empty_masks = torch.empty((0, *out_shape), dtype=torch.uint8,device=device)
             return empty_masks
 
+        bboxes = bboxes.to(device)
+        inds = inds.to(torch.device('cpu'))
         num_bbox = bboxes.shape[0]
         fake_inds = torch.arange(
             num_bbox, device=device).to(dtype=bboxes.dtype)[:, None]
         rois = torch.cat([fake_inds, bboxes], dim=1)  # Nx5
         rois = rois.to(device=device)
         if num_bbox > 0:
-            gt_masks_th = torch.from_numpy(self.masks).to(device).index_select(
-                0, inds).to(dtype=rois.dtype)
+            gt_masks_th = torch.from_numpy(self.masks).index_select(
+                0, inds).to(device).to(dtype=rois.dtype)
             targets = roi_align(gt_masks_th[:, None, :, :], rois, out_shape,
                                 1.0, 0, 'avg', True).squeeze(1)
             if torch.max(targets)<=0.5 and torch.max(gt_masks_th)>0.9:
@@ -423,7 +425,50 @@ class BitmapMasks(BaseInstanceMasks):
             else:
                 resized_masks = targets
         else:
-            resized_masks = []
+            resized_masks = torch.empty((0, *out_shape), dtype=torch.uint8,device=device)
+        return resized_masks
+
+    def crop_and_resize_torch(self,
+                        bboxes,
+                        out_shape,
+                        inds,
+                        device='cpu',
+                        interpolation='bilinear',
+                        binarize=True):
+        """See :func:`BaseInstanceMasks.crop_and_resize`."""
+        if len(self.masks) == 0:
+            empty_masks = torch.empty((0, *out_shape), dtype=torch.uint8,device=device)
+            return empty_masks
+        if inds.shape[0]<self.masks.shape[0]:
+            return self.crop_and_resize_torchv0(bboxes,out_shape,inds,device,interpolation,binarize)
+
+        bboxes = bboxes.to(device)
+        inds = inds.to(device)
+        num_bbox = bboxes.shape[0]
+        rois = torch.cat([inds.to(bboxes.dtype).unsqueeze(-1), bboxes], dim=1)  # Nx5
+        rois = rois.to(device=device)
+        if num_bbox > 0:
+            gt_masks_th = torch.from_numpy(self.masks).to(device).to(dtype=rois.dtype)
+            targets = roi_align(gt_masks_th[:, None, :, :], rois, out_shape,
+                                1.0, 0, 'avg', True).squeeze(1)
+            if torch.max(targets)<=0.5 and torch.max(gt_masks_th)>0.9:
+                '''
+                处理细长的目标，通常bboxes中包含了gt bboxes, max(targets)应该为1.0， 如果targets
+                小于0.5表明有细长的目标，对于细长的目标放宽条件，不然无法预测细长目标的mask
+                '''
+                maybe_mask = targets>1e-8
+                maybe_mask = torch.flatten(maybe_mask,start_dim=1)
+                nrs = torch.count_nonzero(maybe_mask,dim=-1)
+                if torch.max(nrs)>4:
+                    resized_masks = targets >= 0.01
+                else:
+                    resized_masks = targets >= 0.5
+            elif binarize:
+                resized_masks = targets >= 0.5
+            else:
+                resized_masks = targets
+        else:
+            resized_masks = torch.empty((0, *out_shape), dtype=torch.uint8,device=device)
         return resized_masks
 
     def expand(self, expanded_h, expanded_w, top, left):
