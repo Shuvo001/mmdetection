@@ -11,6 +11,7 @@ import wtorch.dist as wtd
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import socket
+import sys
 
 
 def parse_args():
@@ -18,7 +19,7 @@ def parse_args():
     parser.add_argument('config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
-        '--resume-from', help='the checkpoint file to resume from')
+        '--resume-from', help='the checkpoint file to resume from',default="")
     parser.add_argument(
         '--auto-resume',
         action='store_true',
@@ -131,8 +132,8 @@ def main(rank,world_size,args):
         cfg.work_dir = cfg.work_dir+"_fp16"
         print(f"Update work dir to {cfg.work_dir}")
 
-    if args.resume_from is not None:
-        cfg.resume_from = args.resume_from
+    if len(args.resume_from)>1 and osp.exists(args.resume_from):
+        cfg.load_from = args.resume_from
 
     # create work_dir
     os.makedirs(osp.abspath(cfg.work_dir),exist_ok=True)
@@ -162,7 +163,7 @@ def main(rank,world_size,args):
     meta['exp_name'] = wmlu.base_name(args.config)
 
     model = build_detector(cfg.model)
-    model.init_weights()
+    #model.init_weights()
     model.to(device)
 
     dataset = build_dataset(cfg.data.train)
@@ -182,6 +183,7 @@ if __name__ == '__main__':
     world_size = len(args.gpus)
     gpus_str = ",".join([str(x) for x in args.gpus])
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str
+    print(' '.join(['python']+list(sys.argv)))
     print(os.environ['CUDA_VISIBLE_DEVICES'])
 
 

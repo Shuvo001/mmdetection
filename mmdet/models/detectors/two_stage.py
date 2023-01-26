@@ -184,7 +184,7 @@ class TwoStageDetector(BaseDetector):
         scores = gtbboxes.new_ones([gt_nr,1])
 
         gt_proposals = torch.cat([gtbboxes,scores],axis=-1)
-        return torch.cat([gt_proposals,proposals],axis=0)
+        return torch.cat([gt_proposals.to(proposals.device),proposals],axis=0)
 
     def simple_test(self, img, img_metas, proposals=None):
         """Test without augmentation."""

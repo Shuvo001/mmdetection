@@ -63,41 +63,32 @@ class SimOTAAssigner(BaseAssigner):
         Returns:
             assign_result (obj:`AssignResult`): The assigned result.
         """
-        return self.assign_on_cpu(pred_scores,
+        '''return self.assign_on_cpu(pred_scores,
                priors,
                decoded_bboxes,
                gt_bboxes,
                gt_labels,
                gt_bboxes_ignore=None,
-               eps=1e-7)
+               eps=1e-7)'''
         try:
             assign_result = self._assign(pred_scores, priors, decoded_bboxes,
                                          gt_bboxes, gt_labels,
                                          gt_bboxes_ignore, eps)
             return assign_result
         except RuntimeError as e:
-            origin_device = pred_scores.device
             warnings.warn('OOM RuntimeError is raised due to the huge memory '
                           'cost during label assignment. CPU mode is applied '
                           'in this batch. If you want to avoid this issue, '
                           'try to reduce the batch size or image size.')
             torch.cuda.empty_cache()
+            return self.assign_on_cpu(pred_scores,
+               priors,
+               decoded_bboxes,
+               gt_bboxes,
+               gt_labels,
+               gt_bboxes_ignore=None,
+               eps=1e-7)
 
-            pred_scores = pred_scores.cpu()
-            priors = priors.cpu()
-            decoded_bboxes = decoded_bboxes.cpu()
-            gt_bboxes = gt_bboxes.cpu().float()
-            gt_labels = gt_labels.cpu()
-
-            assign_result = self._assign(pred_scores, priors, decoded_bboxes,
-                                         gt_bboxes, gt_labels,
-                                         gt_bboxes_ignore, eps)
-            assign_result.gt_inds = assign_result.gt_inds.to(origin_device)
-            assign_result.max_overlaps = assign_result.max_overlaps.to(
-                origin_device)
-            assign_result.labels = assign_result.labels.to(origin_device)
-
-            return assign_result
     
     def assign_on_cpu(self,pred_scores,
                priors,

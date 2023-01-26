@@ -146,6 +146,7 @@ class SimpleTrainer(BaseTrainer):
         wtt.show_async_norm_states(model)
 
         if cfg.load_from is not None and osp.exists(cfg.load_from):
+            print(f"Load from {cfg.load_from}")
             data = torch.load(cfg.load_from)
             if "state_dict" in data:
                 data = data["state_dict"]
@@ -216,13 +217,14 @@ class SimpleTrainer(BaseTrainer):
     
                 self.iter += 1
             except Exception as e:
-                print(f"Train error {e}")
-                traceback.print_exc()
+                print(f"Train error iter={self.iter}, {e}")
+                traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
                 continue
             except:
-                traceback.print_exc()
+                print(f"Train error iter={self.iter}")
+                traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
                 continue

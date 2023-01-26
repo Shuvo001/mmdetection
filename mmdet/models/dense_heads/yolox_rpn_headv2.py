@@ -19,11 +19,11 @@ from .dense_test_mixins import BBoxTestMixin
 from .yolox_one_classes_head import YOLOXOneClassesHead
 from mmdet.core.utils import select_single_mlvl
 import wtorch.nms as wnms
+import wtorch.utils as wtu
 
 
 @HEADS.register_module()
 class YOLOXRPNHeadV2(YOLOXOneClassesHead):
-    @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
     def get_bboxes(self,
                    objectnesses,
                    bbox_preds,
@@ -89,20 +89,6 @@ class YOLOXRPNHeadV2(YOLOXOneClassesHead):
                                                        cfg=cfg))
         return result_list
 
-    @torch.cuda.amp.autocast(False)
-    def _bbox_decode(self, priors, bbox_preds):
-        xys = (bbox_preds[..., :2] * priors[:, 2:]) + priors[:, :2]
-        whs = bbox_preds[..., 2:].exp() * priors[:, 2:]
-
-        tl_x = (xys[..., 0] - whs[..., 0] / 2)
-        tl_y = (xys[..., 1] - whs[..., 1] / 2)
-        br_x = (xys[..., 0] + whs[..., 0] / 2)
-        br_y = (xys[..., 1] + whs[..., 1] / 2)
-
-        decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
-        return decoded_bboxes
-
-
     def _get_bboxes_single(self,
                            bbox_pred_list,
                            score_factor_list,
@@ -151,7 +137,7 @@ class YOLOXRPNHeadV2(YOLOXOneClassesHead):
         nms_pre = cfg.get('nms_pre', -1)
         for level_idx in range(len(score_factor_list)):
             #从每一层按预测的score从高到低排，取前nms_pre(default 2000)个预测
-            scores = score_factor_list[level_idx].sigmoid()
+            scores = score_factor_list[level_idx].float()
             rpn_bbox_pred = bbox_pred_list[level_idx]
 
             anchors = mlvl_anchors[level_idx]
@@ -166,6 +152,7 @@ class YOLOXRPNHeadV2(YOLOXOneClassesHead):
                 rpn_bbox_pred = rpn_bbox_pred[topk_inds, :]
                 anchors = anchors[topk_inds, :]
 
+            scores = scores.sigmoid()
             mlvl_scores.append(scores)
             mlvl_bbox_preds.append(rpn_bbox_pred)
             mlvl_valid_anchors.append(anchors)

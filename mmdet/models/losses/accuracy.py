@@ -1,7 +1,8 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch.nn as nn
+import torch
 
-
+@torch.cuda.amp.autocast(False)
 def accuracy(pred, target, topk=1, thresh=None):
     """Calculate accuracy according to the prediction and target.
 
@@ -28,6 +29,7 @@ def accuracy(pred, target, topk=1, thresh=None):
     else:
         return_single = False
 
+    pred = pred.float()
     maxk = max(topk)
     if pred.size(0) == 0:
         accu = [pred.new_tensor(0.) for i in range(len(topk))]

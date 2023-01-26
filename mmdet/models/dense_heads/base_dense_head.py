@@ -338,8 +338,9 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
         if proposal_cfg is None:
             return losses
         else:
-            proposal_list = self.get_bboxes(
-                *outs, img_metas=img_metas, cfg=proposal_cfg)
+            with torch.no_grad():
+                proposal_list = self.get_bboxes(
+                    *outs, img_metas=img_metas, cfg=proposal_cfg)
             return losses, proposal_list
 
     def simple_test(self, feats, img_metas, rescale=False):

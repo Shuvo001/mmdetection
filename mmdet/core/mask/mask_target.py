@@ -120,6 +120,7 @@ def mask_target_single(pos_proposals, pos_assigned_gt_inds, gt_masks, cfg):
         mask_targets = gt_masks.crop_and_resize_torch(
             proposals,
             mask_size,
+            #device=torch.device("cpu"),
             device=device,
             inds=pos_assigned_gt_inds,
             binarize=binarize)

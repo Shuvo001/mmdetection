@@ -204,6 +204,8 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
     del dxy
     #means = deltas.new_tensor(means).unsqueeze(0)
     #stds = deltas.new_tensor(stds).unsqueeze(0)
+    means = means.to(deltas.device)
+    stds = stds.to(deltas.device)
     deltas = deltas.sub_(means).div_(stds)
 
     return deltas

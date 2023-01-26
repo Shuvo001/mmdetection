@@ -163,21 +163,22 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
 
         # If the loss_vars has different length, GPUs will wait infinitely
         if dist.is_available() and dist.is_initialized():
+            dist.barrier()
             log_var_length = torch.tensor(len(log_vars), device=loss.device)
             dist.all_reduce(log_var_length)
             message = (f'rank {dist.get_rank()}' +
                        f' len(log_vars): {len(log_vars)}' + ' keys: ' +
                        ','.join(log_vars.keys()))
-            #assert log_var_length == len(log_vars) * dist.get_world_size(), \
-            #    'loss log variables are different across GPUs!\n' + message
+            assert log_var_length == len(log_vars) * dist.get_world_size(), \
+                'loss log variables are different across GPUs!\n' + message
 
         log_vars['loss'] = loss
-        for loss_name, loss_value in log_vars.items():
+        '''for loss_name, loss_value in log_vars.items():
             # reduce loss when distributed training
             if dist.is_available() and dist.is_initialized():
                 loss_value = loss_value.data.clone()
                 dist.all_reduce(loss_value.div_(dist.get_world_size()))
-            log_vars[loss_name] = loss_value.item()
+            log_vars[loss_name] = loss_value.item()'''
 
         return loss, log_vars
 

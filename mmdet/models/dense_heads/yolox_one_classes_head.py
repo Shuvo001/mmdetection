@@ -280,16 +280,15 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
         return result_list
 
+    @torch.cuda.amp.autocast(False)
     def _bbox_decode(self, priors, bbox_preds):
         xys = (bbox_preds[..., :2] * priors[:, 2:]) + priors[:, :2]
-        whs = bbox_preds[..., 2:].exp() * priors[:, 2:]
+        whs = bbox_preds[..., 2:].float().exp() * priors[:, 2:]
 
-        tl_x = (xys[..., 0] - whs[..., 0] / 2)
-        tl_y = (xys[..., 1] - whs[..., 1] / 2)
-        br_x = (xys[..., 0] + whs[..., 0] / 2)
-        br_y = (xys[..., 1] + whs[..., 1] / 2)
+        tl_xy = (xys - whs/ 2)
+        br_xy = (xys + whs/ 2)
 
-        decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
+        decoded_bboxes = torch.cat([tl_xy, br_xy], -1)
         return decoded_bboxes
 
     def _bboxes_nms(self, cls_scores, bboxes, cfg):

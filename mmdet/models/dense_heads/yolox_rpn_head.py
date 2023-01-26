@@ -19,6 +19,7 @@ from .dense_test_mixins import BBoxTestMixin
 from .yolox_head import YOLOXHead
 from mmdet.core.utils import select_single_mlvl
 import wtorch.nms as wnms
+import wtorch.utils as wtu
 
 
 @HEADS.register_module()
@@ -97,19 +98,6 @@ class YOLOXRPNHead(YOLOXHead):
                                                        cfg=cfg))
         return result_list
 
-    @torch.cuda.amp.autocast(False)
-    def _bbox_decode(self, priors, bbox_preds):
-        xys = (bbox_preds[..., :2] * priors[:, 2:]) + priors[:, :2]
-        whs = bbox_preds[..., 2:].exp() * priors[:, 2:]
-
-        tl_x = (xys[..., 0] - whs[..., 0] / 2)
-        tl_y = (xys[..., 1] - whs[..., 1] / 2)
-        br_x = (xys[..., 0] + whs[..., 0] / 2)
-        br_y = (xys[..., 1] + whs[..., 1] / 2)
-
-        decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
-        return decoded_bboxes
-
     def loss(self,
              cls_scores,
              bbox_preds,
@@ -178,8 +166,8 @@ class YOLOXRPNHead(YOLOXHead):
         nms_pre = cfg.get('nms_pre', -1)
         for level_idx in range(len(cls_score_list)):
             #从每一层按预测的score从高到低排，取前nms_pre(default 2000)个预测
-            rpn_cls_score = cls_score_list[level_idx].sigmoid().squeeze(-1)
-            rpn_score_factor = score_factor_list[level_idx].sigmoid()
+            rpn_cls_score = cls_score_list[level_idx].float().sigmoid().squeeze(-1)
+            rpn_score_factor = score_factor_list[level_idx].float().sigmoid()
             scores = rpn_cls_score*rpn_score_factor
             rpn_bbox_pred = bbox_pred_list[level_idx]
 
