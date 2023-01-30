@@ -16,19 +16,17 @@ from mmdet.core import (MlvlPointGenerator, bbox_xyxy_to_cxcywh,
 from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
-from .yolox_head import YOLOXHead
+from .yolox_one_classes_head import YOLOXOneClassesHead
 from mmdet.core.utils import select_single_mlvl
 import wtorch.nms as wnms
 import wtorch.utils as wtu
 
 
 @HEADS.register_module()
-class YOLOXRPNHead(YOLOXHead):
-    @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'objectnesses'))
+class YOLOXRPNHead(YOLOXOneClassesHead):
     def get_bboxes(self,
-                   cls_scores,
-                   bbox_preds,
                    objectnesses,
+                   bbox_preds,
                    img_metas=None,
                    cfg=None,
                    rescale=False,
@@ -60,23 +58,18 @@ class YOLOXRPNHead(YOLOXHead):
                 the corresponding box.
         """
         assert rescale==False
-        assert len(cls_scores) == len(bbox_preds) == len(objectnesses)
+        assert len(bbox_preds) == len(objectnesses)
         cfg = self.test_cfg if cfg is None else cfg
 
         num_imgs = len(img_metas)
-        featmap_sizes = [cls_score.shape[2:] for cls_score in cls_scores]
+        featmap_sizes = [cls_score.shape[2:] for cls_score in objectnesses]
         mlvl_priors = self.prior_generator.grid_priors(
             featmap_sizes,
-            dtype=cls_scores[0].dtype,
-            device=cls_scores[0].device,
+            dtype=objectnesses[0].dtype,
+            device=objectnesses[0].device,
             with_stride=True)
 
         # flatten cls_scores, bbox_preds and objectness
-        flatten_cls_scores = [
-            cls_score.permute(0, 2, 3, 1).reshape(num_imgs, -1,
-                                                  self.cls_out_channels)
-            for cls_score in cls_scores
-        ]
         flatten_bbox_preds = [
             bbox_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1, 4)
             for bbox_pred in bbox_preds
@@ -87,38 +80,16 @@ class YOLOXRPNHead(YOLOXHead):
         ]
         result_list = []
         for img_id in range(len(img_metas)):
-            flatten_cls_scores_list = select_single_mlvl(flatten_cls_scores, img_id)
             flatten_bbox_preds_list = select_single_mlvl(flatten_bbox_preds, img_id)
             flatten_objectness_list = select_single_mlvl(flatten_objectness, img_id)
-            result_list.append(self._get_bboxes_single(flatten_cls_scores_list,
-                                                       flatten_bbox_preds_list,
+            result_list.append(self._get_bboxes_single(flatten_bbox_preds_list,
                                                        flatten_objectness_list,
                                                        mlvl_priors,
                                                        img_metas[img_id],
                                                        cfg=cfg))
         return result_list
 
-    def loss(self,
-             cls_scores,
-             bbox_preds,
-             objectnesses,
-             gt_bboxes,
-             img_metas=None,
-             gt_bboxes_ignore=None):
-        gt_labels = []
-        for bbox in gt_bboxes:
-            _gt_labels = torch.zeros([bbox.shape[0]],dtype=torch.int32)
-            gt_labels.append(_gt_labels)
-        return super().loss(cls_scores,
-                            bbox_preds,
-                            objectnesses,
-                            gt_bboxes,
-                            gt_labels,
-                            img_metas,
-                            gt_bboxes_ignore)
-
     def _get_bboxes_single(self,
-                           cls_score_list,
                            bbox_pred_list,
                            score_factor_list,
                            mlvl_anchors,
@@ -164,11 +135,9 @@ class YOLOXRPNHead(YOLOXHead):
         mlvl_bbox_preds = []
         mlvl_valid_anchors = []
         nms_pre = cfg.get('nms_pre', -1)
-        for level_idx in range(len(cls_score_list)):
+        for level_idx in range(len(score_factor_list)):
             #从每一层按预测的score从高到低排，取前nms_pre(default 2000)个预测
-            rpn_cls_score = cls_score_list[level_idx].float().sigmoid().squeeze(-1)
-            rpn_score_factor = score_factor_list[level_idx].float().sigmoid()
-            scores = rpn_cls_score*rpn_score_factor
+            scores = score_factor_list[level_idx].float()
             rpn_bbox_pred = bbox_pred_list[level_idx]
 
             anchors = mlvl_anchors[level_idx]
@@ -183,6 +152,7 @@ class YOLOXRPNHead(YOLOXHead):
                 rpn_bbox_pred = rpn_bbox_pred[topk_inds, :]
                 anchors = anchors[topk_inds, :]
 
+            scores = scores.sigmoid()
             mlvl_scores.append(scores)
             mlvl_bbox_preds.append(rpn_bbox_pred)
             mlvl_valid_anchors.append(anchors)

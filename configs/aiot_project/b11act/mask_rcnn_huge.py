@@ -17,7 +17,7 @@ model = dict(
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
         deep_stem=True,
-        deep_stem_mode='MultiBranchStem12X',
+        deep_stem_mode='MultiBranchStemS12X',
         style='pytorch',
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
@@ -135,7 +135,8 @@ train_pipeline = [
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Pad', size_divisor=192),
     dict(type='WFixData'),
-    dict(type='W2PolygonMask'),
+    #dict(type='W2PolygonMask'),
+    dict(type="WGetBBoxesByMask",min_bbox_area=4),
     dict(type='DefaultFormatBundle',img_to_float=False),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
@@ -165,9 +166,9 @@ train_dataset = dict(
 samples_per_gpu = 8
 data = dict(
     dataloader="mmdet_dataloader",
-    data_processor="mmdet_data_processor_dm1",
+    data_processor="mmdet_data_processor",
     samples_per_gpu=samples_per_gpu,
-    workers_per_gpu=12,
+    workers_per_gpu=8,
     batch_split_nr=4,
     pin_memory=True,
     train= train_dataset,

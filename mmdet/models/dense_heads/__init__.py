@@ -42,7 +42,6 @@ from .yolo_head import YOLOV3Head
 from .yolof_head import YOLOFHead
 from .yolox_head import YOLOXHead
 from .yolox_rpn_head import YOLOXRPNHead
-from .yolox_rpn_headv2 import YOLOXRPNHeadV2
 
 __all__ = [
     'AnchorFreeHead', 'AnchorHead', 'GuidedAnchorHead', 'FeatureAdaption',
@@ -56,5 +55,5 @@ __all__ = [
     'AutoAssignHead', 'DETRHead', 'YOLOFHead', 'DeformableDETRHead',
     'SOLOHead', 'DecoupledSOLOHead', 'CenterNetHead', 'YOLOXHead',
     'DecoupledSOLOLightHead', 'LADHead', 'TOODHead', 'MaskFormerHead',
-    'Mask2FormerHead', 'SOLOV2Head', 'DDODHead', 'YOLOXRPNHead','YOLOXRPNHeadV2'
+    'Mask2FormerHead', 'SOLOV2Head', 'DDODHead', 'YOLOXRPNHead'
 ]
