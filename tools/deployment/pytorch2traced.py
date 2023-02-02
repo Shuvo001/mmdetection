@@ -21,12 +21,13 @@ def pytorch2traced(model,
                  show=False,
                  output_file='tmp.torch',
                  test_img=None,
-                 skip_postprocess=False):
+                 skip_postprocess=False,gray=False):
 
     input_config = {
         'input_shape': input_shape,
         'input_path': input_img,
-        'normalize_cfg': normalize_cfg
+        'normalize_cfg': normalize_cfg,
+        'gray':gray,
     }
     # prepare input
     one_img = preprocess_2traced_example_input(input_config)
@@ -84,6 +85,10 @@ def parse_args():
         help='Show onnx graph and detection outputs')
     parser.add_argument('--output-file', type=str, default='tmp.traced')
     parser.add_argument('--opset-version', type=int, default=11)
+    parser.add_argument(
+        '--gray',
+        action='store_true',
+        help='whether to use gray img.')
     parser.add_argument(
         '--test-img', type=str, default=None, help='Images for test')
     parser.add_argument(
@@ -164,13 +169,14 @@ if __name__ == '__main__':
     model = build_model_from_cfg(args.config, args.checkpoint,
                                  args.cfg_options)
     if args.checkpoint is None:
-        checkpoint = osp.join(cfg.work_dir,"weights","latest.pth")
+        checkpoint = osp.join(cfg.work_dir+"_fp16","weights","latest.pth")
         if not osp.exists(checkpoint):
-            checkpoint = osp.join(cfg.work_dir+"_fp16","weights","latest.pth")
+            checkpoint = osp.join(cfg.work_dir,"weights","latest.pth")
     else:
         checkpoint = args.checkpoint
     
     print(f"Load {checkpoint}")
+    os.system(f"ls -l {checkpoint}")
     checkpoint = torch.load(checkpoint,map_location="cpu")
     wtu.forgiving_state_restore(model,checkpoint)
 
@@ -178,6 +184,7 @@ if __name__ == '__main__':
         args.input_img = osp.join(osp.dirname(__file__), '../../demo/demo.jpg')
 
     normalize_cfg = cfg.get("img_norm_cfg",None)
+    print(f"normalize cfg {normalize_cfg}, gray {args.gray}")
 
     '''
     nms_pre: 为每一层nms之前的最大值
@@ -206,4 +213,5 @@ if __name__ == '__main__':
         show=args.show,
         output_file=args.output_file,
         test_img=args.test_img,
-        skip_postprocess=args.skip_postprocess)
+        skip_postprocess=args.skip_postprocess,
+        gray=args.gray)

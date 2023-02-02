@@ -38,7 +38,9 @@ def preprocess_2traced_example_input(input_config):
     input_path = input_config['input_path']
     input_shape = input_config['input_shape']
     one_img = wmli.imread(input_path)
-    one_img = wmli.resize_img(one_img, input_shape[2:][::-1],keep_aspect_ratio=True)
+    one_img = wmli.resize_and_pad(one_img, input_shape[2:][::-1],center_pad=False)
+    if input_config.get("gray",False):
+        one_img = wmli.nprgb_to_gray(one_img,keep_dim=True)
     one_img = one_img.transpose(2, 0, 1)
     if 'normalize_cfg' in input_config.keys() and input_config['normalize_cfg'] is not None:
         normalize_cfg = input_config['normalize_cfg']
