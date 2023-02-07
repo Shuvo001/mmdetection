@@ -13,6 +13,7 @@ from iotoolkit.labelme_toolkit import LabelMeData
 from object_detection2.metrics.toolkit import *
 import os.path as osp
 from itertools import count
+import pickle
 import cv2
 import shutil
 import torch
@@ -175,10 +176,10 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
     #model_args={"threshold":0.3})
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
     dataset = eval_dataset(test_data_dir,classes=classes)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"input size={input_size}")
@@ -189,6 +190,7 @@ def main():
     detector = ImageInferencePipeline(pipeline=pipeline)
 
     save_size = input_size
+    pyresults = []
 
     for i,data in enumerate(dataset.get_items()):
         print(f"process {i}/{len(dataset)}")
@@ -253,11 +255,17 @@ def main():
         kwargs['img_size'] = shape
         kwargs['use_relative_coord'] = False
         metrics(**kwargs)
+        pyresults.append(copy.deepcopy(kwargs))
         
         if i%100 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")
+    results_save_path = osp.join(save_path,"results.pk")
+    with open(results_save_path,"wb") as f:
+        print(f"results save path {results_save_path}")
+        print(f"python object_detection_tools/metrics_tools.py {results_save_path} --classes_wise")
+        pickle.dump(pyresults,f)
         
     metrics.show()
     print(classes)

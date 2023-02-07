@@ -166,6 +166,10 @@ def main(rank,world_size,args):
     #model.init_weights()
     model.to(device)
 
+    if 0 == rank:
+        print("Model")
+        print(model)
+
     dataset = build_dataset(cfg.data.train)
 
     model.CLASSES = dataset.CLASSES

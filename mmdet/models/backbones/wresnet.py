@@ -7,6 +7,7 @@ from mmcv.cnn import build_conv_layer, build_norm_layer, build_plugin_layer
 from mmcv.runner import BaseModule
 from torch.nn.modules.batchnorm import _BatchNorm
 import wtorch.dist as wtd
+import wtorch.nn as wnn
 
 from ..builder import BACKBONES
 from ..utils import ResLayer
@@ -303,7 +304,7 @@ class Bottleneck(BaseModule):
         return out
 
 class MultiBranchStem12X(nn.Module):
-    def __init__(self,in_channels,out_channels):
+    def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
         branch_channels = out_channels//4
@@ -311,16 +312,16 @@ class MultiBranchStem12X(nn.Module):
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels,4,3,3,0,bias=False),
             nn.BatchNorm2d(num_features=4),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(4,8,3,2,1,bias=False),
             nn.BatchNorm2d(num_features=8),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(8,branch_channels,3,2,1,bias=False))
         self.branch2 = nn.Conv2d(in_channels,branch_channels,12,12,0,bias=False)
         self.branch3 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
         )
 
     def forward(self,x):
@@ -334,21 +335,21 @@ class MultiBranchStem12X(nn.Module):
         return x
 
 class MultiBranchStemS12X(nn.Module):
-    def __init__(self,in_channels,out_channels):
+    def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
         branch_channels = out_channels//4
         self.branch0_0 = nn.Sequential(
             nn.Conv2d(in_channels,4,3,stride=2,padding=1,bias=False),
             nn.BatchNorm2d(num_features=4),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(4,branch_channels,3,stride=1,padding=1,bias=False))
         self.branch0_1 = nn.ModuleList([nn.MaxPool2d(3,2,1),nn.MaxPool2d(5,2,2)])
         self.branch0_2 = nn.Conv2d(branch_channels*2,branch_channels*2,3,3,padding=0,bias=False)
         self.branch1 = nn.Conv2d(in_channels,branch_channels*2,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
         )
 
     def forward(self,x):
@@ -364,28 +365,29 @@ class MultiBranchStemS12X(nn.Module):
         return x
 
 class MultiBranchStemSL12X(nn.Module):
-    def __init__(self,in_channels,out_channels):
+    def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
         branch_channels = out_channels//4
         self.branch0 = nn.Sequential(
             nn.Conv2d(in_channels,4,3,stride=3,padding=0,bias=False),
             nn.BatchNorm2d(num_features=4),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(4,branch_channels,4,stride=4,padding=0,bias=False))
         self.branch1_0 = nn.Sequential(
             nn.Conv2d(in_channels,4,3,stride=2,padding=1,bias=False),
             nn.BatchNorm2d(num_features=4),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(4,8,3,stride=1,padding=1,bias=False),
             nn.BatchNorm2d(num_features=8),
-            nn.LeakyReLU(inplace=True))
+            wnn.get_activation(activation_fn,inplace=True),
+            )
         self.branch1_1 = nn.ModuleList([nn.MaxPool2d(3,2,1),nn.MaxPool2d(5,2,2)])
         self.branch1_2 = nn.Conv2d(branch_channels,branch_channels,3,3,padding=0,bias=False)
         self.branch2 = nn.Conv2d(in_channels,branch_channels*2,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(inplace=True),
+            wnn.get_activation(activation_fn,inplace=True),
         )
 
     def forward(self,x):
@@ -494,6 +496,7 @@ class WResNet(BaseModule):
                  zero_init_residual=True,
                  pretrained=None,
                  deep_stem_mode="convs", #convs, MultiBranchStem12X, MultiBranchStemS12X, MultiBranchStemSL12X
+                 stem_activation_fn="LeakyReLU", #ReLU,SiLU,LeakyReLU,SiLU
                  init_cfg=None):
         super(WResNet, self).__init__(init_cfg)
         self.zero_init_residual = zero_init_residual
@@ -562,7 +565,7 @@ class WResNet(BaseModule):
         self.inplanes = stem_channels
         self.first_conv_cfg = first_conv_cfg
 
-        self._make_stem_layer(in_channels, stem_channels)
+        self._make_stem_layer(in_channels, stem_channels,activation_fn=stem_activation_fn)
 
         self.res_layers = []
         for i, num_blocks in enumerate(self.stage_blocks):
@@ -670,7 +673,7 @@ class WResNet(BaseModule):
         """nn.Module: the normalization layer named "norm1" """
         return getattr(self, self.norm1_name)
 
-    def _make_deep_stem_layer(self,in_channels,stem_channels):
+    def _make_deep_stem_layer(self,in_channels,stem_channels,activation_fn="ReLU"):
         if self.deep_stem_mode == "convs":
             moduls = []
             _in_channels = in_channels
@@ -683,24 +686,24 @@ class WResNet(BaseModule):
                 padding=cf.get('padding',0),
                 bias=cf.get('bias',False)
                 ))
-                moduls.append(nn.ReLU(inplace=True))
+                moduls.append(wnn.get_activation(inplace=True))
                 moduls.append(build_norm_layer(self.norm_cfg, _out_channels)[1])
                 _in_channels = _out_channels
             return nn.Sequential(**moduls)
         elif self.deep_stem_mode == "MultiBranchStem12X":
-            return MultiBranchStem12X(in_channels,stem_channels)
+            return MultiBranchStem12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS12X":
-            return MultiBranchStemS12X(in_channels,stem_channels)
+            return MultiBranchStemS12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemSL12X":
-            return MultiBranchStemSL12X(in_channels,stem_channels)
+            return MultiBranchStemSL12X(in_channels,stem_channels,activation_fn=activation_fn)
         else:
             print(f"Unknow deep stem model {self.deep_stem_mode}")
 
         return None
 
-    def _make_stem_layer(self, in_channels, stem_channels):
+    def _make_stem_layer(self, in_channels, stem_channels,activation_fn="ReLU"):
         if self.deep_stem:
-            self.stem = self._make_deep_stem_layer(in_channels,stem_channels)
+            self.stem = self._make_deep_stem_layer(in_channels,stem_channels,activation_fn=activation_fn)
         else:
             self.conv1 = build_conv_layer(
                 self.conv_cfg,
@@ -713,7 +716,7 @@ class WResNet(BaseModule):
             self.norm1_name, norm1 = build_norm_layer(
                 self.norm_cfg, stem_channels, postfix=1)
             self.add_module(self.norm1_name, norm1)
-            self.relu = nn.ReLU(inplace=True)
+            self.relu = wnn.get_activation(activation_fn,inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def _freeze_stages(self):
