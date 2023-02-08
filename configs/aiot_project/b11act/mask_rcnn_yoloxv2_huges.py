@@ -75,7 +75,7 @@ model = dict(
                 min_bbox_size=0),
             rcnn=dict(
                 score_thr=0.05,
-                nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.33),
+                nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.2),
                 max_per_img=100,
                 mask_thr_binary=0.5)),
         train_cfg=dict(

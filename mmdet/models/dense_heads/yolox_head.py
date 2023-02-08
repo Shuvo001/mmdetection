@@ -91,8 +91,8 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
                      nonlinearity='leaky_relu')):
 
         super().__init__(init_cfg=init_cfg)
-        if train_cfg is not None and train_cfg['assigner']['type'] != 'SimOTAAssigner':
-            print(f"Force set assigner")
+        if train_cfg is not None and train_cfg['assigner']['type'] not in ['SimOTAAssigner','TaskAlignedAssigner']:
+            print(f"ERROR assigner {train_cfg['assigner']['type']}, Force set assigner")
             train_cfg['assigner'] = dict(type='SimOTAAssigner', center_radius=2.5)
         self.num_classes = num_classes
         self.cls_out_channels = num_classes

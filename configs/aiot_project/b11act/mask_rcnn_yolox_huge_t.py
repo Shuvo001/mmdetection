@@ -24,7 +24,7 @@ model = dict(
         out_channels=256,
         num_outs=5),
     rpn_head=dict(
-        type='YOLOXRPNHeadV2',
+        type='YOLOXRPNHead',
         in_channels=256,
         strides=[24,48,96,192,384],
         feat_channels=256),
@@ -78,7 +78,8 @@ model = dict(
                 mask_thr_binary=0.5)),
         train_cfg=dict(
             rpn=dict(
-            assigner=dict(type='SimOTAAssigner', center_radius=2.5),
+            #assigner=dict(type='SimOTAAssigner', center_radius=2.5),
+            assigner=dict(type='TaskAlignedAssigner'),
             ),
             rcnn=dict(
                 mask_size=56,

@@ -57,7 +57,7 @@ model = dict(
     # model training and testing settings
     train_cfg=dict(
         rpn=dict(
-            assigner=dict(type='SimOTAAssigner', center_radius=2.5),
+            assigner=dict(type='SimOTAAssigner'),
             ),
         rpn_proposal=dict(
             nms_pre=2000,

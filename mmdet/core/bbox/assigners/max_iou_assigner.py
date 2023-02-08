@@ -53,6 +53,7 @@ class MaxIoUAssigner(BaseAssigner):
                  match_low_quality=True,
                  gpu_assign_thr=-1,
                  iou_calculator=dict(type='BboxOverlaps2D')):
+        print(f"MaxIoUAssigner")
         self.pos_iou_thr = pos_iou_thr
         self.neg_iou_thr = neg_iou_thr
         self.min_pos_iou = min_pos_iou

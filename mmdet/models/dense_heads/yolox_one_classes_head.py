@@ -85,8 +85,8 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
                      nonlinearity='leaky_relu')):
 
         super().__init__(init_cfg=init_cfg)
-        if train_cfg is not None and train_cfg['assigner']['type'] != 'SimOTAAssigner':
-            print(f"Force set assigner")
+        if train_cfg is not None and train_cfg['assigner']['type'] not in ['SimOTAAssigner','TaskAlignedAssigner']:
+            print(f"ERROR assigner {train_cfg['assigner']['type']}, Force set assigner")
             train_cfg['assigner'] = dict(type='SimOTAAssigner', center_radius=2.5)
         num_classes = 1
         self.num_classes = num_classes
@@ -423,7 +423,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
         num_priors = priors.size(0)
         num_gts = gt_bboxes.size(0)
-        gt_labels = gt_bboxes.new_zeros([gt_bboxes.size(0)],dtype=torch.int32)
+        gt_labels = gt_bboxes.new_zeros([gt_bboxes.size(0)],dtype=torch.long)
         gt_bboxes = gt_bboxes.to(decoded_bboxes.dtype)
         # No target
         if num_gts == 0:

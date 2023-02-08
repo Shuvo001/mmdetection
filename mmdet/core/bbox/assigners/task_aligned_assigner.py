@@ -28,9 +28,12 @@ class TaskAlignedAssigner(BaseAssigner):
             Default: dict(type='BboxOverlaps2D')
     """
 
-    def __init__(self, topk, iou_calculator=dict(type='BboxOverlaps2D')):
+    def __init__(self, topk=10, alpha=0.5,beta=6.0,iou_calculator=dict(type='BboxOverlaps2D')):
+        print(f"TaskAlignedAssigner")
         assert topk >= 1
         self.topk = topk
+        self.alpha = alpha
+        self.beta = beta
         self.iou_calculator = build_iou_calculator(iou_calculator)
 
     def assign(self,
@@ -38,10 +41,9 @@ class TaskAlignedAssigner(BaseAssigner):
                decode_bboxes,
                anchors,
                gt_bboxes,
-               gt_bboxes_ignore=None,
                gt_labels=None,
-               alpha=1,
-               beta=6):
+               gt_bboxes_ignore=None,
+               ):
         """Assign gt to bboxes.
 
         The assignment is done in following steps
@@ -66,11 +68,17 @@ class TaskAlignedAssigner(BaseAssigner):
         Returns:
             :obj:`TaskAlignedAssignResult`: The assign result.
         """
+        alpha = self.alpha
+        beta = self.beta
         anchors = anchors[:, :4]
         num_gt, num_bboxes = gt_bboxes.size(0), anchors.size(0)
         # compute alignment metric between all bbox and gt
         overlaps = self.iou_calculator(decode_bboxes, gt_bboxes).detach()
-        bbox_scores = pred_scores[:, gt_labels].detach()
+        if gt_labels is not None:
+            bbox_scores = pred_scores[:, gt_labels].detach()
+        else:
+            assert pred_scores.shape[-1] == 1, "more than one classes need gt labels"
+            bbox_scores = pred_scores.repeat(1,num_gt)
         # assign 0 by default
         assigned_gt_inds = anchors.new_full((num_bboxes, ),
                                             0,
@@ -97,7 +105,7 @@ class TaskAlignedAssigner(BaseAssigner):
         # select top-k bboxes as candidates for each gt
         alignment_metrics = bbox_scores**alpha * overlaps**beta
         topk = min(self.topk, alignment_metrics.size(0))
-        _, candidate_idxs = alignment_metrics.topk(topk, dim=0, largest=True)
+        _, candidate_idxs = alignment_metrics.topk(topk, dim=0, largest=True) #[topk,num_gt]
         candidate_metrics = alignment_metrics[candidate_idxs,
                                               torch.arange(num_gt)]
         is_pos = candidate_metrics > 0
@@ -119,7 +127,7 @@ class TaskAlignedAssigner(BaseAssigner):
         t_ = ep_anchors_cy[candidate_idxs].view(-1, num_gt) - gt_bboxes[:, 1]
         r_ = gt_bboxes[:, 2] - ep_anchors_cx[candidate_idxs].view(-1, num_gt)
         b_ = gt_bboxes[:, 3] - ep_anchors_cy[candidate_idxs].view(-1, num_gt)
-        is_in_gts = torch.stack([l_, t_, r_, b_], dim=1).min(dim=1)[0] > 0.01
+        is_in_gts = torch.stack([l_, t_, r_, b_], dim=1).min(dim=1)[0] > 0.01 #shape=[topk,num_gt]
         is_pos = is_pos & is_in_gts
 
         # if an anchor box is assigned to multiple gts,

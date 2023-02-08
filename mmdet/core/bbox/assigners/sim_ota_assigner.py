@@ -14,6 +14,13 @@ from .base_assigner import BaseAssigner
 class SimOTAAssigner(BaseAssigner):
     """Computes matching between predictions and ground truth.
 
+    Assign a corresponding gt bbox or background to each predicted bbox.
+    Each bbox will be assigned with `0` or a positive integer
+    indicating the ground truth index.
+
+    - 0: negative sample, no assigned gt
+    - positive integer: positive sample, index (1-based) of assigned gt
+
     Args:
         center_radius (int | float, optional): Ground truth center size
             to judge whether a prior is in center. Default 2.5.
@@ -30,6 +37,7 @@ class SimOTAAssigner(BaseAssigner):
                  candidate_topk=10,
                  iou_weight=3.0,
                  cls_weight=1.0):
+        print(f"SimOTAAssigner")
         self.center_radius = center_radius
         self.candidate_topk = candidate_topk
         self.iou_weight = iou_weight
@@ -201,13 +209,13 @@ class SimOTAAssigner(BaseAssigner):
                 cost_matrix, pairwise_ious, num_gt, valid_mask)
 
         # convert to AssignResult format
-        assigned_gt_inds[valid_mask] = matched_gt_inds + 1
+        assigned_gt_inds[valid_mask] = matched_gt_inds + 1 #change gt bboxes index base to 1
         assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)
-        assigned_labels[valid_mask] = gt_labels[matched_gt_inds].long()
+        assigned_labels[valid_mask] = gt_labels[matched_gt_inds].long() #labels is gt labels for valid ones or -1 for unvalid ones
         max_overlaps = assigned_gt_inds.new_full((num_bboxes, ),
                                                  -INF,
                                                  dtype=torch.float32)
-        max_overlaps[valid_mask] = matched_pred_ious
+        max_overlaps[valid_mask] = matched_pred_ious #ious for valid or -INF for unvalid ones
         return AssignResult(
             num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
