@@ -437,11 +437,11 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
         # YOLOX uses center priors with 0.5 offset to assign targets,
         # but use center priors without offset to regress bboxes.
         offset_priors = torch.cat(
-            [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
+            [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1) #(tl_x,tl_y,w,h)->(cx,cy,w,h)
 
         assign_result = self.assigner.assign(
             objectness.unsqueeze(1).sigmoid(),
-            offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
+            offset_priors, decoded_bboxes, gt_bboxes, gt_labels,anchor_fmt="cxcywh")
 
         sampling_result = self.sampler.sample(assign_result, priors, gt_bboxes)
         pos_inds = sampling_result.pos_inds

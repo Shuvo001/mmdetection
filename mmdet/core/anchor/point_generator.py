@@ -145,7 +145,7 @@ class MlvlPointGenerator:
             and the last dimension 2 represent (coord_x, coord_y),
             otherwise the shape should be (N, 4),
             and the last dimension 4 represent
-            (coord_x, coord_y, stride_w, stride_h).
+            (coord_x, coord_y, stride_w, stride_h). #(tl_x,tl_y,w,h)
         """
         feat_h, feat_w = featmap_size
         stride_w, stride_h = self.strides[level_idx]

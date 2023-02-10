@@ -50,7 +50,8 @@ class SimOTAAssigner(BaseAssigner):
                gt_bboxes,
                gt_labels,
                gt_bboxes_ignore=None,
-               eps=1e-7):
+               eps=1e-7,
+               anchor_fmt="cxcywh"):
         """Assign gt to priors using SimOTA. It will switch to CPU mode when
         GPU is out of memory.
         Args:
@@ -78,6 +79,8 @@ class SimOTAAssigner(BaseAssigner):
                gt_labels,
                gt_bboxes_ignore=None,
                eps=1e-7)'''
+        if anchor_fmt != 'cxcywh':
+            print(f"Unsupport anchor format {anchor_fmt}")
         try:
             assign_result = self._assign(pred_scores, priors, decoded_bboxes,
                                          gt_bboxes, gt_labels,

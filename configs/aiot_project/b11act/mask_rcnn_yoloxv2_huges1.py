@@ -9,16 +9,17 @@ model = dict(
     backbone=dict(
         type='WResNet',
         in_channels=1,
-        deep_stem=True,
-        deep_stem_mode='MultiBranchStemS12X',
+        first_conv_cfg=None,
         depth=50,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
+        deep_stem=True,
+        deep_stem_mode='MultiBranchStemS12X',
         style='pytorch',
-        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
+        ),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
@@ -84,29 +85,35 @@ model = dict(
             ),
             rcnn=dict(
                 mask_size=56,
+                sampler=dict(
+                type='RandomSampler',
+                num=128,
+                pos_fraction=0.25,
+                neg_pos_ub=-1,
+                add_gt_as_proposals=False),
              ),
         )
 )
 dataset_type = 'LabelmeDataset'
-data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg_test'
+data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
 img_scale = (3840, 6144)  # height, width
 random_resize_scales = [6720, 6528, 6336, 6144, 5952, 5760]
-random_crop_scales = [(4200, 6720), (4080, 6528), (3960, 6336), (3840, 6144), (3720, 5952), (3600, 5760)]
-random_crop_scales_min = [(2100, 3360), (2040, 3264), (1980, 3168), (1920, 3072), (1860, 2976), (1800, 2880)]
+random_crop_scales = [(4006, 6720), (3892, 6528), (3777, 6336), (3663, 6144), (3548, 5952), (3434, 5760)]
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='WRotate',
         prob=0.3,
+        img_fill_val=0,
         max_rotate_angle=20.0,
         ),
     dict(type='WTranslate',
         prob=0.3,
         max_translate_offset=200,
-        img_fill_val=(128,),
+        img_fill_val=(0,),
         ),
     dict(
         type='WMixUpWithMask',
@@ -115,7 +122,7 @@ train_pipeline = [
         prob=0.3,
         pad_val=114.0,skip_filter=False),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
-    dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
+    #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Pad', size_divisor=192),
     dict(type='WFixData'),
@@ -146,13 +153,13 @@ train_dataset = dict(
     ),
     pipeline=train_pipeline)
 
-samples_per_gpu = 8
+samples_per_gpu = 6
 data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor_dm1",
     samples_per_gpu=samples_per_gpu,
-    workers_per_gpu=7,
-    batch_split_nr=2,
+    workers_per_gpu=8,
+    batch_split_nr=6,
     pin_memory=True,
     train= train_dataset,
     val=dict(
@@ -188,11 +195,11 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yolox_huge_t"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yoloxv2_huges_silu"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True
 names_not2train = ["backbone"]
-names_2train = ["backbone.conv1","backbone.bn1"]
+names_2train = ["backbone.conv1","backbone.bn1","backbone.stem"]
 

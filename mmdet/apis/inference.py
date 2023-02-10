@@ -12,6 +12,7 @@ from mmdet.datasets import replace_ImageToTensor
 from mmdet.datasets.pipelines import Compose
 from mmdet.models import build_detector
 import wtorch.utils as wtu
+import wml_utils as wmlu
 
 
 def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
@@ -382,6 +383,7 @@ def show_result_pyplot(model,
 class ImageInferencePipeline:
     def __init__(self,pipeline) -> None:
         self.pipeline = pipeline
+        self.time = wmlu.AvgTimeThis()
         pass
 
     def __call__(self,model, img,input_size=(1024,1024),score_thr=0.05):
@@ -420,7 +422,8 @@ class ImageInferencePipeline:
     
         # forward the model
         with torch.no_grad():
-            results = model(return_loss=False, img=img)
+            with self.time:
+                results = model(return_loss=False, img=img)
     
         det_bboxes = results[0].cpu().numpy()
         det_masks = results[1].cpu().numpy()
@@ -446,3 +449,6 @@ class ImageInferencePipeline:
             det_masks = det_masks[keep]
     
         return bboxes,labels,scores,det_masks,results
+    
+    def __del__(self):
+        print(self.time)

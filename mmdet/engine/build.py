@@ -5,6 +5,8 @@ from .build_optimizer import *
 MODEL_REGISTER = Registry("MODEL")
 LOSS_REGISTER = Registry("LOSS")
 DATASET_REGISTER = Registry("DATASET")
+DATAPROCESSOR_REGISTRY = Registry("DATAPROCESSOR")
+
 
 '''def build_model(name,cfg, is_train, **kwargs):
     model = MODEL_REGISTER.get(name)(cfg, is_train=is_train,**kwargs)

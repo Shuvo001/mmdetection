@@ -7,21 +7,14 @@ classes =  ("burnt","puncture","crease","scratch")
 model = dict(
     type='MaskRCNN',
     backbone=dict(
-        type='WResNet',
+        type='WConvNeXt',
         in_channels=1,
-        deep_stem=True,
-        deep_stem_mode='MultiBranchStemS12X',
-        depth=50,
-        num_stages=4,
+        deep_stem_mode='MultiBranchStemS24X',
         out_indices=(0, 1, 2, 3),
-        frozen_stages=1,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=True,
-        style='pytorch',
-        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
+        frozen_stages=1),
     neck=dict(
         type='FPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[96, 192, 384, 768],
         out_channels=256,
         num_outs=5),
     rpn_head=dict(
@@ -189,7 +182,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
 work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yolox_huge_t"
-load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
+load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_convnext-t_p4_w7_fpn_fp16_ms-crop_3x_coco_20220426_154953-050731f4.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

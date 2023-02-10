@@ -38,11 +38,12 @@ class TaskAlignedAssigner(BaseAssigner):
 
     def assign(self,
                pred_scores,
-               decode_bboxes,
                anchors,
+               decode_bboxes,
                gt_bboxes,
                gt_labels=None,
                gt_bboxes_ignore=None,
+               anchor_fmt="x0y0x1y1",
                ):
         """Assign gt to bboxes.
 
@@ -111,8 +112,15 @@ class TaskAlignedAssigner(BaseAssigner):
         is_pos = candidate_metrics > 0
 
         # limit the positive sample's center in gt
-        anchors_cx = (anchors[:, 0] + anchors[:, 2]) / 2.0
-        anchors_cy = (anchors[:, 1] + anchors[:, 3]) / 2.0
+        if anchor_fmt == "x0y0x1y1":
+            anchors_cx = (anchors[:, 0] + anchors[:, 2]) / 2.0
+            anchors_cy = (anchors[:, 1] + anchors[:, 3]) / 2.0
+        elif anchor_fmt == "cxcywh":
+            anchors_cx = anchors[:,0]
+            anchors_cy = anchors[:,1]
+        else:
+            print(f"Unsupport anchor format {anchor_fmt}")
+
         for gt_idx in range(num_gt):
             candidate_idxs[:, gt_idx] += gt_idx * num_bboxes
         ep_anchors_cx = anchors_cx.view(1, -1).expand(
@@ -141,7 +149,7 @@ class TaskAlignedAssigner(BaseAssigner):
         max_overlaps, argmax_overlaps = overlaps_inf.max(dim=1)
         assigned_gt_inds[
             max_overlaps != -INF] = argmax_overlaps[max_overlaps != -INF] + 1
-        assign_metrics[max_overlaps != -INF] = alignment_metrics[
+        assign_metrics[max_overlaps != -INF] = alignment_metrics.to(assign_metrics.dtype)[
             max_overlaps != -INF, argmax_overlaps[max_overlaps != -INF]]
 
         if gt_labels is not None:
