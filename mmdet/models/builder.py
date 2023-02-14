@@ -1,8 +1,10 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
-
+import torch.nn as nn
 from mmcv.cnn import MODELS as MMCV_MODELS
 from mmcv.utils import Registry
+from wtorch.dropblock import DropBlock2D,LinearScheduler
+from collections import Iterable
 
 MODELS = Registry('models', parent=MMCV_MODELS)
 
@@ -61,4 +63,23 @@ def build_detector(cfg):
 
 def build_second_stage_hook(cfg):
     return SECOND_STAGE_HOOKS.build(cfg)
+
+def build_drop_blocks(cfg):
+    '''
+   cfg:{ "dropout":{"type":"DropBlock2D"},"drop_prob":[0.1,0.1,0.1,0.1],"block_size":[4,3,2,1]},
+   "scheduler":{"type":"LinearScheduler","begin_step":5000}}
+    '''
+    drop_prob = cfg['dropout']['drop_prob']
+    block_size = cfg['dropout']['block_size']
+    scheduler = cfg['scheduler']
+    nr = len(block_size)
+    if not isinstance(drop_prob,Iterable):
+        drop_prob = [drop_prob]*nr
+    models = []
+    for i in range(nr):
+        do = DropBlock2D(drop_prob=drop_prob[i],block_size=block_size[i])
+        m = LinearScheduler(do,start_value=scheduler.get("start_value",-1),stop_value=scheduler.get("stop_value",-1),
+                            begin_step=scheduler.get("begin_step",0),end_step=scheduler.get("end_step",-1))
+        models.append(m)
+    return nn.ModuleList(models)
 

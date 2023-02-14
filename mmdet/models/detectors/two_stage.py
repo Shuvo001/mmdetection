@@ -2,7 +2,7 @@
 import warnings
 
 import torch
-from ..builder import DETECTORS, build_backbone, build_head, build_neck,build_second_stage_hook
+from ..builder import DETECTORS, build_backbone, build_head, build_neck,build_second_stage_hook, build_drop_blocks
 from .base import BaseDetector
 import numpy as np
 from wtorch.utils import unnormalize
@@ -27,7 +27,8 @@ class TwoStageDetector(BaseDetector):
                  test_cfg=None,
                  pretrained=None,
                  init_cfg=None,
-                 second_stage_hook=None):
+                 second_stage_hook=None,
+                 drop_blocks=None):
         super(TwoStageDetector, self).__init__(init_cfg)
         if pretrained:
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
@@ -43,6 +44,11 @@ class TwoStageDetector(BaseDetector):
             rpn_head_ = rpn_head.copy()
             rpn_head_.update(train_cfg=rpn_train_cfg, test_cfg=test_cfg.rpn)
             self.rpn_head = build_head(rpn_head_)
+
+        if drop_blocks is not None:
+            self.drop_blocks = build_drop_blocks(drop_blocks)
+        else:
+            self.drop_blocks = None
 
         if second_stage_hook is not None:
             self.second_stage_hook = build_second_stage_hook(second_stage_hook)
@@ -131,6 +137,9 @@ class TwoStageDetector(BaseDetector):
             dict[str, Tensor]: a dictionary of loss components
         """
         x = self.extract_feat(img)
+
+        if self.drop_blocks is not None:
+            x = [m(v) for m,v in zip(self.drop_blocks,x)]
 
         losses = dict()
 

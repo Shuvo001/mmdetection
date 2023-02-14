@@ -17,6 +17,7 @@ import object_detection2.bboxes as odb
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 import wtorch.dist as wtd
+from wtorch.dropblock import LinearScheduler as DBLinearScheduler
 import numpy as np
 from mmdet.dataloader.build import build_dataloader
 from .base_trainer import BaseTrainer
@@ -24,7 +25,7 @@ import traceback
 
 
 class SimpleTrainer(BaseTrainer):
-    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=0,meta={'exp_name':"mmdet"}):
+    def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=1,meta={'exp_name':"mmdet"}):
         super().__init__(cfg)
         self.model = model
         self.dataset = dataset
@@ -46,6 +47,7 @@ class SimpleTrainer(BaseTrainer):
         self.max_iters = max_iters
         self.world_size = world_size
         self.use_fp16 = use_fp16
+        self.step_modules = []
         self.init_before_run()
         self.run_info = {}
         self.meta = meta
@@ -103,6 +105,11 @@ class SimpleTrainer(BaseTrainer):
         self.call_hook('before_run')
         self.estimate_time_cost.reset(self.max_iters-self.iter)
 
+        for m in self.model.modules():
+            if isinstance(m,DBLinearScheduler):
+                self.step_modules.append(m)
+
+
         if self.rank != 0:
             return
         logdir = osp.join(self.work_dir,"tblog")
@@ -111,11 +118,11 @@ class SimpleTrainer(BaseTrainer):
         self.log_writer = SummaryWriter(logdir)
 
     def run(self):
-        while self.iter < self.max_iters:
+        while self.iter <= self.max_iters:
             try:
                 self.run_info = {}
     
-                self.call_hook('before_iter')
+                self.before_iter()
     
                 time_b0 = time.time()
                 self.fetch_iter_data()
@@ -131,7 +138,7 @@ class SimpleTrainer(BaseTrainer):
                 self.estimate_time_cost.add_count()
                 self.run_info['model_time'] = time_b2-time_b1
     
-                self.call_hook('after_iter')
+                self.after_iter()
     
                 self.save_checkpoint()
     
@@ -279,6 +286,10 @@ class SimpleTrainer(BaseTrainer):
                     dataformats="HWC")
             self.log_writer.add_image(f"input/img{idx}",raw_img,global_step=global_step,
                     dataformats="HWC")
+        for i,m in enumerate(self.step_modules):
+            if isinstance(m,DBLinearScheduler):
+                self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob)
+
         model = wtu.get_model(self.model)
         summary.log_all_variable(self.log_writer,model,global_step=global_step)
         summary.log_optimizer(self.log_writer,self.optimizer,global_step)
@@ -302,5 +313,12 @@ class SimpleTrainer(BaseTrainer):
 
     def after_run(self):
         self.call_hook('after_run')
+
+    def before_iter(self):
+        self.call_hook('before_iter')
+        for m in self.step_modules:
+            m.step(self.iter)
+    def after_iter(self):
+        self.call_hook('after_iter')
 
 

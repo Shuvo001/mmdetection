@@ -127,3 +127,4 @@ work_dirs/
 *.swp
 x
 nohup.out
+TMP_README.md
