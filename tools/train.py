@@ -167,6 +167,8 @@ def main(rank,world_size,args):
     model.to(device)
 
     if 0 == rank:
+        print("Config")
+        print(cfg)
         print("Model")
         print(model)
 

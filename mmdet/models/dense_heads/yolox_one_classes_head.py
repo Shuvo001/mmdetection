@@ -9,7 +9,7 @@ from mmcv.cnn import (ConvModule, DepthwiseSeparableConvModule,
                       bias_init_with_prob)
 from mmcv.ops.nms import batched_nms
 from mmcv.runner import force_fp32
-
+from mmdet.utils.datadef import *
 from mmdet.core import (MlvlPointGenerator, bbox_xyxy_to_cxcywh,
                         build_assigner, build_sampler, multi_apply,
                         reduce_mean)
@@ -441,7 +441,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
         assign_result = self.assigner.assign(
             objectness.unsqueeze(1).sigmoid(),
-            offset_priors, decoded_bboxes, gt_bboxes, gt_labels,anchor_fmt="cxcywh")
+            offset_priors, decoded_bboxes, gt_bboxes, gt_labels,anchor_fmt=AnchorFmt.AF_CXCYWH)
 
         sampling_result = self.sampler.sample(assign_result, priors, gt_bboxes)
         pos_inds = sampling_result.pos_inds

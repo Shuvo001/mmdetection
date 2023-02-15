@@ -46,7 +46,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_db.py"  "--gpus" "1" "--use-fp16" "--debug"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_yolox_huge_t.py"  "--gpus" "1" "--use-fp16" "--debug"],
         },
         {
             "name": "Python: train b11 mask-rcnn yolox huge",
@@ -55,7 +55,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_db.py"  "--gpus" "0" "--use-fp16" "--debug" "--resume-from" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yoloxv2_huges_silu2_fp16/weights/checkpoint_50000.pth"],
+            "args":["configs/aiot_project/b11act/mask_rcnn_yolox_huge_t.py"  "--gpus" "0" "--use-fp16" "--debug" "--resume-from" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yoloxv2_huges_silu2_fp16/weights/checkpoint_50000.pth"],
         },
         {
             "name": "Python: train b11 mask-rcnn mosaic",

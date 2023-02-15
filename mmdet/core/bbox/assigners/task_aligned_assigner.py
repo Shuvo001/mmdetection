@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
-
+from mmdet.utils.datadef import *
 from ..builder import BBOX_ASSIGNERS
 from ..iou_calculators import build_iou_calculator
 from .assign_result import AssignResult
@@ -43,7 +43,7 @@ class TaskAlignedAssigner(BaseAssigner):
                gt_bboxes,
                gt_labels=None,
                gt_bboxes_ignore=None,
-               anchor_fmt="x0y0x1y1",
+               anchor_fmt=AnchorFmt.AF_X0Y0X1Y1,
                ):
         """Assign gt to bboxes.
 
@@ -112,10 +112,10 @@ class TaskAlignedAssigner(BaseAssigner):
         is_pos = candidate_metrics > 0
 
         # limit the positive sample's center in gt
-        if anchor_fmt == "x0y0x1y1":
+        if anchor_fmt == AnchorFmt.AF_X0Y0X1Y1:
             anchors_cx = (anchors[:, 0] + anchors[:, 2]) / 2.0
             anchors_cy = (anchors[:, 1] + anchors[:, 3]) / 2.0
-        elif anchor_fmt == "cxcywh":
+        elif anchor_fmt == AnchorFmt.AF_CXCYWH:
             anchors_cx = anchors[:,0]
             anchors_cy = anchors[:,1]
         else:

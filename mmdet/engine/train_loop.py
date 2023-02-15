@@ -288,7 +288,7 @@ class SimpleTrainer(BaseTrainer):
                     dataformats="HWC")
         for i,m in enumerate(self.step_modules):
             if isinstance(m,DBLinearScheduler):
-                self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob)
+                self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob,global_step=global_step)
 
         model = wtu.get_model(self.model)
         summary.log_all_variable(self.log_writer,model,global_step=global_step)

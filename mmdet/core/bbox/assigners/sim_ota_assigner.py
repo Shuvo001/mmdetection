@@ -3,7 +3,7 @@ import warnings
 
 import torch
 import torch.nn.functional as F
-
+from mmdet.utils.datadef import *
 from ..builder import BBOX_ASSIGNERS
 from ..iou_calculators import bbox_overlaps
 from .assign_result import AssignResult
@@ -51,7 +51,7 @@ class SimOTAAssigner(BaseAssigner):
                gt_labels,
                gt_bboxes_ignore=None,
                eps=1e-7,
-               anchor_fmt="cxcywh"):
+               anchor_fmt=AnchorFmt.AF_CXCYWH):
         """Assign gt to priors using SimOTA. It will switch to CPU mode when
         GPU is out of memory.
         Args:
@@ -79,7 +79,7 @@ class SimOTAAssigner(BaseAssigner):
                gt_labels,
                gt_bboxes_ignore=None,
                eps=1e-7)'''
-        if anchor_fmt != 'cxcywh':
+        if anchor_fmt != AnchorFmt.AF_CXCYWH:
             print(f"Unsupport anchor format {anchor_fmt}")
         try:
             assign_result = self._assign(pred_scores, priors, decoded_bboxes,
