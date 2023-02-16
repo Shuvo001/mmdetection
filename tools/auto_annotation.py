@@ -185,7 +185,6 @@ def main():
     save_path = args.save_data_dir
     if save_path is None:
         save_path = osp.join(work_dir,"tmp","eval_on_images")
-    save_path += "1"
 
     test_data_dir = args.test_data_dir
 
@@ -239,7 +238,9 @@ def main():
             ann_save_dir = osp.dirname(full_path)
         else:
             ann_save_dir = save_path
+
         save_annotation(ann_save_dir,full_path,shape,bboxes,labels,scores,det_masks,classes)
+
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")
 
@@ -272,26 +273,10 @@ def main():
             img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=t_gt_boxes,text_fn=text_fn)
             wmli.imwrite(img_save_path,img)
 
-        kwargs = {}
-        kwargs['gtboxes'] = gt_boxes
-        kwargs['gtlabels'] =gt_labels 
-        kwargs['boxes'] = bboxes
-        kwargs['labels'] =  labels
-        kwargs['probability'] =  scores
-        kwargs['img_size'] = shape
-        kwargs['use_relative_coord'] = False
-        metrics(**kwargs)
-        pyresults.append(copy.deepcopy(kwargs))
-        
         if i%100 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")
-    results_save_path = osp.join(save_path,"results.pk")
-    with open(results_save_path,"wb") as f:
-        print(f"results save path {results_save_path}")
-        print(f"python object_detection_tools/metrics_tools.py {results_save_path} --classes_wise")
-        pickle.dump(pyresults,f)
         
     metrics.show()
     print(classes)
