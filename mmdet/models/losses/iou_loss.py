@@ -168,6 +168,7 @@ def diou_loss(pred, target, eps=1e-7):
 
 
 @weighted_loss
+@torch.cuda.amp.autocast(False)
 def ciou_loss(pred, target, eps=1e-7):
     r"""`Implementation of paper `Enhancing Geometric Factors into
     Model Learning and Inference for Object Detection and Instance

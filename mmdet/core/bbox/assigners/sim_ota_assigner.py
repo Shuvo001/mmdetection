@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
-
+import sys
 import torch
 import torch.nn.functional as F
 from mmdet.utils.datadef import *
@@ -198,7 +198,8 @@ class SimOTAAssigner(BaseAssigner):
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
         cls_cost = (
             F.binary_cross_entropy(
-                valid_pred_scores.to(dtype=torch.float32).sqrt_(),
+                #valid_pred_scores.to(dtype=torch.float32).sqrt_(),
+                valid_pred_scores.to(dtype=torch.float32),
                 gt_onehot_label,
                 reduction='none',
             ).sum(-1))

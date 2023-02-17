@@ -476,7 +476,7 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
             [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
 
         assign_result = self.assigner.assign(
-            cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid(),
+            (cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid()).float().sqrt_(),
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
 
         sampling_result = self.sampler.sample(assign_result, priors, gt_bboxes)

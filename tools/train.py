@@ -116,7 +116,10 @@ def main(rank,world_size,args):
 
     # work_dir is determined in this priority: CLI > segment in file > filename
     if args.work_dir is not None:
-        cfg.work_dir = args.work_dir
+        if len(args.work_dir)==1 and not osp.isdir(args.work_dir):
+            cfg.work_dir = cfg.work_dir+args.work_dir
+        else:
+            cfg.work_dir = args.work_dir
         print(f"Update work dir to {cfg.work_dir}")
     elif cfg.get('work_dir', None) is None:
         # use config filename as default work_dir if cfg.work_dir is None
@@ -128,9 +131,9 @@ def main(rank,world_size,args):
         cfg.data.workers_per_gpu = args.workers_per_gpu
         print(f"Update data workers_per_gpu to {cfg.data.workers_per_gpu}")
     
-    if args.use_fp16:
+    '''if args.use_fp16:
         cfg.work_dir = cfg.work_dir+"_fp16"
-        print(f"Update work dir to {cfg.work_dir}")
+        print(f"Update work dir to {cfg.work_dir}")'''
 
     if len(args.resume_from)>1 and osp.exists(args.resume_from):
         cfg.load_from = args.resume_from
@@ -168,7 +171,7 @@ def main(rank,world_size,args):
 
     if 0 == rank:
         print("Config")
-        print(cfg)
+        print(cfg.pretty_text)
         print("Model")
         print(model)
 

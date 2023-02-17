@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import math
-
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -440,7 +440,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
             [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1) #(tl_x,tl_y,w,h)->(cx,cy,w,h)
 
         assign_result = self.assigner.assign(
-            objectness.unsqueeze(1).sigmoid(),
+            objectness.unsqueeze(1).float().sigmoid(),
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels,anchor_fmt=AnchorFmt.AF_CXCYWH)
 
         sampling_result = self.sampler.sample(assign_result, priors, gt_bboxes)
