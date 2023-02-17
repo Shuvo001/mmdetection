@@ -25,8 +25,9 @@ class SamplingResult(util_mixins.NiceRepr):
 
     def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, assign_result,
                  gt_flags):
-        self.pos_inds = pos_inds
-        self.neg_inds = neg_inds
+        #bboxes usualy anchor bboxes or proposals bboxes
+        self.pos_inds = pos_inds  #[N1],int
+        self.neg_inds = neg_inds  #[N2],int
         self.pos_bboxes = bboxes[pos_inds]
         self.neg_bboxes = bboxes[neg_inds]
         self.pos_is_gt = gt_flags[pos_inds]

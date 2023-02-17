@@ -7,7 +7,7 @@ from torch.nn.modules.utils import _pair
 import wtorch.nms as wnms
 from mmdet.core import build_bbox_coder, multi_apply, multiclass_nms, wmulticlass_nms
 from mmdet.models.builder import HEADS, build_loss
-from mmdet.models.losses import accuracy
+from mmdet.models.losses import accuracy, GIoULoss,DIoULoss,IoULoss,CIoULoss,L1Loss,SmoothL1Loss
 from mmdet.models.utils import build_linear_layer
 from mmdet.utils.datadef import *
 
@@ -50,7 +50,7 @@ class BBoxHead(BaseModule):
         self.in_channels = in_channels
         self.num_classes = num_classes
         self.reg_class_agnostic = reg_class_agnostic
-        self.reg_decoded_bbox = reg_decoded_bbox
+        self.reg_decoded_bbox = reg_decoded_bbox #计算损失时是否需要(x0,y0,x1,y1) 格式的bboxes
         self.reg_predictor_cfg = reg_predictor_cfg
         self.cls_predictor_cfg = cls_predictor_cfg
         self.fp16_enabled = False
@@ -60,6 +60,13 @@ class BBoxHead(BaseModule):
         #使用cross_entropy
         self.loss_cls = build_loss(loss_cls)
         self.loss_bbox = build_loss(loss_bbox)
+
+        if isinstance(self.loss_bbox,(IoULoss,GIoULoss,DIoULoss,CIoULoss)) and not reg_decoded_bbox:
+            print(f"ERROR: *IoULoss should use reg_decoded_bbox=True.")
+            raise RuntimeError(f"ERROR: *IoULoss should use reg_decoded_bbox=True.")
+        elif isinstance(self.loss_bbox,(L1Loss,SmoothL1Loss)) and reg_decoded_bbox:
+            print(f"ERROR: *L1Loss should use reg_decoded_bbox=False.")
+            raise RuntimeError(f"ERROR: *L1Loss should use reg_decoded_bbox=False.")
 
         in_channels = self.in_channels
         if self.with_avg_pool:
@@ -130,7 +137,7 @@ class BBoxHead(BaseModule):
         Args:
             pos_bboxes (Tensor): Contains all the positive boxes,
                 has shape (num_pos, 4), the last dimension 4
-                represents [tl_x, tl_y, br_x, br_y].
+                represents [tl_x, tl_y, br_x, br_y]. proposals bboxes or anchor bboxes
             neg_bboxes (Tensor): Contains all the negative boxes,
                 has shape (num_neg, 4), the last dimension 4
                 represents [tl_x, tl_y, br_x, br_y].
