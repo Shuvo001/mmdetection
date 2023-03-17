@@ -137,6 +137,12 @@ class TwoStageDetector(BaseDetector):
             dict[str, Tensor]: a dictionary of loss components
         """
         x = self.extract_feat(img)
+        if is_debug():
+            for tbboxes in gt_bboxes:
+                tbboxes = wtb.correct_bbox(tbboxes,w=img.shape[3],h=img.shape[2])
+                tareas = wtb.area(tbboxes)
+                if torch.any(tareas<3):
+                    print(f"ERROR gt bboxes size: {torch.min(tareas).item()}")
 
         if self.drop_blocks is not None:
             x = [m(v) for m,v in zip(self.drop_blocks,x)]

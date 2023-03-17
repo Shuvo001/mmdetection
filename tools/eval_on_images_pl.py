@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument('--save_data_dir', type=str,help='Path to output file')
     parser.add_argument('--test_data_dir', type=str,help='Path to output file')
+    #parser.add_argument('--test_data_dir', type=str,default="/home/wj/ai/mldata1/B11ACT/datas/wt23",help='Path to output file')
     parser.add_argument('--save_results',
         action='store_true',
         help='whether save results imgs.')
@@ -176,9 +177,10 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
     #model_args={"threshold":0.3})
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall,
+    #        model_args={"threshold":0.2})
     metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
     dataset = eval_dataset(test_data_dir,classes=classes)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
@@ -216,6 +218,11 @@ def main():
                                                          input_size=input_size,score_thr=args.score_thr)
         name = wmlu.base_name(full_path)
         if args.save_results:
+            name = name+f"_{i:04d}"
+            if 1 in labels:
+                print("Y",full_path,name)
+            else:
+                print("N",full_path,name)
             img_save_path = os.path.join(save_path,name+".jpg")
 
             if save_size is not None:

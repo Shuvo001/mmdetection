@@ -99,7 +99,7 @@ model = dict(
         )
 )
 dataset_type = 'LabelmeDataset'
-data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
+data_root = '/home/wj/ai/mldata1/B11ACT/datas/train_s0'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
@@ -171,7 +171,7 @@ data = dict(
         classes=classes,
         img_suffix="bmp",
         ann_file=data_root,
-        data_dirs=data_root,
+        data_dirs="/home/wj/ai/mldata1/B11ACT/datas/test_s0",
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,

@@ -276,7 +276,7 @@ class SimpleTrainer(BaseTrainer):
             img = np.clip(img,0,255).astype(np.uint8)
             raw_img = img.copy()
             #debug
-            #gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
+            gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
             if gt_masks is not None:
                 img = odv.draw_bboxes_and_maskv2(img,gt_labels,bboxes=gt_bboxes,masks=gt_masks,
                                                  is_relative_coordinate=False,show_text=True)

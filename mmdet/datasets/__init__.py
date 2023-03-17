@@ -17,7 +17,7 @@ from .wider_face import WIDERFaceDataset
 from .xml_style import XMLDataset
 from .wxml_dataset import WXMLDataset
 from .mosaicdataset.mosaicdetectiondataset import MosaicDetectionDataset
-from .labelme import LabelmeDataset
+from .wlabelme import LabelmeDataset
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',

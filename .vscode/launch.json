@@ -67,13 +67,13 @@
             "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch2.py"  "--gpus" "0" ],
         },
         {
-            "name": "Python: train b11 act",
+            "name": "Python: train b7 mura",
             "type": "python",
             "justMyCode": false,
             "request": "launch",
-            "program": "./tools/trainv2.py",
+            "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b11act/faster_rcnn.py" "--no-validate" "--gpu-id" "3"],
+            "args":["configs/aiot_project/b7mura/mask_rcnn_yoloxv2_huges_dbc_t.py" "--gpus" "1" "--debug" "--use-fp16"],
         },
         {
             "name": "Python: train b11 act t",
