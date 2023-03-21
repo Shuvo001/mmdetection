@@ -29,7 +29,11 @@ class LabelmeDataset(WCustomDataset):
         self.classes = kwargs.get("classes")
         filter_empty_files = kwargs.pop("filter_empty_files",False)
         self.label_text2id = dict(zip(self.classes,count()))
-        self.__dataset = LabelMeData(label_text2id=self.label_text2id,absolute_coord=True,filter_empty_files=filter_empty_files)
+        resample_parameters = kwargs.pop("resample_parameters",None)
+        self.__dataset = LabelMeData(label_text2id=self.label_text2id,
+                                     absolute_coord=True,
+                                     filter_empty_files=filter_empty_files,
+                                     resample_parameters=resample_parameters)
         super().__init__(*args,**kwargs)
 
     def load_annotations(self, ann_file):
