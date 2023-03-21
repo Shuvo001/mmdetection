@@ -69,7 +69,9 @@ model = dict(
                 score_thr=0.05,
                 nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.2),
                 max_per_img=100,
-                )),
+                ),
+            min_bbox_size=128,
+                ),
         train_cfg=dict(
             rpn=dict(
             assigner=dict(type='SimOTAAssigner', center_radius=2.5),

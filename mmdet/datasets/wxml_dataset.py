@@ -28,8 +28,12 @@ class WXMLDataset(WCustomDataset):
         self.img_suffix = kwargs.pop("img_suffix","jpg")
         self.classes = kwargs.get("classes")
         filter_empty_files = kwargs.pop("filter_empty_files",False)
+        resample_parameters = kwargs.pop("resample_parameters",None)
         self.label_text2id = dict(zip(self.classes,count()))
-        self.__dataset = PascalVOCData(label_text2id=self.label_text2id,absolute_coord=True,filter_empty_files=filter_empty_files)
+        self.__dataset = PascalVOCData(label_text2id=self.label_text2id,
+                                       absolute_coord=True,
+                                       filter_empty_files=filter_empty_files,
+                                       resample_parameters=resample_parameters)
         super().__init__(*args,**kwargs)
 
     def load_annotations(self, ann_file):

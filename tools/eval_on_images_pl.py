@@ -44,10 +44,26 @@ def parse_args():
     parser.add_argument('--save_results',
         action='store_true',
         help='whether save results imgs.')
+    parser.add_argument(
+        '--dataset-type',
+        default='json',
+        choices=['json', 'xml'],
+        help='Dataset type')
+    parser.add_argument(
+        '--min-bbox-size',
+        default=0,
+        type=int,
+        help='min bbox size')
+    parser.add_argument(
+        '--labels',
+        default=[],
+        type=int,
+        nargs="+",
+        help='labels to test')
     args = parser.parse_args()
     return args
 
-def eval_dataset(data_dir,classes):
+def eval_dataset(data_dir,classes,dataset_type="json"):
     '''data = COCOData()
     data.read_data(wmlu.home_dir("ai/mldata/coco/annotations/instances_val2014.json"),
                    image_dir=wmlu.home_dir("ai/mldata/coco/val2014"))'''
@@ -64,7 +80,12 @@ def eval_dataset(data_dir,classes):
 
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
-    data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+    if dataset_type == "json":
+        data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+    elif dataset_type == "xml":
+        data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
+    else:
+        print(f"unsupport dataset type {dataset_type}")
     data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
 
     return data
@@ -96,6 +117,12 @@ def get_results(result,score_thr=0.05):
     
 def label_trans(labels):
     return np.array([x+1 for x in labels])
+
+def any_same(labels0,labels1):
+    for x in labels0:
+        if x in labels1:
+            return True
+    return False
 
 imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
 "B68G1X0012C3AAM05-02_ALL_CAM00.bmp",
@@ -159,6 +186,12 @@ def main():
     #roi_head.test_cfg 配置时通过config.model.test_cfg.rcnn配置
     wmlu.show_dict(model.roi_head.test_cfg)
 
+
+    mbs = model.cfg.model.test_cfg.get("min_bbox_size",None)
+    if mbs is not None:
+        print(f"Set min bboxes size {mbs}")
+        args.min_bbox_size = mbs
+
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
 
@@ -182,7 +215,7 @@ def main():
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall,
     #        model_args={"threshold":0.2})
     metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
-    dataset = eval_dataset(test_data_dir,classes=classes)
+    dataset = eval_dataset(test_data_dir,classes=classes,dataset_type=args.dataset_type)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     print(f"input size={input_size}")
     #save_size = (1024,640) 
@@ -194,13 +227,14 @@ def main():
     save_size = input_size
     pyresults = []
     time = wmlu.AvgTimeThis()
+    test_labels = args.labels
 
     for i,data in enumerate(dataset.get_items()):
         print(f"process {i}/{len(dataset)}")
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         #
-        #if 1 not in gt_labels:
-            #continue
+        if test_labels is not None and len(test_labels)>0 and not any_same(test_labels,gt_labels):
+            continue
         '''
         contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         print(contours)
@@ -216,6 +250,14 @@ def main():
         bboxes,labels,scores,det_masks,result = detector(model,
                                                          full_path,
                                                          input_size=input_size,score_thr=args.score_thr)
+
+        if args.min_bbox_size>0:
+            gt_boxes_e = odb.clamp_bboxes(gt_boxes,args.min_bbox_size)
+            bboxes_e = odb.clamp_bboxes(bboxes,args.min_bbox_size)
+        else:
+            gt_boxes_e = gt_boxes
+            bboxes_e = bboxes
+
         name = wmlu.base_name(full_path)
         if args.save_results:
             name = name+f"_{i:04d}"
@@ -255,9 +297,9 @@ def main():
             wmli.imwrite(img_save_path,img)
 
         kwargs = {}
-        kwargs['gtboxes'] = gt_boxes
+        kwargs['gtboxes'] = gt_boxes_e
         kwargs['gtlabels'] =gt_labels 
-        kwargs['boxes'] = bboxes
+        kwargs['boxes'] = bboxes_e
         kwargs['labels'] =  labels
         kwargs['probability'] =  scores
         kwargs['img_size'] = shape

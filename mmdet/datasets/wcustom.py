@@ -12,6 +12,7 @@ import object_detection2.bboxes as odb
 from mmdet.core import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
+import object_detection_tools.statistics_tools as st
 import sys
 
 class WCustomDataset(Dataset):
@@ -102,6 +103,13 @@ class WCustomDataset(Dataset):
                 'might cause errors if the path is not a local path. '
                 'Please use MMCV>= 1.3.16 if you meet errors.')
             self._inner_dataset = self.load_annotations(self.ann_file)
+        
+        #
+        statics = st.statistics_boxes_with_datas(self._inner_dataset,
+                                          label_encoder=st.default_encode_label,
+                                          labels_to_remove=None,
+                                          max_aspect=None,absolute_size=True)
+        #
 
         if self.proposal_file is not None:
             if hasattr(self.file_client, 'get_local_path'):

@@ -141,6 +141,16 @@
             "args":["configs/aiot_project/b11act/mask_rcnn_huge.py" "--gpus" "1" "--save_results"],
         },
         {
+            "name": "Python: eval b7 mura",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/eval_on_images_pl.py",
+            "console": "integratedTerminal",
+            //"args":["configs/aiot_project/b11act/mask_rcnn_org.py" "/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask/weights/checkpoint_3000.pth" "--gpus" "1" "--save_results"],
+            "args":["configs/aiot_project/b7mura/mask_rcnn_yoloxv2_huges_dbc.py" "--gpus" "1" "--dataset-type" "xml"],
+        },
+        {
             "name": "Python: eval b11act mask patch",
             "type": "python",
             "justMyCode": true,
