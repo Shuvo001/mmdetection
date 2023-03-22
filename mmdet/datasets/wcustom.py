@@ -64,7 +64,6 @@ class WCustomDataset(Dataset):
                  data_root=None,
                  img_prefix='',
                  seg_prefix=None,
-                 proposal_file=None,
                  test_mode=False,
                  filter_empty_gt=True,
                  file_client_args=dict(backend='disk'),
@@ -74,7 +73,6 @@ class WCustomDataset(Dataset):
         self.data_root = data_root
         self.img_prefix = img_prefix
         self.seg_prefix = seg_prefix
-        self.proposal_file = proposal_file
         self.test_mode = test_mode
         self.filter_empty_gt = filter_empty_gt
         self.file_client = mmcv.FileClient(**file_client_args)
@@ -88,10 +86,6 @@ class WCustomDataset(Dataset):
                 self.img_prefix = osp.join(self.data_root, self.img_prefix)
             if not (self.seg_prefix is None or osp.isabs(self.seg_prefix)):
                 self.seg_prefix = osp.join(self.data_root, self.seg_prefix)
-            if not (self.proposal_file is None
-                    or osp.isabs(self.proposal_file)):
-                self.proposal_file = osp.join(self.data_root,
-                                              self.proposal_file)
         # load annotations (and proposals)
         if hasattr(self.file_client, 'get_local_path'):
             with self.file_client.get_local_path(self.ann_file) as local_path:
@@ -109,22 +103,6 @@ class WCustomDataset(Dataset):
                                           label_encoder=st.default_encode_label,
                                           labels_to_remove=None,
                                           max_aspect=None,absolute_size=True)
-        #
-
-        if self.proposal_file is not None:
-            if hasattr(self.file_client, 'get_local_path'):
-                with self.file_client.get_local_path(
-                        self.proposal_file) as local_path:
-                    self.proposals = self.load_proposals(local_path)
-            else:
-                warnings.warn(
-                    'The used MMCV version does not have get_local_path. '
-                    f'We treat the {self.ann_file} as local paths and it '
-                    'might cause errors if the path is not a local path. '
-                    'Please use MMCV>= 1.3.16 if you meet errors.')
-                self.proposals = self.load_proposals(self.proposal_file)
-        else:
-            self.proposals = None
 
         # filter images too small and containing no annotations
         if not test_mode:
@@ -174,12 +152,7 @@ class WCustomDataset(Dataset):
         return len(self._inner_dataset)
 
     def load_annotations(self, ann_file):
-        """Load annotation from annotation file."""
-        return mmcv.load(ann_file)
-
-    def load_proposals(self, proposal_file):
-        """Load proposal from proposal file."""
-        return mmcv.load(proposal_file)
+        pass
 
     def get_ann_info(self, idx):
         """Get annotation by index.
