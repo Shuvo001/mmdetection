@@ -96,7 +96,7 @@ img_scale = (3840, 6144)  # height, width
 random_resize_scales = [6720, 6528, 6336, 6144, 5952, 5760]
 random_crop_scales = [(4006, 6720), (3892, 6528), (3777, 6336), (3663, 6144), (3548, 5952), (3434, 5760)]
 train_pipeline = [
-    dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
+    dict(type='WMosaic', img_scale=img_scale, pad_val=0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='WRotate',
         prob=0.3,
@@ -113,7 +113,7 @@ train_pipeline = [
         img_scale=img_scale,
         ratio_range=(0.8, 1.6),
         prob=0.3,
-        pad_val=114.0,skip_filter=False),
+        pad_val=0,skip_filter=False),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
     #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='RandomFlip', flip_ratio=0.5),
