@@ -3,7 +3,7 @@ _base_ = [
     '../../_base_/default_runtime.py'
 ]
 # dataset settings
-classes =  ("burnt","puncture","crease","scratch")
+classes =  ("puncture",)
 model = dict(
     type='MaskRCNN',
     backbone=dict(
@@ -97,8 +97,6 @@ data_root = '/home/wj/ai/mldata1/B11ACT/datas/labeled_seg'
 img_scale = (1024, 1024)  # height, width
 random_resize_scales = [1024, 992, 960, 928, 896, 864]
 random_crop_scales = [(1024, 1024), (992, 992), (960, 960), (928, 928), (896, 896), (864, 864)]
-img_norm_cfg = dict(
-    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=114.0,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales),
@@ -109,36 +107,26 @@ train_pipeline = [
     dict(type='WTranslate',
         prob=0.3,
         max_translate_offset=200,
+        directions=('horizontal', 'vertical'),
         ),
     dict(
         type='WMixUpWithMask',
         img_scale=img_scale,
         ratio_range=(0.8, 1.6),
-        prob=0.3,
+        prob=0.2,
         pad_val=114.0,skip_filter=False),
     dict(type="WGetBBoxesByMask",min_bbox_area=4),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
-    dict(type='RandomFlip', flip_ratio=0.5),
-    dict(type='Normalize', **img_norm_cfg),
+    dict(type='RandomFlip', flip_ratio=0.75,direction=['horizontal', 'vertical', 'diagonal']),
     dict(type='Pad', size_divisor=32),
     dict(type='W2Gray'),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(
-        type='MultiScaleFlipAug',
-        img_scale=img_scale,
-        flip=False,
-        transforms=[
-            dict(type='Resize', keep_ratio=True),
-            dict(type='RandomFlip'),
-            dict(type='Normalize', **img_norm_cfg),
-            dict(type='Pad', size_divisor=32),
-            dict(type='ImageToTensor', keys=['img']),
-            dict(type='Collect', keys=['img']),
-        ])
+    dict(type='WLoadImageFromFile'),
+    dict(type='W2Gray'),
+    dict(type="WGetImg"),
 ]
 
 train_dataset = dict(
@@ -149,13 +137,14 @@ train_dataset = dict(
         img_suffix="bmp",
         ann_file=data_root,
         pipeline=[
-            dict(type='LoadImageFromFile'),
+            dict(type='LoadImageFromFile', channel_order="rgb"),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=True),
         ],
         pipeline2=[
             dict(type="WRandomCrop",crop_size=random_crop_scales,try_crop_around_gtbboxes=True,crop_around_gtbboxes_prob=0.6),
         ],
         cache_processed_data=True,
+        filter_empty_files=True,
     ),
     pipeline=train_pipeline)
 
@@ -200,7 +189,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch4"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 finetune_model=True
 names_not2train = ["backbone"]
