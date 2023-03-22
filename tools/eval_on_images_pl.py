@@ -46,8 +46,8 @@ def parse_args():
         help='whether save results imgs.')
     parser.add_argument(
         '--dataset-type',
-        default='json',
-        choices=['json', 'xml'],
+        default='',
+        type=str,
         help='Dataset type')
     parser.add_argument(
         '--min-bbox-size',
