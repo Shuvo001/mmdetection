@@ -221,6 +221,7 @@ class WRotate:
                  center=None,
                  img_fill_val=128,
                  seg_ignore_label=255,
+                 min_area_ratio=0.2,
                  prob=0.5,
                  max_rotate_angle=30):
         assert isinstance(scale, (int, float)), \
@@ -256,6 +257,7 @@ class WRotate:
         self.seg_ignore_label = seg_ignore_label
         self.prob = prob
         self.max_rotate_angle = max_rotate_angle
+        self.min_area_ratio = min_area_ratio
 
     def _rotate_img(self, results, angle, center=None, scale=1.0):
         """Rotate the image.
@@ -284,6 +286,7 @@ class WRotate:
         for key in results.get('bbox_fields', []):
             min_x, min_y, max_x, max_y = np.split(
                 results[key], results[key].shape[-1], axis=-1)
+            area_old = odb.area(results[key])
             coordinates = np.stack([[min_x, min_y], [max_x, min_y],
                                     [min_x, max_y],
                                     [max_x, max_y]])  # [4, 2, nb_bbox, 1]
@@ -312,6 +315,8 @@ class WRotate:
                     max_y, a_min=min_y, a_max=h)
             results[key] = np.stack([min_x, min_y, max_x, max_y],
                                     axis=-1).astype(results[key].dtype)
+            area_new = odb.area(results[key])
+            results[key+"_area_ratio"] = area_new/(area_old+1e-6)
 
     def _rotate_masks(self,
                       results,
@@ -343,9 +348,12 @@ class WRotate:
         augmentation."""
         bbox2label, bbox2mask, _ = bbox2fields()
         for key in results.get('bbox_fields', []):
+            ratio_key = key+"_area_ratio"
+            ratio = results.get(ratio_key,None)
             bbox_w = results[key][:, 2] - results[key][:, 0]
             bbox_h = results[key][:, 3] - results[key][:, 1]
             valid_inds = (bbox_w > min_bbox_size) & (bbox_h > min_bbox_size)
+            valid_inds = np.logical_and(valid_inds,ratio>self.min_area_ratio)
             valid_inds = np.nonzero(valid_inds)[0]
             results[key] = results[key][valid_inds]
             # label fields. e.g. gt_labels and gt_labels_ignore
@@ -425,6 +433,7 @@ class WTranslate:
                  seg_ignore_label=255,
                  directions='horizontal',
                  max_translate_offset=250.,
+                 min_area_ratio=0.2,
                  min_size=0):
         assert 0 <= prob <= 1.0, \
             'The probability of translation should be in range [0, 1].'
@@ -449,6 +458,7 @@ class WTranslate:
         self._direction = None
         self.max_translate_offset = max_translate_offset
         self.min_size = min_size
+        self.min_area_ratio = min_area_ratio
 
     def _translate_img(self, results, offset, direction='horizontal'):
         """Translate the image.
@@ -472,6 +482,7 @@ class WTranslate:
         """Shift bboxes horizontally or vertically, according to offset."""
         h, w, c = results['img_shape']
         for key in results.get('bbox_fields', []):
+            area_old = odb.area(results[key])
             min_x, min_y, max_x, max_y = np.split(
                 results[key], results[key].shape[-1], axis=-1)
             if self._direction == 'horizontal':
@@ -485,6 +496,8 @@ class WTranslate:
             # the corresponding masks, by invoking ``_filter_invalid``.
             results[key] = np.concatenate([min_x, min_y, max_x, max_y],
                                           axis=-1)
+            area_new = odb.area(results[key])
+            results[key+"_area_ratio"] = area_new/(area_old+1e-6)
 
     def _translate_masks(self,
                          results,
@@ -512,9 +525,12 @@ class WTranslate:
         """Filter bboxes and masks too small or translated out of image."""
         bbox2label, bbox2mask, _ = bbox2fields()
         for key in results.get('bbox_fields', []):
+            ratio_key = key+"_area_ratio"
+            ratio = results[ratio_key]
             bbox_w = results[key][:, 2] - results[key][:, 0]
             bbox_h = results[key][:, 3] - results[key][:, 1]
             valid_inds = (bbox_w > min_size) & (bbox_h > min_size)
+            valid_inds = np.logical_or(valid_inds,ratio>self.min_area_ratio)
             valid_inds = np.nonzero(valid_inds)[0]
             results[key] = results[key][valid_inds]
             # label fields. e.g. gt_labels and gt_labels_ignore
@@ -810,7 +826,6 @@ class WMixUpWithMask:
         if not self.skip_filter:
             keep_list = self._filter_box_candidates(retrieve_gt_bboxes.T,
                                                     cp_retrieve_gt_bboxes.T)
-
             retrieve_gt_labels = retrieve_gt_labels[keep_list]
             cp_retrieve_gt_bboxes = cp_retrieve_gt_bboxes[keep_list]
             if retrieve_masks is not None:
@@ -847,11 +862,10 @@ class WMixUpWithMask:
 
         w1, h1 = bbox1[2] - bbox1[0], bbox1[3] - bbox1[1]
         w2, h2 = bbox2[2] - bbox2[0], bbox2[3] - bbox2[1]
-        ar = np.maximum(w2 / (h2 + 1e-16), h2 / (w2 + 1e-16))
-        return ((w2 > self.min_bbox_size)
+        res = np.logical_or((w2 > self.min_bbox_size)
                 & (h2 > self.min_bbox_size)
-                & (w2 * h2 / (w1 * h1 + 1e-16) > self.min_area_ratio)
-                & (ar < self.max_aspect_ratio))
+                ,(w2 * h2 / (w1 * h1 + 1e-16) > self.min_area_ratio))
+        return res
 
     def __repr__(self):
         repr_str = self.__class__.__name__

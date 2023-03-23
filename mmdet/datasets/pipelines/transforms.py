@@ -597,7 +597,10 @@ class Pad:
                  size=None,
                  size_divisor=None,
                  pad_to_square=False,
-                 pad_val=dict(img=0, masks=0, seg=255)):
+                 img_fill_val=0,
+                 mask_fill_val=0,
+                 seg_fill_val=255):
+        pad_val = dict(img=img_fill_val,masks=mask_fill_val,seg=seg_fill_val)
         self.size = size
         self.size_divisor = size_divisor
         if isinstance(pad_val, float) or isinstance(pad_val, int):

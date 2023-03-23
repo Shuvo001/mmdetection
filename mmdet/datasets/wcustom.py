@@ -261,8 +261,6 @@ class WCustomDataset(Dataset):
         img_info = dict(filename=img_file,height=img_shape[0],width=img_shape[1])
         ann_info = dict(bboxes=bboxes,labels=labels,bitmap_masks=masks)
         results = dict(img_info=img_info, ann_info=ann_info)
-        if self.proposals is not None:
-            results['proposals'] = self.proposals[idx]
         self.pre_pipeline(results)
         return self.pipeline(results)
 
@@ -283,8 +281,6 @@ class WCustomDataset(Dataset):
         img_info = dict(filename=img_file,height=img_shape[0],width=img_shape[1])
         ann_info = dict(bboxes=bboxes,labels=labels,bitmap_masks=masks)
         results = dict(img_info=img_info, ann_info=ann_info)
-        if self.proposals is not None:
-            results['proposals'] = self.proposals[idx]
         self.pre_pipeline(results)
         return self.pipeline(results)
 

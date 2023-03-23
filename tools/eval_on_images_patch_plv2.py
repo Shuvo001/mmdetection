@@ -1,6 +1,6 @@
 # coding=utf-8
 from argparse import ArgumentParser
-from img_patch import ImagePatch
+
 from mmdet.apis import (async_inference_detector, inference_detector,
                         init_detector, show_result_pyplot)
 from mmdet.apis.img_patch_inference import *
@@ -19,8 +19,6 @@ import os.path as osp
 from itertools import count
 import shutil
 import pickle
-import copy
-from object_detection2.odtools import WCrop
 from mmdet.datasets.pipelines import Compose
 
 def parse_args():
@@ -134,8 +132,8 @@ def main():
         checkpoint = args.checkpoint
 
     print(f"Load {checkpoint}")
-    #checkpoint = torch.load(checkpoint,map_location="cpu")
-    #wtu.forgiving_state_restore(model,checkpoint)
+    checkpoint = torch.load(checkpoint,map_location="cpu")
+    wtu.forgiving_state_restore(model,checkpoint)
     '''
     nms_pre: 为每一层nms之前的最大值
     nms: 仅在每一层内部做
@@ -181,10 +179,9 @@ def main():
     save_size = None
 
     pipeline = Compose(model.cfg.test_pipeline)
-    detector = ImagePatchInferencePipeline(patch_size=input_size[::-1],
+    detector = ImagePatchInferencePipelineV2(patch_size=input_size[::-1],
                                           pipeline=pipeline)
 
-    croper = WCrop(bbox_keep_ratio=0.2)
     pyresults = []
 
     for i,data in enumerate(dataset.get_items()):
@@ -197,12 +194,10 @@ def main():
         #if osp.basename(full_path) not in imgs17:
             #continue
         gt_boxes = odb.npchangexyorder(gt_boxes)
-        gt_results = {'img':wmli.imread(full_path),
-                      'gt_bboxes':gt_boxes,
-                      'gt_labels':gt_labels}
-        if binary_masks is not None:
-            gt_results['gt_masks'] = binary_masks
-
+        bboxes,labels,scores,det_masks,result = detector(model, full_path,input_size=None,
+                                                         score_thr=args.score_thr)
+        #if 1 not in labels:
+            #continue
         name = wmlu.base_name(full_path)
         if args.save_results:
             img_save_path = os.path.join(save_path,name+".jpg")
@@ -212,6 +207,20 @@ def main():
             else:
                 wmli.read_and_write_img(full_path,img_save_path)
     
+            img_save_path = os.path.join(save_path,name+"_pred.jpg")
+            img = wmli.imread(full_path)
+            if save_size is not None:
+                img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
+                t_bboxes = bboxes*r
+            else:
+                t_bboxes = bboxes
+            img = odv.draw_bboxes_xy(img,
+                                     scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
+                                     show_text=True)
+            if det_masks is not None:
+                img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
+            wmli.imwrite(img_save_path,img)
+
             img_save_path = os.path.join(save_path,name+"_gt.jpg")
             img = wmli.imread(full_path)
             if save_size is not None:
@@ -222,37 +231,17 @@ def main():
             img = odv.draw_bboxes_xy(img,classes=gt_labels,bboxes=t_gt_boxes,text_fn=text_fn)
             wmli.imwrite(img_save_path,img)
 
-            pred_img = wmli.imread(full_path)
+        kwargs = {}
+        kwargs['gtboxes'] = gt_boxes
+        kwargs['gtlabels'] =gt_labels 
+        kwargs['boxes'] = bboxes
+        kwargs['labels'] =  labels
+        kwargs['probability'] =  scores
+        kwargs['img_size'] = shape
+        kwargs['use_relative_coord'] = False
 
-        for det_r in detector(model, full_path,
-                              input_size=None,
-                              score_thr=args.score_thr):
-            bboxes,labels,scores,det_masks,cur_bbox = det_r
-            cur_gt_results = croper(copy.deepcopy(gt_results),cur_bbox)
-
-            kwargs = {}
-            kwargs['gtboxes'] = cur_gt_results['gt_bboxes'] 
-            kwargs['gtlabels'] = cur_gt_results['gt_labels']
-            kwargs['boxes'] = bboxes
-            kwargs['labels'] =  labels
-            kwargs['probability'] =  scores
-            kwargs['img_size'] = (cur_bbox[3]-cur_bbox[1],cur_bbox[2]-cur_bbox[0])
-            kwargs['use_relative_coord'] = False
-    
-            pyresults.append(copy.deepcopy(kwargs))
-            metrics(**kwargs)
-
-            if args.save_results:
-                t_bboxes = bboxes+np.reshape(np.array([cur_bbox[0],cur_bbox[1],cur_bbox[0],cur_bbox[1]],dtype=np.float32),[1,4])
-                pred_img = odv.draw_bboxes_xy(pred_img,
-                                         scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
-                                         show_text=True)
-                if det_masks is not None:
-                    pred_img = odv.draw_mask_xy(pred_img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
-
-        if args.save_results:
-            img_save_path = os.path.join(save_path,name+"_pred.jpg")
-            wmli.imwrite(img_save_path,pred_img)
+        pyresults.append(copy.deepcopy(kwargs))
+        metrics(**kwargs)
         
         if i%100 == 99:
             metrics.show()

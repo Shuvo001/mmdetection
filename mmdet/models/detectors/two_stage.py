@@ -137,6 +137,10 @@ class TwoStageDetector(BaseDetector):
             dict[str, Tensor]: a dictionary of loss components
         """
         x = self.extract_feat(img)
+        '''
+        [list(a.shape) for a in x]
+        [[8, 256, 256, 256], [8, 256, 128, 128], [8, 256, 64, 64], [8, 256, 32, 32], [8, 256, 16, 16]]
+        '''
         if is_debug():
             for tbboxes in gt_bboxes:
                 tbboxes = wtb.correct_bbox(tbboxes,w=img.shape[3],h=img.shape[2])
