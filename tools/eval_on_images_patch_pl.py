@@ -134,8 +134,8 @@ def main():
         checkpoint = args.checkpoint
 
     print(f"Load {checkpoint}")
-    #checkpoint = torch.load(checkpoint,map_location="cpu")
-    #wtu.forgiving_state_restore(model,checkpoint)
+    checkpoint = torch.load(checkpoint,map_location="cpu")
+    wtu.forgiving_state_restore(model,checkpoint)
     '''
     nms_pre: 为每一层nms之前的最大值
     nms: 仅在每一层内部做

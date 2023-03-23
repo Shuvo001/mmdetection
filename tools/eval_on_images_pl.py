@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument('--save_data_dir', type=str,help='Path to output file')
     parser.add_argument('--test_data_dir', type=str,help='Path to output file')
     #parser.add_argument('--test_data_dir', type=str,default="/home/wj/ai/mldata1/B11ACT/datas/wt23",help='Path to output file')
-    parser.add_argument('--save_results',
+    parser.add_argument('--save-results',
         action='store_true',
         help='whether save results imgs.')
     parser.add_argument(
