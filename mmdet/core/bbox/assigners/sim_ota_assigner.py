@@ -195,11 +195,15 @@ class SimOTAAssigner(BaseAssigner):
                           num_valid, 1, 1)) #(num_valid,num_gt,C)
         gt_onehot_label = gt_onehot_label.to(valid_pred_scores.device)
 
-        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
+        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1).to(dtype=torch.float32)
+        if torch.min(valid_pred_scores)<=0 or torch.max(valid_pred_scores)>1 or not torch.all(torch.isfinite(valid_pred_scores)):
+            print(f"ERROR: sim ota assigner ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.all(torch.isfinite(valid_pred_scores)))
+            valid_pred_scores = torch.clamp(valid_pred_scores,min=1e-6,max=1.0)
+
         cls_cost = (
             F.binary_cross_entropy(
                 #valid_pred_scores.to(dtype=torch.float32).sqrt_(),
-                valid_pred_scores.to(dtype=torch.float32),
+                valid_pred_scores,
                 gt_onehot_label,
                 reduction='none',
             ).sum(-1))
