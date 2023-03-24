@@ -196,7 +196,7 @@ class SimOTAAssigner(BaseAssigner):
         gt_onehot_label = gt_onehot_label.to(valid_pred_scores.device)
 
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1).to(dtype=torch.float32)
-        if torch.min(valid_pred_scores)<=0 or torch.max(valid_pred_scores)>1 or not torch.all(torch.isfinite(valid_pred_scores)):
+        if torch.min(valid_pred_scores)<0 or torch.max(valid_pred_scores)>1 or not torch.all(torch.isfinite(valid_pred_scores)):
             print(f"ERROR: sim ota assigner ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.all(torch.isfinite(valid_pred_scores)))
             valid_pred_scores = torch.clamp(valid_pred_scores,min=1e-6,max=1.0)
 

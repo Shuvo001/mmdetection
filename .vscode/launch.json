@@ -49,6 +49,15 @@
             "args":["configs/aiot_project/b11act/mask_rcnn_mosaic_patch.py"  "--gpus" "0" "--use-fp16" "--debug" "--work-dir" "t"],
         },
         {
+            "name": "Python: train b7 patch",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/train.py",
+            "console": "integratedTerminal",
+            "args":["configs/aiot_project/b7mura/rcnn_mosaic_patch.py"  "--gpus" "0" "--use-fp16" "--debug" "--work-dir" "t"],
+        },
+        {
             "name": "Python: train b11 mask-rcnn yolox huge",
             "type": "python",
             "justMyCode": true,

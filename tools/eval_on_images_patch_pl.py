@@ -41,16 +41,21 @@ def parse_args():
         '--async-test',
         action='store_true',
         help='whether to set async options for async inference.')
+    parser.add_argument(
+        '--dataset-type',
+        default='',
+        type=str,
+        help='Dataset type')
     parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
-    parser.add_argument('--save_data_dir', type=str,help='Path to output file')
-    parser.add_argument('--test_data_dir', type=str,help='Path to output file')
-    parser.add_argument('--save_results',
+    parser.add_argument('--save-data-dir', type=str,help='Path to output file')
+    parser.add_argument('--test-data-dir', type=str,help='Path to output file')
+    parser.add_argument('--save-results',
         action='store_true',
         help='whether save results imgs.')
     args = parser.parse_args()
     return args
 
-def eval_dataset(data_dir,classes):
+def eval_dataset(data_dir,classes,dataset_type="json"):
     '''data = COCOData()
     data.read_data(wmlu.home_dir("ai/mldata/coco/annotations/instances_val2014.json"),
                    image_dir=wmlu.home_dir("ai/mldata/coco/val2014"))'''
@@ -62,11 +67,18 @@ def eval_dataset(data_dir,classes):
     print(f"Text to label")
     wmlu.show_dict(text2label)
 
+    def label_text2id(x):
+        return text2label[x]
 
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
-    data = LabelMeData(label_text2id=text2label,
-                       absolute_coord=True,filter_empty_files=True)
+    if dataset_type == "LabelmeDataset":
+        data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+    elif dataset_type == "WXMLDataset":
+        data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
+    else:
+        print(f"unsupport dataset type {dataset_type}")
+        raise RuntimeError(f"unsupport dataset type {dataset_type}")
     data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg")
 
     return data
@@ -175,14 +187,21 @@ def main():
     metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
                                           #model_args={"threshold":0.3})
-    dataset = eval_dataset(test_data_dir,classes=classes)
+    if len(args.dataset_type)>0:
+        dataset_type = args.dataset_type
+    else:
+        dataset_type = model.cfg.data.val.get("type","WXMLDataset")
+    dataset = eval_dataset(test_data_dir,classes=classes,dataset_type=dataset_type)
     input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
     #save_size = (1024,640) 
     save_size = None
 
     pipeline = Compose(model.cfg.test_pipeline)
+    img_fill_val = model.cfg.get("img_fill_val",0)
+    print(f"img_fill_val: ",img_fill_val)
     detector = ImagePatchInferencePipeline(patch_size=input_size[::-1],
-                                          pipeline=pipeline)
+                                          pipeline=pipeline,
+                                          img_fill_val=img_fill_val)
 
     croper = WCrop(bbox_keep_ratio=0.2)
     pyresults = []

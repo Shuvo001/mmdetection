@@ -381,9 +381,10 @@ def show_result_pyplot(model,
         out_file=out_file)
 
 class ImageInferencePipeline:
-    def __init__(self,pipeline) -> None:
+    def __init__(self,pipeline,img_fill_val=0) -> None:
         self.pipeline = pipeline
         self.time = wmlu.AvgTimeThis()
+        self.img_fill_val = img_fill_val
         pass
 
     def __call__(self,model, img,input_size=(1024,1024),score_thr=0.05):
@@ -417,7 +418,7 @@ class ImageInferencePipeline:
         img = img.to(device)
     
         
-        img = wtu.pad_feature(img,input_size,pad_value=0)
+        img = wtu.pad_feature(img,input_size,pad_value=self.img_fill_val)
         #img = torch.zeros_like(img) #debug
     
         # forward the model

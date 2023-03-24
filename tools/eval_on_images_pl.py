@@ -227,7 +227,9 @@ def main():
     save_size = None
 
     pipeline = Compose(model.cfg.test_pipeline)
-    detector = ImageInferencePipeline(pipeline=pipeline)
+    img_fill_val = model.cfg.get("img_fill_val",0)
+    print(f"img_fill_val: ",img_fill_val)
+    detector = ImageInferencePipeline(pipeline=pipeline,img_fill_val=img_fill_val)
 
     save_size = input_size
     pyresults = []
