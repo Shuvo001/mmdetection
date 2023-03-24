@@ -199,6 +199,10 @@ class SimOTAAssigner(BaseAssigner):
         if torch.min(valid_pred_scores)<0 or torch.max(valid_pred_scores)>1 or not torch.all(torch.isfinite(valid_pred_scores)):
             print(f"ERROR: sim ota assigner ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.all(torch.isfinite(valid_pred_scores)))
             valid_pred_scores = torch.clamp(valid_pred_scores,min=1e-6,max=1.0)
+            if not torch.all(torch.isfinite(valid_pred_scores)):
+                print(f"ERROR: sim ota assigner1 ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.sum(torch.logical_not(torch.isfinite(valid_pred_scores))),valid_pred_scores.numel())
+                m = torch.logical_not(torch.isfinite(valid_pred_scores))
+                valid_pred_scores[m] = 1.0-gt_onehot_label
 
         cls_cost = (
             F.binary_cross_entropy(
