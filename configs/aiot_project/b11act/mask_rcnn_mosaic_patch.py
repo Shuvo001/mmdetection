@@ -209,5 +209,5 @@ work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_mosaic_patch"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 finetune_model=True
 names_not2train = ["backbone"]
-names_2train = ["backbone.conv1","backbone.bn1"]
+names_2train = ["backbone.conv1","backbone.bn1","backbone.stem"]
 
