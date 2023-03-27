@@ -353,14 +353,14 @@ class ImagePatchInferencePipeline:
 
 class ImagePatchInferencePipeline:
     def __init__(self,patch_size,
-                      pad=True,img_fill_val=0,boundary=128,
+                      pad=True,img_fill_val=0,boundary=0,
                       pipeline=None) -> None:
         self.image_patch = ImagePatch(patch_size=patch_size,
                                       pad=pad,
                                       pad_value=img_fill_val,boundary=boundary)
         self.pipeline = pipeline
 
-    def __call__(self,model, img,input_size=(1024,1024),score_thr=0.05,iou_threshold=0.3):
+    def __call__(self,model, img,input_size=None,score_thr=0.05,iou_threshold=0.3):
         if not isinstance(img, np.ndarray):
             img = wmli.imread(img)
         self.image_patch.set_src_img(img)

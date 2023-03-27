@@ -184,9 +184,13 @@ def main():
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = COCOEvaluation(num_classes=len(classes),label_trans=label_trans)
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
+    #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
                                           #model_args={"threshold":0.3})
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes),
+                                         classes_begin_value=0,
+                                         model_type=COCOEvaluation,
+                                          )
     if len(args.dataset_type)>0:
         dataset_type = args.dataset_type
     else:
@@ -242,6 +246,7 @@ def main():
             wmli.imwrite(img_save_path,img)
 
             pred_img = wmli.imread(full_path)
+            gt_img = pred_img.copy()
 
         for det_r in detector(model, full_path,
                               input_size=None,
@@ -262,16 +267,24 @@ def main():
             metrics(**kwargs)
 
             if args.save_results:
-                t_bboxes = bboxes+np.reshape(np.array([cur_bbox[0],cur_bbox[1],cur_bbox[0],cur_bbox[1]],dtype=np.float32),[1,4])
+                offset = np.reshape(np.array([cur_bbox[0],cur_bbox[1],cur_bbox[0],cur_bbox[1]],dtype=np.float32),[1,4])
+                t_bboxes = bboxes+offset
                 pred_img = odv.draw_bboxes_xy(pred_img,
                                          scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
                                          show_text=True)
                 if det_masks is not None:
                     pred_img = odv.draw_mask_xy(pred_img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
+                gt_img = odv.draw_bboxes_xy(gt_img,
+                                         scores=None,classes=kwargs['gtlabels'],
+                                         bboxes=kwargs['gtboxes']+offset,
+                                         text_fn=text_fn,
+                                         show_text=True)
 
         if args.save_results:
             img_save_path = os.path.join(save_path,name+"_pred.jpg")
             wmli.imwrite(img_save_path,pred_img)
+            img_save_path = os.path.join(save_path,name+"_gt1.jpg")
+            wmli.imwrite(img_save_path,gt_img)
         
         if i%100 == 99:
             metrics.show()

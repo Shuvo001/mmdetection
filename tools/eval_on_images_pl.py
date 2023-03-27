@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument('config', help='Config file')
     parser.add_argument('--checkpoint', default=None,type=str,help='Checkpoint file')
     parser.add_argument('--out-file', default=None, help='Path to output file')
+    parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
     parser.add_argument(
@@ -158,10 +159,20 @@ def main():
 
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device=args.device)
+
+    if args.work_dir is not None:
+        if len(args.work_dir)==1 and not osp.isdir(args.work_dir):
+            work_dir = model.cfg.work_dir+args.work_dir
+        else:
+            work_dir = args.work_dir
+        print(f"Update work dir to {work_dir}")
+    else:
+        work_dir = model.cfg.work_dir
+
     if args.checkpoint is None:
-        checkpoint = osp.join(model.cfg.work_dir+"_fp16","weights","latest.pth")
+        checkpoint = osp.join(work_dir+"_fp16","weights","latest.pth")
         if not osp.exists(checkpoint):
-            checkpoint = osp.join(model.cfg.work_dir,"weights","latest.pth")
+            checkpoint = osp.join(work_dir,"weights","latest.pth")
     else:
         checkpoint = args.checkpoint
     print(f"Load {checkpoint}")
@@ -196,7 +207,6 @@ def main():
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
 
-    work_dir = model.cfg.work_dir
     save_path = args.save_data_dir
     if save_path is None:
         save_path = osp.join(work_dir,"tmp","eval_on_images")
