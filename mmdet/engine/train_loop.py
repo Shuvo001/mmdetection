@@ -54,6 +54,7 @@ class SimpleTrainer(BaseTrainer):
         pass
 
     def init_before_run(self):
+        self.total_norm = None
         cfg = self.cfg
         model = wtu.get_model(self.model)
         if hasattr(cfg,"finetune_model"):
@@ -192,6 +193,7 @@ class SimpleTrainer(BaseTrainer):
         loss = outputs["loss"]
         self.optimizer.zero_grad()
         loss.backward()
+        self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
         self.optimizer.step()
         self.lr_scheduler.step()
 
@@ -206,7 +208,7 @@ class SimpleTrainer(BaseTrainer):
         self.optimizer.zero_grad()
         self.scaler.scale(loss).backward()
         self.scaler.unscale_(self.optimizer)
-        total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
+        self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
         self.scaler.step(self.optimizer)
         self.scaler.update()
         self.lr_scheduler.step()
@@ -286,10 +288,13 @@ class SimpleTrainer(BaseTrainer):
                     dataformats="HWC")
             self.log_writer.add_image(f"input/img{idx}",raw_img,global_step=global_step,
                     dataformats="HWC")
+
         for i,m in enumerate(self.step_modules):
             if isinstance(m,DBLinearScheduler):
                 self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob,global_step=global_step)
 
+        if self.total_norm is not None:
+            self.log_writer.add_scalar("total_norm",self.total_norm,global_step=global_step)
         model = wtu.get_model(self.model)
         summary.log_all_variable(self.log_writer,model,global_step=global_step)
         summary.log_optimizer(self.log_writer,self.optimizer,global_step)
@@ -315,9 +320,11 @@ class SimpleTrainer(BaseTrainer):
         self.call_hook('after_run')
 
     def before_iter(self):
+        self.total_norm = None
         self.call_hook('before_iter')
         for m in self.step_modules:
             m.step(self.iter)
+
     def after_iter(self):
         self.call_hook('after_iter')
 

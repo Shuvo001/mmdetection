@@ -120,7 +120,7 @@ train_pipeline = [
     dict(type='RandomFlip', flip_ratio=0.75,direction=['horizontal', 'vertical', 'diagonal']),
     dict(type='Pad', size_divisor=32,img_fill_val=img_fill_val),
     dict(type='WFixData'),
-    dict(type='DefaultFormatBundle'),
+    dict(type='DefaultFormatBundle',img_fill_val=img_fill_val),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
 ]
 test_pipeline = [
@@ -144,7 +144,9 @@ train_dataset = dict(
             dict(type='WResize', img_scale=raw_img_scale),
         ],
         pipeline2=[
-            dict(type="WRandomCrop",crop_size=random_crop_scales,try_crop_around_gtbboxes=True,crop_around_gtbboxes_prob=0.6),
+            dict(type="WRandomCrop",crop_size=random_crop_scales,
+                 try_crop_around_gtbboxes=True,
+                 crop_around_gtbboxes_prob=0.8),
         ],
         cache_processed_data=False,
         filter_empty_files=True,

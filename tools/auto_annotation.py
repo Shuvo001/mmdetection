@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument('--save_data_dir', type=str,help='Path to output file')
     parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
+    parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
     parser.add_argument('--save-results',
         action='store_true',
         help='whether save results imgs.')
@@ -50,7 +51,7 @@ def save_annotation_masks(save_dir,img_path,img_shape,bboxes,labels,scores,det_m
 
     return save_path
 
-def save_annotation_bboxes(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text):
+def save_annotation_bboxes(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,save_scores=False):
     save_path = osp.join(save_dir,wmlu.base_name(img_path)+".xml")
     if osp.exists(save_path):
         nsave_path = wmlu.get_unused_path_with_suffix(save_path)
@@ -58,16 +59,24 @@ def save_annotation_bboxes(save_dir,img_path,img_shape,bboxes,labels,scores,det_
         save_path = nsave_path
     labels_text = [label_to_text[x] for x in labels]
     bboxes = odb.npchangexyorder(bboxes)
-    write_voc_xml(save_path,img_path,img_shape,bboxes,labels_text,is_relative_coordinate=False)
+    if save_scores:
+        write_voc_xml(save_path,
+                      img_path,img_shape,bboxes,labels_text,
+                      probs=scores,
+                      is_relative_coordinate=False)
+    else:
+        write_voc_xml(save_path,img_path,img_shape,bboxes,labels_text,is_relative_coordinate=False)
 
     return save_path
 
-def save_annotation(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,classes):
+def save_annotation(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,classes,save_scores=False):
     label_to_text = dict(zip(range(len(classes)),classes))
     if det_masks is not None:
         return save_annotation_masks(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text)
     else:
-        return save_annotation_bboxes(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text)
+        return save_annotation_bboxes(save_dir,
+                                      img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,
+                                      save_scores=save_scores)
 
 def text_fn(label,probability):
     return f"{label}:{probability:.2f}"
@@ -202,7 +211,9 @@ def main():
         else:
             ann_save_dir = save_path
 
-        ann_path = save_annotation(ann_save_dir,full_path,img.shape,bboxes,labels,scores,det_masks,classes)
+        ann_path = save_annotation(ann_save_dir,
+                                   full_path,img.shape,bboxes,labels,scores,det_masks,classes,
+                                   save_scores=args.save_scores)
 
         if not args.inplace:
             suffix = osp.splitext(full_path)[1][1:]
@@ -241,4 +252,5 @@ if __name__ == "__main__":
     main()
 
 '''
+python tools/auto_annotation.py configs/aiot_project/b7mura/rcnn_yoloxv2_huges_redbc.py /home/wj/ai/mldata1/B7mura/datas/verify_0328 --score-thr 0.4 --work-dir 1 --gpus 0 --save-scores
 '''

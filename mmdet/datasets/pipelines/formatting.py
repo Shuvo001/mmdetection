@@ -199,7 +199,10 @@ class DefaultFormatBundle:
 
     def __init__(self,
                  img_to_float=True,
-                 pad_val=dict(img=0, masks=0, seg=255)):
+                 img_fill_val=0,
+                 mask_fill_val=0,
+                 seg_fill_val=255):
+        pad_val = dict(img=img_fill_val,masks=mask_fill_val,seg=seg_fill_val)
         self.img_to_float = img_to_float
         self.pad_val = pad_val
 

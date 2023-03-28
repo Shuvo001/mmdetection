@@ -100,8 +100,8 @@ class WRandomCrop:
         x_offset = max(min(x_offset,w-crop_size[1]),0)
         y_offset = max(min(y_offset,h-crop_size[0]),0)
 
-        new_h = min(crop_size[0],h)
-        new_w = min(crop_size[1],w)
+        new_h = min(crop_size[0],h-y_offset)
+        new_w = min(crop_size[1],w-x_offset)
 
         patch = np.array([x_offset, y_offset,x_offset+new_w,y_offset+new_h],dtype=np.int32)
 
@@ -132,11 +132,11 @@ class WRandomCrop:
 
         x_offset = patch[0]
         y_offset = patch[1]
-        new_w = patch[2]-x_offset
-        new_h = patch[3]-y_offset
         results['img'] = cropped_img
         results['img_shape'] = cropped_img.shape
         results['pad_shape'] = cropped_img.shape
+        new_w = cropped_img.shape[1]
+        new_h = cropped_img.shape[0]
 
         # crop bboxes accordingly and clip to the image boundary
         for key in results.get('bbox_fields', []):
