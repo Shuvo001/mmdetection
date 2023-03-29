@@ -42,7 +42,7 @@
         {
             "name": "Python: train b11 patch",
             "type": "python",
-            "justMyCode": true,
+            "justMyCode": false,
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
@@ -55,7 +55,7 @@
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
-            "args":["configs/aiot_project/b7mura/rcnn_mosaic_patch.py"  "--gpus" "0" "--use-fp16" "--debug" "--work-dir" "t"],
+            "args":["configs/aiot_project/b7mura/rcnn_mosaic_patch_t.py"  "--gpus" "0" "--use-fp16" "--debug" "--work-dir" "t" "--resume-from" "/home/wj/ai/mldata1/B7mura/workdir/b7mura_mosaic_patch1/weights/checkpoint_4000.pth" "--begin-iter" "4001"],
         },
         {
             "name": "Python: train b11 mask-rcnn yolox huge",
@@ -240,6 +240,15 @@
             "justMyCode": true,
             "request": "launch",
             "program": "./tools/deployment/traced_predict_on_images.py",
+            "console": "integratedTerminal",
+            "args":["tmp.traced" "--gpus" "2" "--save_data_dir" "/home/wj/ai/mldata1/0day/traced_predict_on_images"],
+        },
+        {
+            "name": "Python: auto annotation",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/traced_predict_on_images.py",
             "console": "integratedTerminal",
             "args":["tmp.traced" "--gpus" "2" "--save_data_dir" "/home/wj/ai/mldata1/0day/traced_predict_on_images"],
         },

@@ -141,7 +141,8 @@ train_dataset = dict(
             dict(type='W2Gray'),
             dict(type='WResize', img_scale=img_scale),
         ],
-        cache_processed_data=False,
+        cache_processed_data=True,
+        name="b7mura",
     ),
     pipeline=train_pipeline)
 

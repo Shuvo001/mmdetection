@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.cnn import ConvModule
+from wtorch.conv_module import ConvModule
 from mmcv.runner import BaseModule, auto_fp16
 
 from ..builder import NECKS

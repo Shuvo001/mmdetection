@@ -14,9 +14,10 @@ from mmdet.core.visualization import imshow_det_bboxes
 class BaseDetector(BaseModule, metaclass=ABCMeta):
     """Base class for detectors."""
 
-    def __init__(self, init_cfg=None):
+    def __init__(self, init_cfg=None,loss_scale={}):
         super(BaseDetector, self).__init__(init_cfg)
         self.fp16_enabled = False
+        self.loss_scale = loss_scale
 
     @property
     def with_neck(self):
@@ -154,8 +155,14 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
                 raise TypeError(
                     f'{loss_name} is not a tensor or list of tensors')
 
+        for k,s in self.loss_scale.items():
+            if k in log_vars:
+                log_vars[k] = log_vars[k]*s
+            else:
+                print(f"ERROR: Find loss scale {k} in log vars faild.")
+
         loss = sum(_value for _key, _value in log_vars.items()
-                   if 'loss' in _key)
+                   if 'loss' in _key and torch.isfinite(_value))
         if is_debug():
             pass_keys = [_key for _key, _value in log_vars.items()
                    if 'loss' not in _key]

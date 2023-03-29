@@ -20,6 +20,7 @@ import wtorch.dist as wtd
 from wtorch.dropblock import LinearScheduler as DBLinearScheduler
 import numpy as np
 from mmdet.dataloader.build import build_dataloader
+from mmdet.utils.datadef import *
 from .base_trainer import BaseTrainer
 import traceback
 
@@ -66,6 +67,10 @@ class SimpleTrainer(BaseTrainer):
         if dist.is_available() and self.world_size>1:
             model = wtd.convert_sync_batchnorm(model)
             pass
+
+        if is_debug():
+            print("register_forward_hook")
+            wtt.register_forward_hook(model,wtt.isfinite_hook)
 
         print("model parameters info")
         wtt.show_model_parameters_info(model)
@@ -278,7 +283,10 @@ class SimpleTrainer(BaseTrainer):
             img = np.clip(img,0,255).astype(np.uint8)
             raw_img = img.copy()
             #debug
-            gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
+            #gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
+            if gt_labels.shape[0]>0:
+                img = odv.draw_text_on_image(img,gt_labels.shape[0])
+
             if gt_masks is not None:
                 img = odv.draw_bboxes_and_maskv2(img,gt_labels,bboxes=gt_bboxes,masks=gt_masks,
                                                  is_relative_coordinate=False,show_text=True)

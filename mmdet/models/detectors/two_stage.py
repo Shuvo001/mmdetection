@@ -29,7 +29,9 @@ class TwoStageDetector(BaseDetector):
                  init_cfg=None,
                  second_stage_hook=None,
                  drop_blocks=None):
-        super(TwoStageDetector, self).__init__(init_cfg)
+        loss_scale = train_cfg.get("loss_scale",{}) if train_cfg is not None else {}
+        super(TwoStageDetector, self).__init__(init_cfg,
+                                               loss_scale=loss_scale)
         if pretrained:
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
