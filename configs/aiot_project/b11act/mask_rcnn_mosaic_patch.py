@@ -162,6 +162,8 @@ train_dataset = dict(
         ],
         cache_processed_data=True,
         filter_empty_files=True,
+        name="b11_patch",
+
     ),
     pipeline=train_pipeline)
 

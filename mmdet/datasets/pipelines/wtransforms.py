@@ -2,9 +2,7 @@ import copy
 import cv2
 import mmcv
 import numpy as np
-import torch
 from ..builder import PIPELINES
-from .compose import Compose
 import random
 from mmdet.core import find_inside_bboxes, BitmapMasks,PolygonMasks
 import wtorch.utils as wtu

@@ -1,19 +1,20 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os.path as osp
-import warnings
 from collections import OrderedDict
 import copy
 import mmcv
 import numpy as np
 from mmcv.utils import print_log
-from terminaltables import AsciiTable
 from torch.utils.data import Dataset
 import object_detection2.bboxes as odb
 from mmdet.core import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
 import object_detection_tools.statistics_tools as st
+import pickle
+import os
 import sys
+import time
 
 class WCustomDataset(Dataset):
     """Custom dataset for detection.
@@ -66,16 +67,16 @@ class WCustomDataset(Dataset):
                  seg_prefix=None,
                  test_mode=False,
                  filter_empty_gt=True,
-                 file_client_args=dict(backend='disk'),
                  cache_processed_data=False,
-                 cache_data_items=True):
+                 cache_data_items=True,
+                 name="dataset"):
+        self.name = name
         self.ann_file = ann_file
         self.data_root = data_root
         self.img_prefix = img_prefix
         self.seg_prefix = seg_prefix
         self.test_mode = test_mode
         self.filter_empty_gt = filter_empty_gt
-        self.file_client = mmcv.FileClient(**file_client_args)
         self.CLASSES = classes
 
         # join paths if data_root is specified
@@ -86,17 +87,9 @@ class WCustomDataset(Dataset):
                 self.img_prefix = osp.join(self.data_root, self.img_prefix)
             if not (self.seg_prefix is None or osp.isabs(self.seg_prefix)):
                 self.seg_prefix = osp.join(self.data_root, self.seg_prefix)
+
         # load annotations (and proposals)
-        if hasattr(self.file_client, 'get_local_path'):
-            with self.file_client.get_local_path(self.ann_file) as local_path:
-                self._inner_dataset = self.load_annotations(local_path)
-        else:
-            warnings.warn(
-                'The used MMCV version does not have get_local_path. '
-                f'We treat the {self.ann_file} as local paths and it '
-                'might cause errors if the path is not a local path. '
-                'Please use MMCV>= 1.3.16 if you meet errors.')
-            self._inner_dataset = self.load_annotations(self.ann_file)
+        self._inner_dataset = self.load_annotations(self.ann_file)
         
         #
         statics = st.statistics_boxes_with_datas(self._inner_dataset,
@@ -121,19 +114,17 @@ class WCustomDataset(Dataset):
         self._data_cache = None
         self._processed_data_cache = None
         if cache_processed_data:
-            self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
-            self._processed_data_cache = []
-            print(f"Cache processed data")
-            sys.stdout.flush()
-            for i in range(len(self._inner_dataset)):
-                self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
-                if i%10 == 0:
-                    sys.stdout.write(f"cache {i}/{len(self._inner_dataset)} \r")
-                    sys.stdout.flush()
-            print(f"Total cache {len(self._processed_data_cache)} processed data items.")
-            print(f"Pipeline for cache is {self.pipeline}")
-            print(f"Pipeline not cache is {self.pipeline2}")
-            sys.stdout.flush()
+            cache_file_path = self.get_local_cache_file_path(self.ann_file)
+            try:
+                if osp.exists(cache_file_path):
+                    print(f"Load data from cache file {cache_file_path}")
+                    with open(cache_file_path,"rb") as f:
+                        self._processed_data_cache = pickle.load(f)
+                else:
+                    self.apply_process_cache(cache_file_path)
+            except:
+                self.apply_process_cache(cache_file_path)
+            
         elif cache_data_items:
             self._data_cache = []
             print("Cache data items")
@@ -146,6 +137,43 @@ class WCustomDataset(Dataset):
             print(f"Total cache {len(self._data_cache)} data items.")
             sys.stdout.flush()
         self.cache_processed_data = cache_processed_data
+
+    def get_local_cache_file_path(self,ann_file):
+        cache_name = self.name+f"_{len(self._inner_dataset)}.pk"
+        if osp.isfile(ann_file):
+            dir_path = osp.dirname(ann_file)
+        elif osp.isdir(ann_file):
+            dir_path = ann_file
+        else:
+            print(f"ERROR ann file {ann_file}")
+            raise RuntimeError(f"ERROR ann file {ann_file}")
+        
+        if not osp.exists(dir_path):
+            os.makedirs(dir_path)
+        
+        return osp.join(dir_path,cache_name)
+
+    def apply_process_cache(self,cache_file_path):
+        self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
+        self._processed_data_cache = []
+        print(f"Cache processed data")
+        sys.stdout.flush()
+        beg_t = time.time()
+        for i in range(len(self._inner_dataset)):
+            self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
+            if i%20 == 0:
+                sys.stdout.write(f"cache {i:05d}/{len(self._inner_dataset):05d} \r")
+                sys.stdout.flush()
+        print(f"Total cache {len(self._processed_data_cache)} processed data items, {(time.time()-beg_t)/len(self._inner_dataset):.3f} sec/item.")
+        print(f"Pipeline for cache is {self.pipeline}")
+        print(f"Pipeline not cache is {self.pipeline2}")
+        sys.stdout.flush()
+
+        with open(cache_file_path,"wb") as f:
+            print(f"Save processed data to cache file {cache_file_path}")
+            pickle.dump(self._processed_data_cache,f)
+        sys.stdout.flush()
+        print(f"cache file size {os.stat(cache_file_path).st_size/1e9:.3f} GB")
 
     def __len__(self):
         """Total number of samples of data."""

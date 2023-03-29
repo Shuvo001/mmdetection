@@ -98,11 +98,13 @@ random_resize_scales = [2048, 1984, 1920, 1856, 1792, 1728]
 random_crop_scales = [(2048, 2048), (1984, 1984), (1920, 1920), (1856, 1856), (1792, 1792), (1728, 1728)]
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=img_fill_val,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
-    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales),
+    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,
+                 try_crop_around_gtbboxes=True,
+                 crop_around_gtbboxes_prob=0.7),
     dict(type='WRotate',
         prob=0.3,
         img_fill_val=img_fill_val,
-        max_rotate_angle=20.0,
+        max_rotate_angle=15.0,
         ),
     dict(type='WTranslate',
         prob=0.3,
@@ -146,10 +148,11 @@ train_dataset = dict(
         pipeline2=[
             dict(type="WRandomCrop",crop_size=random_crop_scales,
                  try_crop_around_gtbboxes=True,
-                 crop_around_gtbboxes_prob=0.8),
+                 crop_around_gtbboxes_prob=0.7),
         ],
-        cache_processed_data=False,
+        cache_processed_data=True,
         filter_empty_files=True,
+        name="b7mura_patch"
     ),
     pipeline=train_pipeline)
 
@@ -159,6 +162,7 @@ data = dict(
     data_processor="mmdet_data_processor",
     samples_per_gpu=samples_per_gpu,
     workers_per_gpu=6,
+    batch_split_nr=4,
     pin_memory=True,
     train= train_dataset,
     val=dict(

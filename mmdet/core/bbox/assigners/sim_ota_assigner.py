@@ -200,6 +200,7 @@ class SimOTAAssigner(BaseAssigner):
             print(f"ERROR: sim ota assigner ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.all(torch.isfinite(valid_pred_scores)))
             valid_pred_scores = torch.clamp(valid_pred_scores,min=1e-6,max=1.0)
             if not torch.all(torch.isfinite(valid_pred_scores)):
+                #异常数量，总数量
                 print(f"ERROR: sim ota assigner1 ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.sum(torch.logical_not(torch.isfinite(valid_pred_scores))),valid_pred_scores.numel())
                 m = torch.logical_not(torch.isfinite(valid_pred_scores))
                 valid_pred_scores[m] = 1.0-gt_onehot_label[m]

@@ -1,17 +1,7 @@
-import copy
 import cv2
-import mmcv
 import numpy as np
-import torch
 from ..builder import PIPELINES
-from .compose import Compose
-import random
-from mmdet.core import find_inside_bboxes, BitmapMasks
-import wtorch.utils as wtu
-import img_utils as wmli
-import object_detection2.bboxes as odb
 from object_detection2.standard_names import *
-from collections import Iterable
 
 @PIPELINES.register_module()
 class WLoadImageFromFile:
