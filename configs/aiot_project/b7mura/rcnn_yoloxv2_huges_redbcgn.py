@@ -25,7 +25,9 @@ model = dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
-        num_outs=5),
+        num_outs=5,
+        norm_cfg=dict(type='GN',num_groups=32),
+        ),
     rpn_head=dict(
         type='YOLOXRPNHead',
         in_channels=256,
@@ -146,6 +148,7 @@ train_dataset = dict(
         ],
         pipeline2=[
             dict(type="WDecodeImg",fmt='gray'),
+
         ],
         cache_processed_data=True,
         name="b7mura_resample",
@@ -193,7 +196,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_yoloxv2_huges_redbc"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_yoloxv2_huges_redbcgn"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

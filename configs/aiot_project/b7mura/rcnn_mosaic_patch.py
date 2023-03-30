@@ -146,8 +146,10 @@ train_dataset = dict(
             dict(type='LoadAnnotations', with_bbox=True,with_mask=False),
             dict(type='W2Gray'),
             dict(type='WResize', img_scale=raw_img_scale),
+            dict(type="WEncodeImg"),
         ],
         pipeline2=[
+            dict(type="WDecodeImg",fmt='gray'),
             dict(type="WRandomCrop",crop_size=random_crop_scales,
                  try_crop_around_gtbboxes=True,
                  crop_around_gtbboxes_prob=0.7),

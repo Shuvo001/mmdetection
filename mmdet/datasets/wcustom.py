@@ -109,7 +109,7 @@ class WCustomDataset(Dataset):
             pipeline2 = None
         # processing pipeline
         self.pipeline = Compose(pipeline)
-        self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
+        self.pipeline2 = None
 
         self._data_cache = None
         self._processed_data_cache = None
@@ -122,7 +122,8 @@ class WCustomDataset(Dataset):
                         self._processed_data_cache = pickle.load(f)
                 else:
                     self.apply_process_cache(cache_file_path)
-            except:
+            except Exception as e:
+                print(e)
                 self.apply_process_cache(cache_file_path)
             
         elif cache_data_items:
@@ -136,6 +137,7 @@ class WCustomDataset(Dataset):
                     sys.stdout.flush()
             print(f"Total cache {len(self._data_cache)} data items.")
             sys.stdout.flush()
+        self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
         self.cache_processed_data = cache_processed_data
 
     def get_local_cache_file_path(self,ann_file):

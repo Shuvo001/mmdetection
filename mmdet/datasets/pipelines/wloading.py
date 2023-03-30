@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from ..builder import PIPELINES
 from object_detection2.standard_names import *
+import img_utils as wmli
 
 @PIPELINES.register_module()
 class WLoadImageFromFile:
@@ -43,6 +44,43 @@ class WGetImg:
         img = np.ascontiguousarray(img)
         return img
 
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        return repr_str
+
+@PIPELINES.register_module()
+class WEncodeImg:
+    def __init__(self):
+        pass
+
+    def __call__(self,results):
+        img = results['img']
+        if img.shape[-1] == 1:
+            img = np.squeeze(img,axis=-1)
+        results['img'] = wmli.encode_img(img)
+        return results
+
+    
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        return repr_str
+
+@PIPELINES.register_module()
+class WDecodeImg:
+    def __init__(self,fmt='rgb'):
+        '''
+        fmt: rgb/gray
+        '''
+        self.fmt = fmt
+
+    def __call__(self,results):
+        img =  wmli.decode_img(results['img'],fmt=self.fmt)
+        if len(img.shape)==2:
+            img = np.expand_dims(img,axis=-1)
+        results['img'] = img
+        return results
+
+    
     def __repr__(self):
         repr_str = self.__class__.__name__
         return repr_str
