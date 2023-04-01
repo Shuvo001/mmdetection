@@ -120,6 +120,7 @@ class WCustomDataset(Dataset):
                     print(f"Load data from cache file {cache_file_path}")
                     with open(cache_file_path,"rb") as f:
                         self._processed_data_cache = pickle.load(f)
+                    print(f"Total load {len(self._processed_data_cache)}")
                 else:
                     self.apply_process_cache(cache_file_path)
             except Exception as e:
@@ -137,6 +138,7 @@ class WCustomDataset(Dataset):
                     sys.stdout.flush()
             print(f"Total cache {len(self._data_cache)} data items.")
             sys.stdout.flush()
+
         self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
         self.cache_processed_data = cache_processed_data
 
