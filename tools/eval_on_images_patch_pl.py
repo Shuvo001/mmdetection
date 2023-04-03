@@ -42,6 +42,11 @@ def parse_args():
         action='store_true',
         help='whether to set async options for async inference.')
     parser.add_argument(
+        '--min-bbox-size',
+        default=0,
+        type=int,
+        help='min bbox size')
+    parser.add_argument(
         '--dataset-type',
         default='',
         type=str,
@@ -169,6 +174,11 @@ def main():
 
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
+    
+    mbs = model.cfg.model.test_cfg.get("min_bbox_size",None)
+    if mbs is not None:
+        print(f"Set min bboxes size {mbs}")
+        args.min_bbox_size = mbs
 
     work_dir = model.cfg.work_dir
     save_path = args.save_data_dir
@@ -254,10 +264,17 @@ def main():
             bboxes,labels,scores,det_masks,cur_bbox = det_r
             cur_gt_results = croper(copy.deepcopy(gt_results),cur_bbox)
 
+            if args.min_bbox_size>0:
+                gt_boxes_e = odb.clamp_bboxes(cur_gt_results['gt_bboxes'] ,args.min_bbox_size)
+                bboxes_e = odb.clamp_bboxes(bboxes,args.min_bbox_size)
+            else:
+                gt_boxes_e = cur_gt_results['gt_bboxes'] 
+                bboxes_e = bboxes
+
             kwargs = {}
-            kwargs['gtboxes'] = cur_gt_results['gt_bboxes'] 
+            kwargs['gtboxes'] = gt_boxes_e
             kwargs['gtlabels'] = cur_gt_results['gt_labels']
-            kwargs['boxes'] = bboxes
+            kwargs['boxes'] = bboxes_e
             kwargs['labels'] =  labels
             kwargs['probability'] =  scores
             kwargs['img_size'] = (cur_bbox[3]-cur_bbox[1],cur_bbox[2]-cur_bbox[0])

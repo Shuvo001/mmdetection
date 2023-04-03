@@ -1,6 +1,7 @@
 #B11ACT
 
 ##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_dbc.py ****
+
 ||0.248|0.465|0.288|0.010|0.247|0.472|0.221|0.283|0.283|0.027|0.283|0.492|
 Per classes
 |配置|C1|C2|C3|C4|
@@ -33,13 +34,32 @@ Per classes
 ||0.867/1.000|0.440/0.858|0.945/1.000|0.889/1.000|
 
 ##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_redbc.py
+
 ||0.446|0.627|0.535|-1.000|-1.000|0.446|0.382|0.538|0.538|-1.000|-1.000|0.538|
 Per classes
 |配置|C1|C2|C3|C4|
 |---|---|---|---|---|
 ||0.579/0.929|0.597/0.701|N.A.|0.236/0.337|
 
+##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_redbcen.py
+
+||0.458|0.617|0.530|-1.000|-1.000|0.458|0.393|0.557|0.557|-1.000|-1.000|0.557|
+Per classes
+|配置|C1|C2|C3|C4|
+|---|---|---|---|---|
+||0.593/0.937|0.568/0.645|N.A.|0.269/0.337|
+
+##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_redbcgn.py
+
+||0.419|0.597|0.498|-1.000|-1.000|0.419|0.402|0.542|0.566|-1.000|-1.000|0.566|
+Per classes
+|配置|C1|C2|C3|C4|
+|---|---|---|---|---|
+||0.577/0.941|0.533/0.609|N.A.|0.236/0.337|
+
+
 ##configs/aiot_project/b11act/mask_rcnn_mosaic_patch.py
+
 ||0.194|0.513|0.100|0.102|0.151|0.341|0.250|0.266|0.266|0.167|0.173|0.401|
 Per classes
 |配置|C1|C2|C3|C4|
@@ -48,6 +68,7 @@ Per classes
 
 
 ##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges.py bs=6x1  ***
+
 ||0.210|0.457|0.173|0.010|0.229|0.363|0.174|0.237|0.237|0.045|0.244|0.384|
 Per classes
 |配置|C1|C2|C3|C4|

@@ -414,7 +414,7 @@ class ImagePatchInferencePipeline:
     
         det_bboxes = results[0].cpu().numpy()
         det_masks = results[1].cpu().numpy()
-        if det_masks.shape[-1]==0:
+        if det_masks.size == 0:
             det_masks = None
         bboxes = det_bboxes[...,:4]
         scores = det_bboxes[...,4]
