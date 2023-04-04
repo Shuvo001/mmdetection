@@ -54,9 +54,9 @@ def parse_args():
         action='store_true',
         help='enable automatically scaling LR.')
     parser.add_argument(
-        '--use-fp16',
+        '--use-fp32',
         action='store_true',
-        help='Whether or not use fp16 for training')
+        help='Whether or not use fp32 for training')
     parser.add_argument(
         '--debug',
         action='store_true',
@@ -64,6 +64,7 @@ def parse_args():
     parser.add_argument('--dist-port', default="12355", help='port for disttribute training')
     parser.add_argument('--begin-iter', type=int, default=0)
     parser.add_argument('--workers-per-gpu', type=int, default=-1)
+    parser.add_argument('--wait', type=float, default=-1,help="wait for n hours.")
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -180,7 +181,7 @@ def main(rank,world_size,args):
     model.CLASSES = dataset.CLASSES
 
     trainer = SimpleTrainer(cfg,model,dataset,rank,max_iters=cfg.max_iters,
-                            use_fp16=args.use_fp16,
+                            use_fp16=not args.use_fp32,
                             world_size=world_size,
                             begin_iter=args.begin_iter,
                             meta=meta)
@@ -194,6 +195,9 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str
     print(' '.join(['python']+list(sys.argv)))
     print(os.environ['CUDA_VISIBLE_DEVICES'])
+    if args.delay>0:
+        wmlu.sleep_for(hours=args.delay)
+
 
 
     #torch.set_num_threads(1)
