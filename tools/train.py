@@ -195,8 +195,8 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str
     print(' '.join(['python']+list(sys.argv)))
     print(os.environ['CUDA_VISIBLE_DEVICES'])
-    if args.delay>0:
-        wmlu.sleep_for(hours=args.delay)
+    if args.wait >0:
+        wmlu.sleep_for(hours=args.wait)
 
 
 

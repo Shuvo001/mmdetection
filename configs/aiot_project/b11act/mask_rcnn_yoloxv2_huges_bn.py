@@ -18,7 +18,7 @@ model = dict(
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
         deep_stem=True,
-        deep_stem_mode='MultiBranchStemSGN12X',
+        deep_stem_mode='MultiBranchStemSBN12X',
         style='pytorch',
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
@@ -194,7 +194,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=200)
+    tb_interval=500)
 checkpoint_config = dict(
     interval=1000,
 )
@@ -202,7 +202,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yoloxv2_huges_gn"
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_yoloxv2_huges_bn"
 load_from='/home/wj/ai/work/mmdetection/weights/mask_rcnn_r50_fpn_2x_coco_bbox_mAP-0.392__segm_mAP-0.354_20200505_003907-3e542a40.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

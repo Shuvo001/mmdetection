@@ -278,10 +278,10 @@ def main():
         name = wmlu.base_name(full_path)
         if args.save_results:
             name = name+f"_{i:04d}"
-            if 1 in labels:
+            '''if 1 in labels:
                 print("Y",full_path,name)
             else:
-                print("N",full_path,name)
+                print("N",full_path,name)'''
             img_save_path = os.path.join(save_path,name+".jpg")
 
             if save_size is not None:
@@ -324,7 +324,7 @@ def main():
         metrics(**kwargs)
         pyresults.append(copy.deepcopy(kwargs))
         
-        if i%100 == 99:
+        if i%200 == 199:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")

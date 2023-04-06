@@ -64,6 +64,14 @@ Per classes
 ||0.595/0.912|0.493/0.580|N.A.|0.236/0.337|
 
 
+##configs/aiot_project/b11act/mask_rcnn_yoloxv2_huges_gn.py
+
+||0.420|0.608|0.534|-1.000|-1.000|0.420|0.397|0.530|0.530|-1.000|-1.000|0.530|
+Per classes
+|配置|C1|C2|C3|C4|
+|---|---|---|---|---|
+||0.599/0.933|0.532/0.638|-1.000/-1.000|0.202/0.337|
+
 
 ##configs/aiot_project/b11act/mask_rcnn_mosaic_patch.py
 

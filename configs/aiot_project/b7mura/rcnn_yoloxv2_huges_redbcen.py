@@ -188,7 +188,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=200)
+    tb_interval=500)
 checkpoint_config = dict(
     interval=1000,
 )

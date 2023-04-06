@@ -364,7 +364,7 @@ class MultiBranchStemS12X(nn.Module):
         x = self.norm(x)
         return x
 
-class MultiBranchStemSGN12X(nn.Module):
+class MultiBranchStemSBN12X(nn.Module):
     def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
@@ -374,14 +374,16 @@ class MultiBranchStemSGN12X(nn.Module):
             nn.BatchNorm2d(num_features=4),
             wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(4,branch_channels,3,stride=1,padding=1,bias=False),
-            nn.BatchNorm2d(num_features=branch_channels),
-            wnn.get_activation(activation_fn,inplace=True),
             )
         self.branch0_1 = nn.ModuleList([nn.MaxPool2d(3,2,1),nn.MaxPool2d(5,2,2)])
-        self.branch0_2 = nn.Conv2d(branch_channels*2,branch_channels*2,3,3,padding=0,bias=False)
+        self.branch0_2 = nn.Sequential(
+            nn.BatchNorm2d(num_features=branch_channels*2),
+            wnn.get_activation(activation_fn,inplace=True),
+            nn.Conv2d(branch_channels*2,branch_channels*2,3,3,padding=0,bias=False),
+        )
         self.branch1 = nn.Conv2d(in_channels,branch_channels*2,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
-            nn.GroupNorm(num_groups=8, num_channels=out_channels),
+            nn.BatchNorm2d(out_channels),
             wnn.get_activation(activation_fn,inplace=True),
         )
 
@@ -751,8 +753,8 @@ class WResNet(BaseModule):
             return MultiBranchStem12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS12X":
             return MultiBranchStemS12X(in_channels,stem_channels,activation_fn=activation_fn)
-        elif self.deep_stem_mode == "MultiBranchStemSGN12X":
-            return MultiBranchStemSGN12X(in_channels,stem_channels,activation_fn=activation_fn)
+        elif self.deep_stem_mode == "MultiBranchStemSBN12X":
+            return MultiBranchStemSBN12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS4X":
             return MultiBranchStemS4X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemSL12X":
