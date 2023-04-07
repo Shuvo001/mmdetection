@@ -32,7 +32,7 @@ class SimpleTrainer(BaseTrainer):
         self.dataset = dataset
         self.rank = rank
         self.work_dir = cfg.work_dir
-        self.estimate_time_cost = wmlu.EstimateTimeCost()
+        self.estimate_time_cost = wmlu.EstimateTimeCost(total_nr=1)
         self.data_loader = build_dataloader(cfg.data.dataloader,
                                             dataset,
                                             cfg=cfg.data,
