@@ -137,6 +137,7 @@ train_dataset = dict(
         img_suffix="jpg",
         ann_file=data_root,
         resample_parameters={"MS1U":8,"ML3U":2,"Other":2},
+        #resample_parameters={"MS1U":10,"ML3U":2,"Other":3},
         pipeline=[
             dict(type='LoadImageFromFile', channel_order="rgb"),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=False),

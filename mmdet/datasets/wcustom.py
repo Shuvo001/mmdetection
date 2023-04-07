@@ -10,7 +10,8 @@ import object_detection2.bboxes as odb
 from mmdet.core import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
-import object_detection_tools.statistics_tools as st
+import datasets_tools.statistics_tools as st
+import wml_utils as wmlu
 import pickle
 import os
 import sys
@@ -163,10 +164,12 @@ class WCustomDataset(Dataset):
         print(f"Cache processed data")
         sys.stdout.flush()
         beg_t = time.time()
+        et = wmlu.EstimateTimeCost(total_nr=len(self._inner_dataset))
         for i in range(len(self._inner_dataset)):
             self._processed_data_cache.append(copy.deepcopy(self.__getitem__(i)))
             if i%20 == 0:
-                sys.stdout.write(f"cache {i:05d}/{len(self._inner_dataset):05d} \r")
+                et.set_process_nr(i+1)
+                sys.stdout.write(f"cache {i:05d}/{len(self._inner_dataset):05d}, {str(et)}   \r")
                 sys.stdout.flush()
         print(f"Total cache {len(self._processed_data_cache)} processed data items, {(time.time()-beg_t)/len(self._inner_dataset):.3f} sec/item.")
         print(f"Pipeline for cache is {self.pipeline}")

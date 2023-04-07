@@ -89,8 +89,8 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s0'
-test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s0'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
+test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
@@ -138,7 +138,7 @@ train_dataset = dict(
         classes=classes,
         img_suffix="jpg",
         ann_file=data_root,
-        resample_parameters={"MS1U":8,"ML3U":2,"Other":2},
+        resample_parameters={"MS1U":8,"ML3U":2,"Other":2,"MV1U":2},
         pipeline=[
             dict(type='LoadImageFromFile', channel_order="rgb"),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=False),
