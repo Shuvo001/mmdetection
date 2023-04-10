@@ -4,26 +4,29 @@ _base_ = [
 ]
 max_iters=50000
 # dataset settings
-neck_channels = 128
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
+neck_channels = 128
 model = dict(
     type='FasterRCNN',
-    #backbone=dict(
-    #    type='WCSPDarknet', deepen_factor=1.0, widen_factor=1.0,
-    #    in_channels=1,
-    #    out_indices=(2, 3,4),
-    #    deep_stem=True,
-    #    deep_stem_mode='MultiBranchStemS12X'),
     backbone=dict(
-        type='WCSPDarknet', deepen_factor=0.33, widen_factor=0.5,
+        type='WResNet',
         in_channels=1,
-        out_indices=(1,2, 3,4),
+        first_conv_cfg=None,
+        depth=50,
+        num_stages=4,
+        out_indices=(0, 1, 2, 3),
+        frozen_stages=1,
+        norm_cfg=dict(type='BN', requires_grad=True),
+        norm_eval=True,
         deep_stem=True,
-        deep_stem_mode='MultiBranchStemS12X'),
+        deep_stem_mode='MultiBranchStemS12X',
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
         _delete_=True,
         type='YOLOXPAFPN',
-        in_channels=[64,128, 256, 512], out_channels=neck_channels, num_csp_blocks=4
+        in_channels=[256, 512, 1024, 2048],
+        out_channels=neck_channels, num_csp_blocks=4,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
@@ -56,7 +59,7 @@ model = dict(
             ),
         ),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=neck_channels),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1],"block_size":[4,3,2,1]},
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
             rpn=dict(
@@ -87,7 +90,6 @@ model = dict(
 )
 dataset_type = 'WXMLDataset'
 data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
-#data_root = '/home/wj/ai/mldata1/B7mura/datas/try_s0'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -153,7 +155,7 @@ train_dataset = dict(
     ),
     pipeline=train_pipeline)
 
-samples_per_gpu = 8
+samples_per_gpu = 6
 data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor",
@@ -186,7 +188,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=200)
+    tb_interval=500)
 checkpoint_config = dict(
     interval=1000,
 )
@@ -194,8 +196,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_cspdarknet_huges_redbcgn"
-load_from='/home/wj/ai/work/mmdetection/weights/yolox_s_8x8_300e_coco_20211121_095711-4592a793.pth'
+work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_pafpn_huges_redbcgn"
+load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

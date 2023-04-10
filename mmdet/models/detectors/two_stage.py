@@ -151,6 +151,7 @@ class TwoStageDetector(BaseDetector):
                     print(f"ERROR gt bboxes size: {torch.min(tareas).item()}")
 
         if self.drop_blocks is not None:
+            assert len(x) == len(self.drop_blocks),f"error drop blocks size and feature map size {len(self.drop_blocks)} vs {len(x)}"
             x = [m(v) for m,v in zip(self.drop_blocks,x)]
 
         losses = dict()

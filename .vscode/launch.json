@@ -78,7 +78,7 @@
         {
             "name": "Python: train b7 mura",
             "type": "python",
-            "justMyCode": false,
+            "justMyCode": true,
             "request": "launch",
             "program": "./tools/train.py",
             "console": "integratedTerminal",
