@@ -26,8 +26,10 @@ import traceback
 
 
 class SimpleTrainer(BaseTrainer):
+    MAX_ERROR_STEP_NR = 500
     def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=1,meta={'exp_name':"mmdet"}):
         super().__init__(cfg)
+        self.error_step_nr = 0
         self.model = model
         self.dataset = dataset
         self.rank = rank
@@ -55,6 +57,7 @@ class SimpleTrainer(BaseTrainer):
         pass
 
     def init_before_run(self):
+        self.error_step_nr = 0
         self.total_norm = None
         cfg = self.cfg
         model = wtu.get_model(self.model)
@@ -153,18 +156,25 @@ class SimpleTrainer(BaseTrainer):
                 self.log_after_iter()
     
                 self.iter += 1
+                self.error_step_nr = 0
             except Exception as e:
                 print(f"Train error iter={self.iter}, {e}")
                 traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
+                self.error_step_nr += 1
                 continue
             except:
                 print(f"Train error iter={self.iter}")
                 traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
+                self.error_step_nr += 1
                 continue
+                
+            if self.error_step_nr > SimpleTrainer.MAX_ERROR_STEP_NR:
+                print("ERROR: too many errors, stop training.")
+                break
 
         self.save_checkpoint()
         self.after_run()

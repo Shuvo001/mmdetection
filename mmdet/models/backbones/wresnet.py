@@ -377,7 +377,6 @@ class MultiBranchStemSBN12X(nn.Module):
             )
         self.branch0_1 = nn.ModuleList([nn.MaxPool2d(3,2,1),nn.MaxPool2d(5,2,2)])
         self.branch0_2 = nn.Sequential(
-            nn.BatchNorm2d(num_features=branch_channels*2),
             wnn.get_activation(activation_fn,inplace=True),
             nn.Conv2d(branch_channels*2,branch_channels*2,3,3,padding=0,bias=False),
         )

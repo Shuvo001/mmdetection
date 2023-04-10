@@ -8,20 +8,30 @@ classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 model = dict(
     type='FasterRCNN',
     backbone=dict(
-        type='WCSPDarknet', deepen_factor=1.0, widen_factor=1.0,
+        type='WResNet',
         in_channels=1,
-        out_indices=(2, 3,4),
+        first_conv_cfg=None,
+        depth=50,
+        num_stages=4,
+        out_indices=(0, 1, 2, 3),
+        frozen_stages=1,
+        norm_cfg=dict(type='BN', requires_grad=True),
+        norm_eval=True,
         deep_stem=True,
-        deep_stem_mode='MultiBranchStemS12X'),
+        deep_stem_mode='MultiBranchStemSBN12X',
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
-        _delete_=True,
-        type='YOLOXPAFPN',
-        in_channels=[256, 512, 1024], out_channels=256, num_csp_blocks=3
+        type='FPN',
+        in_channels=[256, 512, 1024, 2048],
+        out_channels=256,
+        num_outs=5,
+        norm_cfg=dict(type='GN',num_groups=32),
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
         in_channels=256,
-        strides=[48,96,192],
+        strides=[24,48,96,192,384],
         feat_channels=256,
         loss_bbox={'type': 'CIoULoss','eps': 1e-16, 'reduction': 'sum', 'loss_weight': 5.0}),
     roi_head=dict(
@@ -30,7 +40,7 @@ model = dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
             out_channels=256,
-            featmap_strides=[48]),
+            featmap_strides=[24]),
         bbox_head=dict(
             type='Shared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
@@ -49,7 +59,7 @@ model = dict(
             ),
         ),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1],"block_size":[4,3,2]},
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
             rpn=dict(
@@ -80,7 +90,6 @@ model = dict(
 )
 dataset_type = 'WXMLDataset'
 data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
-#data_root = '/home/wj/ai/mldata1/B7mura/datas/try_s0'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -129,6 +138,7 @@ train_dataset = dict(
         classes=classes,
         img_suffix="jpg",
         ann_file=data_root,
+        #resample_parameters={"MS1U":8,"ML3U":2,"Other":2},
         resample_parameters={"MS1U":8,"ML3U":2,"Other":2,"MV1U":2},
         pipeline=[
             dict(type='LoadImageFromFile', channel_order="rgb"),
@@ -179,7 +189,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=200)
+    tb_interval=500)
 checkpoint_config = dict(
     interval=1000,
 )
@@ -187,8 +197,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_cspdarknet_huges_redbcgn"
-load_from='/home/wj/ai/work/mmdetection/weights/yolox_l_8x8_300e_coco_20211126_140236-d3bd2b23.pth'
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_yoloxv2_huges_s1bn"
+load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True
