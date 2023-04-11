@@ -9,7 +9,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 import wtorch.nn as wnn
 from ..builder import BACKBONES
 from ..utils import CSPLayer
-from .wresnet import MultiBranchStem12X, MultiBranchStemS12X, MultiBranchStemSBN12X, MultiBranchStemS4X,MultiBranchStemSL12X
+from .wresnet import MultiBranchStem12X, MultiBranchStemS12X, MultiBranchStemSA12X, MultiBranchStemS4X,MultiBranchStemSL12X
 
 
 class Focus(nn.Module):
@@ -287,12 +287,13 @@ class WCSPDarknet(BaseModule):
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=activation_fn)
+            return stem
         elif self.deep_stem_mode == "MultiBranchStem12X":
             return MultiBranchStem12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS12X":
             return MultiBranchStemS12X(in_channels,stem_channels,activation_fn=activation_fn)
-        elif self.deep_stem_mode == "MultiBranchStemSBN12X":
-            return MultiBranchStemSBN12X(in_channels,stem_channels,activation_fn=activation_fn)
+        elif self.deep_stem_mode == "MultiBranchStemSA12X":
+            return MultiBranchStemSA12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS4X":
             return MultiBranchStemS4X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemSL12X":

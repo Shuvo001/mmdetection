@@ -303,22 +303,25 @@ class Bottleneck(BaseModule):
 
         return out
 
+
 class MultiBranchStem12X(nn.Module):
     def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
         branch_channels = out_channels//4
-        self.branch0 = nn.Conv2d(in_channels,branch_channels,3,stride=2,padding=1,bias=False)
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels,4,3,3,0,bias=False),
+        self.branch0_0 = nn.Sequential(
+            nn.Conv2d(in_channels,4,3,stride=2,padding=1,bias=False),
             nn.BatchNorm2d(num_features=4),
             wnn.get_activation(activation_fn,inplace=True),
-            nn.Conv2d(4,8,3,2,1,bias=False),
-            nn.BatchNorm2d(num_features=8),
+            nn.Conv2d(4,branch_channels,3,stride=1,padding=1,bias=False),
+            )
+        self.branch0_1 = nn.ModuleList([nn.MaxPool2d(3,2,1),nn.MaxPool2d(5,2,2)])
+        self.branch0_2 = nn.Sequential(
             wnn.get_activation(activation_fn,inplace=True),
-            nn.Conv2d(8,branch_channels,3,2,1,bias=False))
+            nn.Conv2d(branch_channels*2,branch_channels*2,3,3,padding=0,bias=False),
+        )
+        self.branch1 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3,bias=False)
         self.branch2 = nn.Conv2d(in_channels,branch_channels,12,12,0,bias=False)
-        self.branch3 = nn.Conv2d(in_channels,branch_channels,7,stride=2,padding=3,bias=False)
         self.norm = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             wnn.get_activation(activation_fn,inplace=True),
@@ -326,11 +329,14 @@ class MultiBranchStem12X(nn.Module):
 
     def forward(self,x):
         downsampled = torch.nn.functional.interpolate(x,(x.shape[-2]//6,x.shape[-1]//6),mode='bilinear')
-        x0 = self.branch0(downsampled)
-        x1 = self.branch1(x)
+        x0 = self.branch0_0(x)
+        x0_0 = self.branch0_1[0](x0)
+        x0_1 = self.branch0_1[1](x0)
+        x0 = torch.cat([x0_0,x0_1],dim=1)
+        x0 = self.branch0_2(x0)
+        x1 = self.branch1(downsampled)
         x2 = self.branch2(x)
-        x3 = self.branch3(downsampled)
-        x = torch.cat([x0,x1,x2,x3],dim=1)
+        x = torch.cat([x0,x1,x2],dim=1)
         x = self.norm(x)
         return x
 
@@ -364,7 +370,7 @@ class MultiBranchStemS12X(nn.Module):
         x = self.norm(x)
         return x
 
-class MultiBranchStemSBN12X(nn.Module):
+class MultiBranchStemSA12X(nn.Module):
     def __init__(self,in_channels,out_channels,activation_fn="LeakyReLU"):
         super().__init__()
         self.out_channels = out_channels
@@ -752,8 +758,8 @@ class WResNet(BaseModule):
             return MultiBranchStem12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS12X":
             return MultiBranchStemS12X(in_channels,stem_channels,activation_fn=activation_fn)
-        elif self.deep_stem_mode == "MultiBranchStemSBN12X":
-            return MultiBranchStemSBN12X(in_channels,stem_channels,activation_fn=activation_fn)
+        elif self.deep_stem_mode == "MultiBranchStemSA12X":
+            return MultiBranchStemSA12X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemS4X":
             return MultiBranchStemS4X(in_channels,stem_channels,activation_fn=activation_fn)
         elif self.deep_stem_mode == "MultiBranchStemSL12X":
