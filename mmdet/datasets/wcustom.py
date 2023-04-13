@@ -93,6 +93,7 @@ class WCustomDataset(Dataset):
         self._inner_dataset = self.load_annotations(self.ann_file)
         
         #
+        print("dataset statistics:")
         statics = st.statistics_boxes_with_datas(self._inner_dataset,
                                           label_encoder=st.default_encode_label,
                                           labels_to_remove=None,
