@@ -167,6 +167,10 @@ def main(rank,world_size,args):
     meta['exp_name'] = wmlu.base_name(args.config)
 
     model = build_detector(cfg.model)
+    bn_momentum = cfg.get("bn_momentum",None)
+    if bn_momentum is not None:
+        print(f"Set bn momentum to {bn_momentum}")
+        wtt.set_bn_momentum(model,bn_momentum)
     #model.init_weights()
     model.to(device)
 

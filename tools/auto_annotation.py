@@ -82,6 +82,7 @@ def save_annotation_bboxes_txt(save_dir,img_path,img_shape,bboxes,labels,scores,
     try:
         img_id = int(wmlu.base_name(img_path))
     except:
+        print(f"Get img id for {img_path} faild.")
         img_id = -1
     bboxes = bboxes.astype(np.int32)
 
