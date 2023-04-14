@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg",help='img suffix')
     parser.add_argument(
-        '--score-thr', type=float, default=0.5, help='bbox score threshold')
+        '--score-thr', type=float, default=0.1, help='bbox score threshold')
     parser.add_argument(
         '--async-test',
         action='store_true',
@@ -69,11 +69,36 @@ def save_annotation_bboxes(save_dir,img_path,img_shape,bboxes,labels,scores,det_
 
     return save_path
 
+def save_annotation_bboxes_txt_head(save_dir):
+    save_txt_path = osp.join(save_dir,"submission.csv")
+    print(f"Save txt path {save_txt_path}")
+    data = "image_id,bbox,category_id,confidence\n"
+
+    with open(save_txt_path,"a") as f:
+        f.write(data)
+
+def save_annotation_bboxes_txt(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,save_scores=False):
+    save_txt_path = osp.join(save_dir,"submission.csv")
+    try:
+        img_id = int(wmlu.base_name(img_path))
+    except:
+        img_id = -1
+    bboxes = bboxes.astype(np.int32)
+
+    with open(save_txt_path,"a") as f:
+        for i,l in enumerate(labels):
+            bbox = bboxes[i]
+            data = f"{img_id},\"[{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}]\",{l},{scores[i]}\n"
+            f.write(data)
+
 def save_annotation(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,classes,save_scores=False):
     label_to_text = dict(zip(range(len(classes)),classes))
     if det_masks is not None:
         return save_annotation_masks(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text)
     else:
+        save_annotation_bboxes_txt(save_dir,
+                                      img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,
+                                      save_scores=save_scores)
         return save_annotation_bboxes(save_dir,
                                       img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,
                                       save_scores=save_scores)
@@ -182,6 +207,8 @@ def main():
 
     pipeline = Compose(model.cfg.test_pipeline)
     detector = ImageInferencePipeline(pipeline=pipeline)
+
+    save_annotation_bboxes_txt_head(save_path)
 
     save_size = input_size
 
