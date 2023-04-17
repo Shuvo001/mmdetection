@@ -22,6 +22,8 @@ import pickle
 import copy
 from object_detection2.odtools import WCrop
 from mmdet.datasets.pipelines import Compose
+from mmdet.utils.datadef import set_debug
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -51,6 +53,10 @@ def parse_args():
         default='',
         type=str,
         help='Dataset type')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Whether or not use enable debug')
     parser.add_argument('--gpus', default="1", type=str,help='Path to output file')
     parser.add_argument('--save-data-dir', type=str,help='Path to output file')
     parser.add_argument('--test-data-dir', type=str,help='Path to output file')
@@ -138,6 +144,7 @@ imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
 
 def main():
     args = parse_args()
+    set_debug(args.debug)
 
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus

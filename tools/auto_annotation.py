@@ -191,7 +191,7 @@ def main():
 
     save_path = args.save_data_dir
     if save_path is None:
-        save_path = osp.join(work_dir,"tmp","eval_on_images")
+        save_path = osp.join(work_dir,"tmp","auto_annotation")
 
     test_data_dir = args.data_dir 
     print(f"test_data_dir: {test_data_dir}")

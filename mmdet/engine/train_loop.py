@@ -70,6 +70,15 @@ class SimpleTrainer(BaseTrainer):
         if dist.is_available() and self.world_size>1:
             model = wtd.convert_sync_batchnorm(model)
             pass
+        bn_momentum = cfg.get("bn_momentum",None)
+        if bn_momentum is not None:
+            print(f"Set bn momentum to {bn_momentum}")
+            wtt.set_bn_momentum(model,bn_momentum)
+
+        is_freeze_bn = cfg.get("freeze_bn",None)
+        if is_freeze_bn is not None and is_freeze_bn:
+            print(f"freeze bn")
+            wtt.freeze_bn(model)
 
         if is_debug():
             print("register_forward_hook")
@@ -121,6 +130,10 @@ class SimpleTrainer(BaseTrainer):
 
         if self.rank != 0:
             return
+
+        print("Model")
+        print(model)
+
         logdir = osp.join(self.work_dir,"tblog")
         print(f"log dir {logdir}")
         wmlu.create_empty_dir_remove_if(logdir,"tblog")

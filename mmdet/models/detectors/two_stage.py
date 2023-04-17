@@ -5,9 +5,11 @@ import torch
 from ..builder import DETECTORS, build_backbone, build_head, build_neck,build_second_stage_hook, build_drop_blocks
 from .base import BaseDetector
 import numpy as np
-from wtorch.utils import unnormalize
+from wtorch.utils import unnormalize, get_tensor_info
 import wtorch.bboxes as wtb
 from mmdet.utils.datadef import *
+
+
 
 
 @DETECTORS.register_module()
@@ -138,6 +140,8 @@ class TwoStageDetector(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
+        if is_debug():
+            print(f"img shape {img.shape}, img info (mean,min,max,std)={get_tensor_info(img)}")
         x = self.extract_feat(img)
         '''
         [list(a.shape) for a in x]
@@ -212,6 +216,8 @@ class TwoStageDetector(BaseDetector):
         """Test without augmentation."""
 
         assert self.with_bbox, 'Bbox head must be implemented.'
+        if is_debug():
+            print(f"img shape {img.shape}, img info (mean,min,max,std)={get_tensor_info(img)}")
         x = self.extract_feat(img)
         if proposals is None:
             #proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)

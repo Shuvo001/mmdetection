@@ -67,7 +67,7 @@ model = dict(
                 nms=dict(type='nms', iou_threshold=0.7),
                 min_bbox_size=0),
             rcnn=dict(
-                score_thr=0.1,
+                score_thr=0.05,
                 nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.5),
                 max_per_img=10,
                 ),
@@ -84,6 +84,7 @@ model = dict(
                 neg_pos_ub=-1,
                 add_gt_as_proposals=False),
              ),
+             loss_scale={"loss_cls":30,"loss_bbox":40},
         )
 )
 dataset_type = 'WXMLDataset'
@@ -93,6 +94,7 @@ test_data_dir = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
 img_scale = (512, 512)  # height, width
+#img_scale = (640, 640)  # height, width
 random_resize_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 random_crop_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 img_fill_val = 0
@@ -136,7 +138,7 @@ train_dataset = dict(
         classes=classes,
         img_suffix="jpg",
         ann_file=data_root,
-        #resample_parameters={"MS1U":8,"ML3U":2,"Other":2,"MV1U":2},
+        resample_parameters={"crazing":2,"rolled-in_scale":2},
         pipeline=[
             dict(type='LoadImageFromFile', channel_order="rgb"),
             dict(type='LoadAnnotations', with_bbox=True,with_mask=False),
@@ -177,7 +179,7 @@ optimizer_config = dict(grad_clip=None)
 lr_config = dict(
     policy='WarmupCosLR',
     warmup_total_iters=1000,
-    total_iters=max_iters)
+    total_iters=max_iters-2000)
 
 log_config = dict(
     print_interval=10,
@@ -185,11 +187,12 @@ log_config = dict(
 checkpoint_config = dict(
     interval=1000,
 )
+bn_momentum = 0.03
 hooks = [
-    dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
-    dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
+    dict(type='WMMDetModelSwitch', close_iter=-15000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
+    dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_gn"
+work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_re"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

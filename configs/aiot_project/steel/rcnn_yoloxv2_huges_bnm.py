@@ -67,7 +67,7 @@ model = dict(
                 nms=dict(type='nms', iou_threshold=0.7),
                 min_bbox_size=0),
             rcnn=dict(
-                score_thr=0.1,
+                score_thr=0.05,
                 nms=dict(type='nms', classes_wise_nms=False, iou_threshold=0.5),
                 max_per_img=10,
                 ),
@@ -84,6 +84,7 @@ model = dict(
                 neg_pos_ub=-1,
                 add_gt_as_proposals=False),
              ),
+            loss_scale={"loss_cls":30,"loss_bbox":40},
         )
 )
 dataset_type = 'WXMLDataset'
@@ -185,11 +186,12 @@ log_config = dict(
 checkpoint_config = dict(
     interval=1000,
 )
+bn_momentum = 0.03
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_gn"
+work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_bnm"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

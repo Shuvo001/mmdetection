@@ -9,6 +9,7 @@ import torch.distributed as dist
 from mmcv.runner import BaseModule, auto_fp16
 from mmdet.utils.datadef import *
 from mmdet.core.visualization import imshow_det_bboxes
+import wml_utils as wmlu
 
 
 class BaseDetector(BaseModule, metaclass=ABCMeta):
@@ -18,6 +19,8 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
         super(BaseDetector, self).__init__(init_cfg)
         self.fp16_enabled = False
         self.loss_scale = loss_scale
+        if len(loss_scale)>0:
+            wmlu.show_dict(loss_scale)
 
     @property
     def with_neck(self):

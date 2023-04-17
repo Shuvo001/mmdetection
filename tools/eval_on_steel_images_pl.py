@@ -17,7 +17,7 @@ import pickle
 import cv2
 import shutil
 import torch
-import wtorch.train_toolkit as wtt
+from wtorch.classes_suppression import classes_suppression
 
 
 def parse_args():
@@ -217,7 +217,7 @@ def main():
 
     save_path = args.save_data_dir
     if save_path is None:
-        save_path = osp.join(work_dir,"tmp","eval_on_images")
+        save_path = osp.join(work_dir,"tmp","eval_on_steel_images")
     save_path += "1"
 
     test_data_dir = args.test_data_dir
@@ -253,9 +253,7 @@ def main():
     pyresults = []
     time = wmlu.AvgTimeThis()
     test_labels = args.labels
-
     print(model)
-    wtt.show_async_norm_states(model)
 
     for i,data in enumerate(dataset.get_items()):
         print(f"process {i}/{len(dataset)}")
@@ -279,6 +277,7 @@ def main():
                                                          full_path,
                                                          input_size=input_size,score_thr=args.score_thr)
 
+        bboxes,labels,scores = classes_suppression(bboxes,labels,scores,test_nr=2)
         if args.min_bbox_size>0:
             gt_boxes_e = odb.clamp_bboxes(gt_boxes,args.min_bbox_size)
             bboxes_e = odb.clamp_bboxes(bboxes,args.min_bbox_size)
