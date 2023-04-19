@@ -142,7 +142,7 @@ def main():
     import wtorch.utils as wtu
     from mmdet.datasets.pipelines import Compose
     from mmdet.apis import (ImageInferencePipeline,
-                        init_detector)
+                        init_detector,get_test_img_scale)
 
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device="cuda:0")
@@ -201,7 +201,7 @@ def main():
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=Accuracy,
     #model_args={"threshold":0.3})
-    input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
+    input_size = get_test_img_scale(model.cfg)
     print(f"input size={input_size}")
     #save_size = (1024,640) 
     save_size = None

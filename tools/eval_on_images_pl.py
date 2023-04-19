@@ -160,7 +160,7 @@ def main():
     import wtorch.utils as wtu
     from mmdet.datasets.pipelines import Compose
     from mmdet.apis import (ImageInferencePipeline,
-                        init_detector)
+                        init_detector,get_test_img_scale)
     from mmdet.utils.datadef import set_debug
 
 
@@ -239,7 +239,7 @@ def main():
     else:
         dataset_type = model.cfg.data.val.get("type","WXMLDataset")
     dataset = eval_dataset(test_data_dir,classes=classes,dataset_type=dataset_type)
-    input_size = tuple(list(model.cfg.img_scale)[::-1]) #(h,w)->(w,h)
+    input_size = get_test_img_scale(model.cfg)
     print(f"input size={input_size}")
     #save_size = (1024,640) 
     save_size = None

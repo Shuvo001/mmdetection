@@ -89,13 +89,7 @@ class SimpleTrainer(BaseTrainer):
         print(f"sync norm states")
         wtt.show_async_norm_states(model)
 
-        if cfg.load_from is not None and osp.exists(cfg.load_from):
-            print(f"Load from {cfg.load_from}")
-            data = torch.load(cfg.load_from)
-            if "state_dict" in data:
-                data = data["state_dict"]
-            
-            wtu.forgiving_state_restore(model,data) 
+        self.load_checkpoint(model,cfg)
 
         self.optimizer = build_optimizer(self.cfg, model)
         lr_scheduler_args = self.cfg.lr_config
@@ -359,4 +353,24 @@ class SimpleTrainer(BaseTrainer):
     def after_iter(self):
         self.call_hook('after_iter')
 
+    def load_checkpoint(self,model,cfg):
+        if cfg.load_from is not None:
+            if isinstance(cfg.load_from,str):
+                self.load_checkpoint_from_one_file(model,cfg.load_from)
+            elif isinstance(cfg.load_from,(list,tuple)):
+                for path in cfg.load_from:
+                    self.load_checkpoint_from_one_file(model,path)
+            else:
+                print(f"ERROR: error load from value {cfg.load_from}")
+
+    def load_checkpoint_from_one_file(self,model,path):
+        if osp.exists(path):
+            print(f"Load from {path}")
+            data = torch.load(path)
+            if "state_dict" in data:
+                data = data["state_dict"]
+            
+            wtu.forgiving_state_restore(model,data) 
+        else:
+            print(f"ERROR: {path} not exists.")
 

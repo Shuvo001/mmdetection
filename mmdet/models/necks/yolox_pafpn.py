@@ -3,7 +3,8 @@ import math
 
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
+from mmcv.cnn import DepthwiseSeparableConvModule
+from wtorch.conv_module import ConvModule
 from mmcv.runner import BaseModule
 
 from ..builder import NECKS

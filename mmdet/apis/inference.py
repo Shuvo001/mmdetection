@@ -14,6 +14,15 @@ from mmdet.models import build_detector
 import wtorch.utils as wtu
 import wml_utils as wmlu
 
+def get_test_img_scale(cfg):
+    '''
+    return img scale: (W,H)
+    '''
+    scale = cfg.get('test_img_scale',None)
+    if scale is None:
+        scale = cfg.img_scale
+    scale = tuple(list(scale)[::-1]) #(h,w)->(w,h)
+    return scale
 
 def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
     """Initialize a detector from config file.

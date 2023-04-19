@@ -124,6 +124,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
 
         self.fp16_enabled = False
         self._init_layers()
+        self.init_weights()
 
     def _init_layers(self):
         self.multi_level_cls_convs = nn.ModuleList()

@@ -41,7 +41,7 @@ model = dict(
             out_channels=256,
             featmap_strides=[4]),
         bbox_head=dict(
-            type='Shared4Conv2FCBBoxHead',
+            type='WConvFCSBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
             in_channels=256,
             fc_out_channels=1024,
@@ -58,7 +58,7 @@ model = dict(
             ),
         ),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.2,0.2,0.2,0.2,0.2],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
             rpn=dict(
@@ -88,8 +88,8 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
-test_data_dir = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
+data_root = '/home/wj/ai/mldata1/steel/datas/train_s0'
+test_data_dir = '/home/wj/ai/mldata1/steel/datas/test_s0'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
@@ -101,7 +101,7 @@ random_crop_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 img_fill_val = 0
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=img_fill_val,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
-    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.1,try_crop_around_gtbboxes=True),
+    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.1,try_crop_around_gtbboxes=False),
     dict(type='WRotate',
         prob=0.3,
         img_fill_val=img_fill_val,
@@ -116,7 +116,7 @@ train_pipeline = [
         type='WMixUpWithMask',
         img_scale=img_scale,
         ratio_range=(0.8, 1.6),
-        prob=0.3,
+        prob=0.2,
         pad_val=img_fill_val,skip_filter=False),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
     #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
@@ -174,7 +174,8 @@ data = dict(
         ann_file=test_data_dir,
         pipeline=test_pipeline))
 evaluation = dict(metric=['bbox', 'segm'])
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
+#optimizer = dict(type='Adam', lr=0.001, weight_decay=0.001)
+optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
@@ -193,7 +194,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-15000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_sa"
+work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_saw"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

@@ -96,6 +96,7 @@ test_data_dir = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
 img_scale = (512, 512)  # height, width
+test_img_scale = (640, 640)  # height, width
 random_resize_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 random_crop_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 img_fill_val = 0

@@ -99,6 +99,8 @@ class TwoStageDetector(BaseDetector):
     def extract_feat(self, img):
         """Directly extract features from the backbone+neck."""
         x = self.backbone(img)
+        if is_debug():
+            print("backbone shape: ",[list(a.shape) for a in x])
         if self.with_neck:
             x = self.neck(x)
         return x
@@ -144,10 +146,12 @@ class TwoStageDetector(BaseDetector):
             print(f"img shape {img.shape}, img info (mean,min,max,std)={get_tensor_info(img)}")
         x = self.extract_feat(img)
         '''
+        input shape = [1024,1024]
         [list(a.shape) for a in x]
         [[8, 256, 256, 256], [8, 256, 128, 128], [8, 256, 64, 64], [8, 256, 32, 32], [8, 256, 16, 16]]
         '''
         if is_debug():
+            print("feat shape: ",[list(a.shape) for a in x])
             for tbboxes in gt_bboxes:
                 tbboxes = wtb.correct_bbox(tbboxes,w=img.shape[3],h=img.shape[2])
                 tareas = wtb.area(tbboxes)

@@ -1,6 +1,7 @@
 from thirdparty.registry import Registry
 from .build_lr_scheduler import *
 from .build_optimizer import *
+from wtorch.train_toolkit import simple_split_parameters
 
 MODEL_REGISTER = Registry("MODEL")
 LOSS_REGISTER = Registry("LOSS")
@@ -24,8 +25,13 @@ def build_lr_scheduler(name,kwargs):
 def build_optimizer(cfg, model):
     args = cfg.optimizer
     name = args.pop("type")
+    bn_weights,weights,biases = simple_split_parameters(model)
     optimizer = OPTIMIZER_REGISTER.get(name)(
-            model.parameters(),
+            weights,
             **args
         )
+    if len(bn_weights)>0:
+        optimizer.add_param_group({"params": bn_weights})
+    if len(biases)>0:
+        optimizer.add_param_group({"params": biases})
     return optimizer

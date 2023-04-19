@@ -163,7 +163,13 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
                 log_vars[k] = log_vars[k]*s
             else:
                 print(f"ERROR: Find loss scale {k} in log vars faild.")
-
+        any_infinte_loss = False
+        for k,v in log_vars.items():
+            if not torch.isfinite(v):
+                any_infinte_loss = True
+                print(f"ERROR: infinite loss {k}={v}")
+        if any_infinte_loss:
+            raise RuntimeError("Infinite loss.")
         loss = sum(_value for _key, _value in log_vars.items()
                    if 'loss' in _key and torch.isfinite(_value))
         if is_debug():

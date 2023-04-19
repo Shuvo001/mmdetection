@@ -58,7 +58,7 @@ model = dict(
             ),
         ),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.2,0.2,0.2,0.2,0.2],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
             rpn=dict(
@@ -88,12 +88,14 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
-test_data_dir = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
+data_root = '/home/wj/ai/mldata1/steel/datas/train_s0'
+test_data_dir = '/home/wj/ai/mldata1/steel/datas/test_s0'
+#test_data_dir = data_root
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
 img_scale = (512, 512)  # height, width
+test_img_scale = (640, 640)  # height, width
 #img_scale = (640, 640)  # height, width
 random_resize_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
 random_crop_scales = [496, 512, 528, 544, 560, 576, 592, 608, 624, 640]
@@ -173,7 +175,8 @@ data = dict(
         ann_file=test_data_dir,
         pipeline=test_pipeline))
 evaluation = dict(metric=['bbox', 'segm'])
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
+#optimizer = dict(type='Adam', lr=0.001, weight_decay=0.001)
+optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(

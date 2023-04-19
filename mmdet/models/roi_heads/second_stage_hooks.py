@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.cnn import ConvModule
+from wtorch.conv_module import ConvModule
 from mmcv.runner import BaseModule, auto_fp16
 import torch
 from ..builder import NECKS
@@ -15,13 +15,16 @@ class FusionFPNHook(BaseModule):
 
     def __init__(self,
                  in_channels,
+                 out_channels=None,
                  conv_cfg=None,
                  norm_cfg=None,
                  act_cfg=None,
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform')):
         super().__init__(init_cfg)
-        self.fusion_conv = ConvModule(in_channels*2,in_channels,3,padding=1,conv_cfg=conv_cfg,
+        if out_channels is None:
+            out_channels = in_channels
+        self.fusion_conv = ConvModule(in_channels*2,out_channels,3,padding=1,conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,act_cfg=act_cfg,inplace=False)
 
     @auto_fp16()

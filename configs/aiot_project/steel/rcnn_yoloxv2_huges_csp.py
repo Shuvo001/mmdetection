@@ -3,6 +3,7 @@ _base_ = [
     '../../_base_/default_runtime.py'
 ]
 max_iters=50000
+neck_channels=256
 # dataset settings
 classes = ('crazing','inclusion', 'pitted_surface', 'scratches','patches','rolled-in_scale')
 model = dict(
@@ -10,28 +11,31 @@ model = dict(
     backbone=dict(
         type='WResNet',
         in_channels=1,
+        first_conv_cfg={'kernel_size':7,'stride':2,'padding':3},
         depth=50,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
-        deep_stem=True,
-        deep_stem_mode='MultiBranchStemSA2X',
+        deep_stem=False,
         style='pytorch',
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
-    neck=dict(
-        type='FPN',
-        in_channels=[256, 512, 1024, 2048],
-        out_channels=256,
-        num_outs=5,
-        norm_cfg=dict(type='GN',num_groups=32),
-        ),
+    neck=[
+        dict(
+            type='FPN',
+            in_channels=[256, 512, 1024, 2048],
+            out_channels=neck_channels,
+            start_level=1,
+            add_extra_convs='on_output',
+            num_outs=5),
+        dict(type='DyHead', in_channels=neck_channels, out_channels=neck_channels, num_blocks=6)
+    ],
     rpn_head=dict(
         type='YOLOXRPNHead',
-        in_channels=256,
-        strides=[4,8,16,32,64],
-        feat_channels=256,
+        in_channels=neck_channels,
+        strides=[8,16,32,64,128],
+        feat_channels=neck_channels,
         loss_bbox={'type': 'CIoULoss','eps': 1e-16, 'reduction': 'sum', 'loss_weight': 5.0}),
     roi_head=dict(
         type='StandardRoIHead',
@@ -39,9 +43,9 @@ model = dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
             out_channels=256,
-            featmap_strides=[4]),
+            featmap_strides=[8]),
         bbox_head=dict(
-            type='Shared4Conv2FCBBoxHead',
+            type='WConvFCSBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
             in_channels=256,
             fc_out_channels=1024,
@@ -57,8 +61,8 @@ model = dict(
             loss_bbox=dict(_delete_=True,type='CIoULoss', loss_weight=1.0),
             ),
         ),
-        second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
+        second_stage_hook=dict(type='FusionFPNHook',in_channels=neck_channels,out_channels=256),
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.2,0.2,0.2,0.2,0.2],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
             rpn=dict(
@@ -88,8 +92,8 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
-test_data_dir = '/home/wj/ai/mldata1/steel/datas/train/IMAGES'
+data_root = '/home/wj/ai/mldata1/steel/datas/train_s0'
+test_data_dir = '/home/wj/ai/mldata1/steel/datas/test_s0'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]
@@ -174,13 +178,15 @@ data = dict(
         ann_file=test_data_dir,
         pipeline=test_pipeline))
 evaluation = dict(metric=['bbox', 'segm'])
-optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
+#optimizer = dict(type='AdamW', lr=0.001, momentum=0.9, weight_decay=0.0001)
+#optimizer = dict(type='Adam', lr=0.001, weight_decay=0.01)
+optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(
     policy='WarmupCosLR',
     warmup_total_iters=1000,
-    total_iters=max_iters-5000)
+    total_iters=max_iters-2000)
 
 log_config = dict(
     print_interval=10,
@@ -193,8 +199,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-15000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_sa"
-load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
+work_dir="/home/wj/ai/mldata1/steel/workdir/faster_yoloxv2_huges_csp"
+load_from=['/home/wj/ai/work/mmdetection/weights/atss_r50_fpn_dyhead_4x4_1x_coco_20211219_023314-eaa620c6.pth','/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth']
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

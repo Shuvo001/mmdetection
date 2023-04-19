@@ -73,9 +73,9 @@ def parse_args():
 
 
 def main(rank,world_size,args):
-    #wtd.configure_nccl()
-    #wtd.configure_omp()
-    #wtd.configure_module()
+    wtd.configure_nccl()
+    wtd.configure_omp()
+    wtd.configure_module()
     from mmdet.utils import (get_device, get_root_logger,
                              replace_cfg_vals)
     from mmdet.utils.datadef import set_debug
