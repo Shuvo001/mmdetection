@@ -31,7 +31,7 @@ def build_optimizer(cfg, model):
             **args
         )
     if len(bn_weights)>0:
-        optimizer.add_param_group({"params": bn_weights})
+        optimizer.add_param_group({"params": bn_weights,"weight_decay":0.0})
     if len(biases)>0:
-        optimizer.add_param_group({"params": biases})
+        optimizer.add_param_group({"params": biases,"weight_decay":0.0})
     return optimizer

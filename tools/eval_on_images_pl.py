@@ -15,6 +15,7 @@ import os.path as osp
 from itertools import count
 import pickle
 import cv2
+import sys
 import shutil
 import torch
 import wtorch.train_toolkit as wtt
@@ -258,7 +259,7 @@ def main():
     wtt.show_async_norm_states(model)
 
     for i,data in enumerate(dataset.get_items()):
-        print(f"process {i}/{len(dataset)}")
+        sys.stdout.write(f"process {i}/{len(dataset)}    \r")
         full_path, shape, gt_labels, category_names, gt_boxes, binary_masks, area, is_crowd, num_annotations_skipped = data
         #
         if test_labels is not None and len(test_labels)>0 and not any_same(test_labels,gt_labels):
@@ -335,7 +336,7 @@ def main():
         metrics(**kwargs)
         pyresults.append(copy.deepcopy(kwargs))
         
-        if i%200 == 199:
+        if i%500 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")
