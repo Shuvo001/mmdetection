@@ -30,10 +30,14 @@ class TwoStageDetector(BaseDetector):
                  pretrained=None,
                  init_cfg=None,
                  second_stage_hook=None,
-                 drop_blocks=None):
+                 drop_blocks=None,
+                 simple_norm_input=False):
         loss_scale = train_cfg.get("loss_scale",{}) if train_cfg is not None else {}
         super(TwoStageDetector, self).__init__(init_cfg,
                                                loss_scale=loss_scale)
+        self.simple_norm_input = simple_norm_input
+        if self.simple_norm_input:
+            print(f"Use simple norm input")
         if pretrained:
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
@@ -98,6 +102,8 @@ class TwoStageDetector(BaseDetector):
 
     def extract_feat(self, img):
         """Directly extract features from the backbone+neck."""
+        if self.simple_norm_input:
+            img = (img-127.5)/127.5
         x = self.backbone(img)
         if is_debug():
             print("backbone shape: ",[list(a.shape) for a in x])

@@ -58,8 +58,8 @@ model = dict(
             ),
         ),
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
-        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
-                "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
+        drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":0.5,"block_size":[4,4,3,2,1]},
+                "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000,"enable_prob":0.6}},
         test_cfg=dict(
             rpn=dict(
                 nms_pre=1000,

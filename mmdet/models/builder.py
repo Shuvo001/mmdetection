@@ -5,6 +5,7 @@ from mmcv.cnn import MODELS as MMCV_MODELS
 from mmcv.utils import Registry
 from wtorch.dropblock import DropBlock2D,LinearScheduler
 from collections import Iterable
+import copy
 
 MODELS = Registry('models', parent=MMCV_MODELS)
 
@@ -73,7 +74,11 @@ def build_drop_blocks(cfg):
     '''
     drop_prob = cfg['dropout']['drop_prob']
     block_size = cfg['dropout']['block_size']
-    scheduler = cfg['scheduler']
+    scheduler = copy.deepcopy(cfg['scheduler'])
+    stype = scheduler.pop("type","LinearScheduler")
+    if stype != "LinearScheduler":
+        print(f"{stype} is not support.")
+        raise RuntimeError(f"{stype} is not support.")
     nr = len(block_size)
 
     if not isinstance(drop_prob,Iterable):
@@ -82,8 +87,7 @@ def build_drop_blocks(cfg):
     models = []
     for i in range(nr):
         do = DropBlock2D(drop_prob=drop_prob[i],block_size=block_size[i])
-        m = LinearScheduler(do,start_value=scheduler.get("start_value",-1),stop_value=scheduler.get("stop_value",-1),
-                            begin_step=scheduler.get("begin_step",0),end_step=scheduler.get("end_step",-1))
+        m = LinearScheduler(do,**scheduler)
         models.append(m)
 
     return nn.ModuleList(models)

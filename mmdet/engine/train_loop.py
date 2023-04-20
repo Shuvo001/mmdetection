@@ -256,6 +256,7 @@ class SimpleTrainer(BaseTrainer):
     def __tblog(self):
         if self.rank!=0:
             return
+        img_nr = self.cfg.log_config.get('img_nr',3)
         global_step = self.iter
         for tag, val in self.outputs["log_vars"].items():
             if isinstance(val, str):
@@ -268,7 +269,7 @@ class SimpleTrainer(BaseTrainer):
         #print(imgs.shape)
         idxs = list(range(imgs.shape[0]))
         random.shuffle(idxs)
-        idxs = idxs[:4]
+        idxs = idxs[:img_nr]
 
         if 'img_norm_cfg' in self.cfg:
             mean = self.cfg.img_norm_cfg.mean
