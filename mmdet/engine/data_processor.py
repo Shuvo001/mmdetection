@@ -7,7 +7,7 @@ from .build import DATAPROCESSOR_REGISTRY
 
 
 @DATAPROCESSOR_REGISTRY.register()
-def yolo_data_processor(data_batch,local_rank=0):
+def yolo_data_processor(data_batch,local_rank=0,pipeline=None):
     inputs = {}
     inputs['img'] = data_batch[0]
     data = data_batch[1]
@@ -30,19 +30,26 @@ def yolo_data_processor(data_batch,local_rank=0):
     inputs['gt_labels'] = gt_labels
     inputs['img_metas'] = img_metas
 
+    if pipeline is not None:
+        inputs = pipeline(inputs)
+
     return inputs
 
 @DATAPROCESSOR_REGISTRY.register()
-def mmdet_data_processor(data_batch,local_rank=0):
+def mmdet_data_processor(data_batch,local_rank=0,pipeline=None):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
     inputs = inputs[0]
+    if pipeline is not None:
+        inputs = pipeline(inputs)
     inputs['img'] = inputs['img'].to(torch.float32)
     return inputs
 
 @DATAPROCESSOR_REGISTRY.register()
-def mmdet_data_processor_dm(data_batch,local_rank=0):
+def mmdet_data_processor_dm(data_batch,local_rank=0,pipeline=None):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
     inputs = inputs[0]
+    if pipeline is not None:
+        inputs = pipeline(inputs)
     inputs['img'] = inputs['img'].to(torch.float32)
     if GT_MASKS in inputs:
         new_masks = []
@@ -60,9 +67,11 @@ def mmdet_data_processor_dm(data_batch,local_rank=0):
     return inputs
 
 @DATAPROCESSOR_REGISTRY.register()
-def mmdet_data_processor_dm1(data_batch,local_rank=0):
+def mmdet_data_processor_dm1(data_batch,local_rank=0,pipeline=None):
     inputs,kwargs = scatter_kwargs(data_batch, {}, target_gpus=[local_rank], dim=0)
     inputs = inputs[0]
+    if pipeline is not None:
+        inputs = pipeline(inputs)
     inputs['img'] = inputs['img'].to(torch.float32)
     if GT_MASKS in inputs:
         new_masks = []

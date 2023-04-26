@@ -23,6 +23,8 @@ from mmdet.dataloader.build import build_dataloader
 from mmdet.utils.datadef import *
 from .base_trainer import BaseTrainer
 import traceback
+from mmdet.datasets.pipelines import Compose
+
 
 
 class SimpleTrainer(BaseTrainer):
@@ -120,7 +122,11 @@ class SimpleTrainer(BaseTrainer):
         for m in self.model.modules():
             if isinstance(m,DBLinearScheduler):
                 self.step_modules.append(m)
-
+        batch_pipeline = self.cfg.get("batch_pipeline",None) 
+        if batch_pipeline is not None:
+            self.batch_pipeline = Compose(batch_pipeline)
+        else:
+            self.batch_pipeline = None
 
         if self.rank != 0:
             return
@@ -199,7 +205,7 @@ class SimpleTrainer(BaseTrainer):
             self.data_loader_iter = iter(self.data_loader)
         data_batch = next(self.data_loader_iter)
         if self.data_processor is not None:
-            data_batch = self.data_processor(data_batch,self.rank)
+            data_batch = self.data_processor(data_batch,self.rank,pipeline=self.batch_pipeline)
 
         #data_batch = wtu.to(data_batch,device=self.rank)
         #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)

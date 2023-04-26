@@ -84,7 +84,7 @@
             "console": "integratedTerminal",
             //"args":["configs/aiot_project/b7mura/mask_rcnn_yoloxv2_huges_dbc_t.py" "--gpus" "1" "--debug" "--use-fp16"],
             //"args":["configs/aiot_project/b7mura/rcnn_yoloxv2_huges_redbcen.py" "--gpus" "0" "--debug" "--use-fp16" "--resume-from" "/home/wj/ai/mldata1/B11ACT/workdir/b7mura_faster_yoloxv2_huges_redbcen1/weights/checkpoint_22000.pth" "--begin-iter" "22001"],
-            "args":["configs/aiot_project/b7mura/rcnn_ren.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
+            "args":["configs/aiot_project/b7mura/rcnn_bc.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
         },
         {
             "name": "Python: train steel",

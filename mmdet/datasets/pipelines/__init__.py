@@ -17,3 +17,4 @@ from .transforms import (Albu, CopyPaste, CutOut, Expand, MinIoURandomCrop,
                          YOLOXHSVRandomAug)
 from .wtransforms import *
 from .wloading import *
+from .wbatchtransforms import *

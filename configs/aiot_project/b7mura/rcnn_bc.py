@@ -1,9 +1,12 @@
-#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, 使用pafpn
+#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, WS＋GN的头及FPN
+#使用batch crop的处理方式
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
 ]
 max_iters=50000
+conv_cfg = dict(type='ConvWS')
+norm_cfg = dict(type='GN', num_groups=32)
 # dataset settings
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 model = dict(
@@ -23,17 +26,20 @@ model = dict(
         style='pytorch',
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
     neck=dict(
-        type='PAFPN',
+        type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
+        conv_cfg=conv_cfg,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
         in_channels=256,
         strides=[24,48,96,192,384],
         feat_channels=256,
+        conv_cfg=conv_cfg,
+        norm_cfg=norm_cfg,
         loss_bbox={'type': 'CIoULoss','eps': 1e-16, 'reduction': 'sum', 'loss_weight': 5.0}),
     roi_head=dict(
         type='StandardRoIHead',
@@ -45,6 +51,7 @@ model = dict(
         bbox_head=dict(
             type='WShared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
+            conv_cfg=conv_cfg,
             fc_norm=False,
             in_channels=256,
             fc_out_channels=1024,
@@ -93,7 +100,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr1'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_su1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -133,6 +140,14 @@ test_pipeline = [
     dict(type='WLoadImageFromFile'),
     dict(type='W2Gray'),
     dict(type="WGetImg"),
+]
+batch_pipeline = [
+    dict(type='WExpandBatchByRandomCrop',
+                 spatial_mem_reduce=0.25,
+                 expand_batch_prob=0.5,
+                 bbox_keep_ratio=0.25,
+                 try_crop_around_gtbboxes=True,
+                 crop_around_gtbboxes_prob=0.5),
 ]
 
 train_dataset = dict(
@@ -201,7 +216,7 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_pafpn"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_bc"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

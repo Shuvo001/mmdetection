@@ -22,7 +22,6 @@ def parse_args():
     parser.add_argument('data_dir', type=str,help='Path to test data dir')
     parser.add_argument('--checkpoint', default=None,type=str,help='Checkpoint file')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
-    parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg",help='img suffix')
     parser.add_argument(
         '--score-thr', type=float, default=0.1, help='bbox score threshold')
@@ -31,7 +30,7 @@ def parse_args():
         action='store_true',
         help='whether to set async options for async inference.')
     parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
-    parser.add_argument('--save_data_dir', type=str,help='Path to output file')
+    parser.add_argument('--save-data-dir', type=str,help='Path to output file')
     parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
     parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
     parser.add_argument('--save-results',
@@ -97,9 +96,9 @@ def save_annotation(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,c
     if det_masks is not None:
         return save_annotation_masks(save_dir,img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text)
     else:
-        save_annotation_bboxes_txt(save_dir,
+        '''save_annotation_bboxes_txt(save_dir,
                                       img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,
-                                      save_scores=save_scores)
+                                      save_scores=save_scores)'''
         return save_annotation_bboxes(save_dir,
                                       img_path,img_shape,bboxes,labels,scores,det_masks,label_to_text,
                                       save_scores=save_scores)
@@ -209,7 +208,7 @@ def main():
     pipeline = Compose(model.cfg.test_pipeline)
     detector = ImageInferencePipeline(pipeline=pipeline)
 
-    save_annotation_bboxes_txt_head(save_path)
+    #save_annotation_bboxes_txt_head(save_path)
 
     save_size = input_size
 
@@ -243,7 +242,7 @@ def main():
                                    full_path,img.shape,bboxes,labels,scores,det_masks,classes,
                                    save_scores=args.save_scores)
 
-        if not args.inplace:
+        if not args.inplace and len(labels)>0:
             suffix = osp.splitext(full_path)[1][1:]
             save_img_path = wmlu.change_suffix(ann_path,suffix)
             wmlu.try_link(full_path,save_img_path)

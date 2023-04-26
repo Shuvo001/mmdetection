@@ -216,15 +216,16 @@ def main():
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
 
-    save_path = args.save_data_dir
-    if save_path is None:
-        save_path = osp.join(work_dir,"tmp","eval_on_images")
-    save_path += "1"
 
     test_data_dir = args.test_data_dir
 
     if test_data_dir is None:
         test_data_dir = model.cfg.data.val.data_dirs
+
+    save_path = args.save_data_dir
+    if save_path is None:
+        save_path = osp.join(work_dir,"tmp","eval_on_"+wmlu.base_name(test_data_dir))
+    save_path += "1"
     
     print(f"test_data_dir: {test_data_dir}")
 
