@@ -5,7 +5,7 @@ import torch
 from ..builder import DETECTORS, build_backbone, build_head, build_neck,build_second_stage_hook, build_drop_blocks
 from .base import BaseDetector
 import numpy as np
-from wtorch.utils import unnormalize, get_tensor_info
+from wtorch.utils import unnormalize, get_tensor_info,simple_model_device
 import wtorch.bboxes as wtb
 from mmdet.utils.datadef import *
 
@@ -31,7 +31,8 @@ class TwoStageDetector(BaseDetector):
                  init_cfg=None,
                  second_stage_hook=None,
                  drop_blocks=None,
-                 simple_norm_input=False):
+                 simple_norm_input=False,
+                 **kwargs):
         loss_scale = train_cfg.get("loss_scale",{}) if train_cfg is not None else {}
         super(TwoStageDetector, self).__init__(init_cfg,
                                                loss_scale=loss_scale)
@@ -162,7 +163,7 @@ class TwoStageDetector(BaseDetector):
                 tbboxes = wtb.correct_bbox(tbboxes,w=img.shape[3],h=img.shape[2])
                 tareas = wtb.area(tbboxes)
                 if torch.any(tareas<3):
-                    print(f"ERROR gt bboxes size: {torch.min(tareas).item()}")
+                    print(f"ERROR: gt bboxes area too small: {torch.min(tareas).item()}")
 
         if self.drop_blocks is not None:
             assert len(x) == len(self.drop_blocks),f"error drop blocks size and feature map size {len(self.drop_blocks)} vs {len(x)}"

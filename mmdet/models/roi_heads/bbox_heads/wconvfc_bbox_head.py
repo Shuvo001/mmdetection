@@ -33,6 +33,7 @@ class WConvFCBBoxHead(BBoxHead):
                  num_reg_fcs=0,
                  conv_out_channels=256,
                  fc_out_channels=1024,
+                 fc_norm=True,
                  conv_cfg=None,
                  norm_cfg=None,
                  init_cfg=None,
@@ -60,6 +61,10 @@ class WConvFCBBoxHead(BBoxHead):
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
+        if fc_norm:
+            self.fc_norm_cfg = norm_cfg
+        else:
+            self.fc_norm_cfg = None
 
         # add shared convs and fcs
         self.shared_convs, self.shared_fcs, last_layer_dim = \
@@ -162,7 +167,7 @@ class WConvFCBBoxHead(BBoxHead):
                     last_layer_dim if i == 0 else self.fc_out_channels)
                 branch_fcs.append(
                     FCModule(fc_in_channels, self.fc_out_channels,
-                    norm_cfg=self.norm_cfg,
+                    norm_cfg=self.fc_norm_cfg,
                     act_cfg=self.act_cfg)
                     )
             last_layer_dim = self.fc_out_channels

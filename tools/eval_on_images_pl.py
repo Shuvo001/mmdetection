@@ -336,7 +336,7 @@ def main():
         metrics(**kwargs)
         pyresults.append(copy.deepcopy(kwargs))
         
-        if i%500 == 99:
+        if i%1000 == 99:
             metrics.show()
     
     print(f"Image save path: {save_path}, total process {len(dataset)}")

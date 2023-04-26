@@ -17,3 +17,4 @@ from .trident_resnet import TridentResNet
 from .wresnet import WResNet
 from .wconvnext import WConvNeXt
 from .wcsp_darknet import WCSPDarknet
+from .wresnest import WResNeSt

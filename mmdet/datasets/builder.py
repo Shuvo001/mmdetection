@@ -11,6 +11,7 @@ from mmcv.parallel import collate
 from mmcv.runner import get_dist_info
 from mmcv.utils import TORCH_VERSION, Registry, build_from_cfg, digit_version
 from torch.utils.data import DataLoader
+from .resample_dataset import WResampleDataset
 
 from .samplers import (ClassAwareSampler, DistributedGroupSampler,
                        DistributedSampler, GroupSampler, InfiniteBatchSampler,
@@ -61,6 +62,13 @@ def build_dataset(cfg, default_args=None):
                                    MultiImageMixDataset, RepeatDataset)
     if isinstance(cfg, (list, tuple)):
         dataset = ConcatDataset([build_dataset(c, default_args) for c in cfg])
+    elif cfg['type'] == "WResampleDataset":
+        inner_dataset = build_dataset(cfg['dataset'])
+        classes = cfg['dataset']['classes']
+        data_resample_parameters = cfg['data_resample_parameters']
+        return WResampleDataset(dataset=inner_dataset,
+                                classes=classes,
+                                data_resample_parameters=data_resample_parameters)
     elif cfg['type'] == 'ConcatDataset':
         dataset = ConcatDataset(
             [build_dataset(c, default_args) for c in cfg['datasets']],

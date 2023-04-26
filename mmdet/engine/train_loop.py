@@ -365,6 +365,7 @@ class SimpleTrainer(BaseTrainer):
                 print(f"ERROR: error load from value {cfg.load_from}")
 
     def load_checkpoint_from_one_file(self,model,path):
+        path = get_weight_path(path)
         if osp.exists(path):
             print(f"Load from {path}")
             data = torch.load(path)

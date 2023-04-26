@@ -1,3 +1,4 @@
+#损失给于不同的缩放
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'

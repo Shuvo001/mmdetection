@@ -1,4 +1,3 @@
-# Copyright (c) OpenMMLab. All rights reserved.
 import os.path as osp
 from collections import OrderedDict
 import copy
@@ -16,6 +15,8 @@ import pickle
 import os
 import sys
 import time
+from itertools import count
+from wtorch.dataset_toolkit import DataResample
 
 class WCustomDataset(Dataset):
     """Custom dataset for detection.
@@ -143,7 +144,7 @@ class WCustomDataset(Dataset):
 
         self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
         self.cache_processed_data = cache_processed_data
-
+    
     def get_local_cache_file_path(self,ann_file):
         cache_name = self.name+f"_{len(self._inner_dataset)}.pk"
         if osp.isfile(ann_file):

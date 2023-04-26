@@ -35,6 +35,7 @@ class WConvFCSBBoxHead(BBoxHead):
                  act_cfg=dict(type='ReLU'),
                  avg_pool_channels=1024,
                  with_avg_pool=True,
+                 fc_norm=True,
                  *args,
                  **kwargs):
         super().__init__(with_avg_pool=with_avg_pool,
@@ -47,8 +48,12 @@ class WConvFCSBBoxHead(BBoxHead):
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
         self.avg_pool_channels = avg_pool_channels
-
         self.shared_out_channels = self.in_channels
+
+        if fc_norm:
+            self.fc_norm_cfg = norm_cfg
+        else:
+            self.fc_norm_cfg = None
 
         # add cls specific branch
         self.cls_fcs, self.cls_convs,self.cls_last_dim = \
@@ -148,7 +153,7 @@ class WConvFCSBBoxHead(BBoxHead):
                 last_layer_dim if i == 0 else self.fc_out_channels)
             branch_fcs.append(
                 FCModule(fc_in_channels, self.fc_out_channels,
-                norm_cfg=self.norm_cfg,
+                norm_cfg=self.fc_norm_cfg,
                 act_cfg=self.act_cfg)
                 )
         last_layer_dim = self.fc_out_channels

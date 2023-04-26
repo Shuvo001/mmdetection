@@ -5,8 +5,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.cnn import (ConvModule, DepthwiseSeparableConvModule,
+from mmcv.cnn import (DepthwiseSeparableConvModule,
                       bias_init_with_prob)
+from wtorch.conv_module import ConvModule
 from mmcv.ops.nms import batched_nms
 from mmcv.runner import force_fp32
 from mmdet.utils.datadef import *
