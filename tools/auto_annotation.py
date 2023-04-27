@@ -213,61 +213,64 @@ def main():
     save_size = input_size
 
     for i,full_path in enumerate(files):
-        print(f"process {i}/{len(files)}")
-        #
-        #if 1 not in gt_labels:
-            #continue
-        '''
-        contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        print(contours)
-        tmp_img = wmli.imread(full_path)
-        cv2.drawContours(tmp_img,contours,-1,(255,0,0),2)
-        wmli.imwrite("a.jpg",tmp_img)'''
-        #
-        #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
-            #continue
-        #if osp.basename(full_path) not in imgs17:
-            #continue
-        img = wmli.imread(full_path)
-        bboxes,labels,scores,det_masks,result = detector(model,
-                                                         img,
-                                                         input_size=input_size,score_thr=args.score_thr)
-        name = wmlu.base_name(full_path)
-        if args.inplace:
-            ann_save_dir = osp.dirname(full_path)
-        else:
-            ann_save_dir = save_path
-
-        ann_path = save_annotation(ann_save_dir,
-                                   full_path,img.shape,bboxes,labels,scores,det_masks,classes,
-                                   save_scores=args.save_scores)
-
-        if not args.inplace and len(labels)>0:
-            suffix = osp.splitext(full_path)[1][1:]
-            save_img_path = wmlu.change_suffix(ann_path,suffix)
-            wmlu.try_link(full_path,save_img_path)
-
-        if args.save_results:
-            img_save_path = os.path.join(save_path,name+".jpg")
-
-            if save_size is not None:
-                wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
-            else:
-                shutil.copy(full_path,img_save_path)
-    
-            img_save_path = os.path.join(save_path,name+"_pred.jpg")
+        try:
+            print(f"process {i}/{len(files)}")
+            #
+            #if 1 not in gt_labels:
+                #continue
+            '''
+            contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            print(contours)
+            tmp_img = wmli.imread(full_path)
+            cv2.drawContours(tmp_img,contours,-1,(255,0,0),2)
+            wmli.imwrite("a.jpg",tmp_img)'''
+            #
+            #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
+                #continue
+            #if osp.basename(full_path) not in imgs17:
+                #continue
             img = wmli.imread(full_path)
-            if save_size is not None:
-                img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
-                t_bboxes = bboxes*r
+            bboxes,labels,scores,det_masks,result = detector(model,
+                                                             img,
+                                                             input_size=input_size,score_thr=args.score_thr)
+            name = wmlu.base_name(full_path)
+            if args.inplace:
+                ann_save_dir = osp.dirname(full_path)
             else:
-                t_bboxes = bboxes
-            img = odv.draw_bboxes_xy(img,
-                                     scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
-                                     show_text=True)
-            if det_masks is not None:
-                img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
-            wmli.imwrite(img_save_path,img)
+                ann_save_dir = save_path
+    
+            ann_path = save_annotation(ann_save_dir,
+                                       full_path,img.shape,bboxes,labels,scores,det_masks,classes,
+                                       save_scores=args.save_scores)
+    
+            if not args.inplace and len(labels)>0:
+                suffix = osp.splitext(full_path)[1][1:]
+                save_img_path = wmlu.change_suffix(ann_path,suffix)
+                wmlu.try_link(full_path,save_img_path)
+    
+            if args.save_results:
+                img_save_path = os.path.join(save_path,name+".jpg")
+    
+                if save_size is not None:
+                    wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
+                else:
+                    shutil.copy(full_path,img_save_path)
+        
+                img_save_path = os.path.join(save_path,name+"_pred.jpg")
+                img = wmli.imread(full_path)
+                if save_size is not None:
+                    img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
+                    t_bboxes = bboxes*r
+                else:
+                    t_bboxes = bboxes
+                img = odv.draw_bboxes_xy(img,
+                                         scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
+                                         show_text=True)
+                if det_masks is not None:
+                    img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
+                wmli.imwrite(img_save_path,img)
+        except:
+            pass
 
 
     

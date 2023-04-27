@@ -8,6 +8,7 @@ from ..builder import BBOX_ASSIGNERS
 from ..iou_calculators import bbox_overlaps
 from .assign_result import AssignResult
 from .base_assigner import BaseAssigner
+import object_detection2.bboxes as odb
 
 
 @BBOX_ASSIGNERS.register_module()
@@ -36,12 +37,14 @@ class SimOTAAssigner(BaseAssigner):
                  center_radius=2.5,
                  candidate_topk=10,
                  iou_weight=3.0,
-                 cls_weight=1.0):
-        print(f"SimOTAAssigner")
+                 cls_weight=1.0,
+                 min_bbox_size=0):
+        print(f"SimOTAAssigner, min_bbox_size={min_bbox_size}")
         self.center_radius = center_radius
         self.candidate_topk = candidate_topk
         self.iou_weight = iou_weight
         self.cls_weight = cls_weight
+        self.min_bbox_size = min_bbox_size
 
     def assign(self,
                pred_scores,
@@ -186,7 +189,14 @@ class SimOTAAssigner(BaseAssigner):
             return AssignResult(
                 num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
-        pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
+        if self.min_bbox_size>0:
+            mvalid_decoded_bbox = odb.torch_clamp_bboxes(valid_decoded_bbox,self.min_bbox_size)
+            mgt_bboxes = odb.torch_clamp_bboxes(gt_bboxes,min_size=self.min_bbox_size)
+        else:
+            mvalid_decoded_bbox = valid_decoded_bbox
+            mgt_bboxes = gt_bboxes
+
+        pairwise_ious = bbox_overlaps(mvalid_decoded_bbox, mgt_bboxes) #[num_valid,num_gt]
         iou_cost = -torch.log(pairwise_ious + eps)
 
         gt_onehot_label = (
@@ -195,7 +205,7 @@ class SimOTAAssigner(BaseAssigner):
                           num_valid, 1, 1)) #(num_valid,num_gt,C)
         gt_onehot_label = gt_onehot_label.to(valid_pred_scores.device)
 
-        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1).to(dtype=torch.float32)
+        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1).to(dtype=torch.float32) #[num_valid,num_gt,C]
         if torch.min(valid_pred_scores)<0 or torch.max(valid_pred_scores)>1 or not torch.all(torch.isfinite(valid_pred_scores)):
             print(f"ERROR: sim ota assigner ",torch.min(valid_pred_scores),torch.max(valid_pred_scores),torch.all(torch.isfinite(valid_pred_scores)))
             valid_pred_scores = torch.clamp(valid_pred_scores,min=1e-6,max=1.0)
@@ -234,29 +244,33 @@ class SimOTAAssigner(BaseAssigner):
 
     def get_in_gt_and_in_center_info(self, priors, gt_bboxes):
         num_gt = gt_bboxes.size(0)
-
-        repeated_x = priors[:, 0].unsqueeze(1).repeat(1, num_gt)
+        #priors [cx,cy,w,h], gtbboxes [x0,y0,x1,y1]
+        repeated_x = priors[:, 0].unsqueeze(1).repeat(1, num_gt) #[num_bboxes]->[num_bboxes,num_gt]
         repeated_y = priors[:, 1].unsqueeze(1).repeat(1, num_gt)
         repeated_stride_x = priors[:, 2].unsqueeze(1).repeat(1, num_gt)
         repeated_stride_y = priors[:, 3].unsqueeze(1).repeat(1, num_gt)
 
+        if self.min_bbox_size>0:
+            mgt_bboxes = odb.torch_clamp_bboxes(gt_bboxes,self.min_bbox_size)
+        else:
+            mgt_bboxes = gt_bboxes
         # is prior centers in gt bboxes, shape: [n_prior, n_gt]
-        l_ = repeated_x - gt_bboxes[:, 0]
-        t_ = repeated_y - gt_bboxes[:, 1]
-        r_ = gt_bboxes[:, 2] - repeated_x
-        b_ = gt_bboxes[:, 3] - repeated_y
+        l_ = repeated_x - torch.unsqueeze(mgt_bboxes[:, 0],0)
+        t_ = repeated_y - torch.unsqueeze(mgt_bboxes[:, 1],0)
+        r_ = torch.unsqueeze(mgt_bboxes[:, 2],0) - repeated_x
+        b_ = torch.unsqueeze(mgt_bboxes[:, 3],0) - repeated_y
 
-        deltas = torch.stack([l_, t_, r_, b_], dim=1)
-        is_in_gts = deltas.min(dim=1).values > 0
-        is_in_gts_all = is_in_gts.sum(dim=1) > 0 #是否至少在一个gt bboxes内
+        deltas = torch.stack([l_, t_, r_, b_], dim=1) #[num_bboxes,4,num_gt]
+        is_in_gts = deltas.min(dim=1).values > 0 #[num_bboxes,num_gt]
+        is_in_gts_all = is_in_gts.sum(dim=1) > 0 #[num_bboxes] 是否至少在一个gt bboxes内
 
         # is prior centers in gt centers
-        gt_cxs = (gt_bboxes[:, 0] + gt_bboxes[:, 2]) / 2.0
-        gt_cys = (gt_bboxes[:, 1] + gt_bboxes[:, 3]) / 2.0
-        ct_box_l = gt_cxs - self.center_radius * repeated_stride_x
-        ct_box_t = gt_cys - self.center_radius * repeated_stride_y
-        ct_box_r = gt_cxs + self.center_radius * repeated_stride_x
-        ct_box_b = gt_cys + self.center_radius * repeated_stride_y
+        gt_cxs = (gt_bboxes[:, 0] + gt_bboxes[:, 2]) / 2.0 #[num_gt]
+        gt_cys = (gt_bboxes[:, 1] + gt_bboxes[:, 3]) / 2.0 #[num_gt]
+        ct_box_l = torch.unsqueeze(gt_cxs,0) - self.center_radius * repeated_stride_x
+        ct_box_t = torch.unsqueeze(gt_cys,0) - self.center_radius * repeated_stride_y
+        ct_box_r = torch.unsqueeze(gt_cxs,0) + self.center_radius * repeated_stride_x
+        ct_box_b = torch.unsqueeze(gt_cys,0) + self.center_radius * repeated_stride_y
 
         cl_ = repeated_x - ct_box_l
         ct_ = repeated_y - ct_box_t
@@ -267,7 +281,7 @@ class SimOTAAssigner(BaseAssigner):
         is_in_cts = ct_deltas.min(dim=1).values > 0
         is_in_cts_all = is_in_cts.sum(dim=1) > 0 #是否至少在一个gt bboxes center内
 
-        # in boxes or in centers, shape: [num_priors]
+        # in gt boxes or in gt bboxes centers, shape: [num_priors]
         is_in_gts_or_centers = is_in_gts_all | is_in_cts_all
 
         # both in boxes and centers, shape: [num_fg, num_gt]
@@ -283,6 +297,7 @@ class SimOTAAssigner(BaseAssigner):
         topk_ious, _ = torch.topk(pairwise_ious, candidate_topk, dim=0)
         # calculate dynamic k for each gt
         dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
+        print(dynamic_ks)
         for gt_idx in range(num_gt):
             _, pos_idx = torch.topk(
                 cost[:, gt_idx], k=dynamic_ks[gt_idx], largest=False)

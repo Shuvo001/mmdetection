@@ -28,7 +28,7 @@ from mmdet.datasets.pipelines import Compose
 
 
 class SimpleTrainer(BaseTrainer):
-    MAX_ERROR_STEP_NR = 500
+    MAX_ERROR_STEP_NR = 100
     def __init__(self,cfg,model,dataset,rank,max_iters,world_size,use_fp16=False,begin_iter=1,meta={'exp_name':"mmdet"}):
         super().__init__(cfg)
         self.error_step_nr = 0
@@ -169,16 +169,16 @@ class SimpleTrainer(BaseTrainer):
                 self.log_after_iter()
     
                 self.iter += 1
-                self.error_step_nr = 0
+                self.error_step_nr = max(self.error_step_nr-2,0)
             except Exception as e:
-                print(f"Train error iter={self.iter}, {e}")
+                print(f"Train error iter={self.iter}, error nr = {self.error_step_nr}, {e}")
                 traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
                 self.error_step_nr += 1
                 continue
             except:
-                print(f"Train error iter={self.iter}")
+                print(f"Train error iter={self.iter}, error nr = {self.error_step_nr}.")
                 traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()

@@ -18,3 +18,4 @@ from .wresnet import WResNet
 from .wconvnext import WConvNeXt
 from .wcsp_darknet import WCSPDarknet
 from .wresnest import WResNeSt
+from .wcsp_resnet import WCSPResNet
