@@ -55,6 +55,7 @@ class PAFPN(FPN):
                  conv_cfg=None,
                  norm_cfg=None,
                  act_cfg=None,
+                 short_cut=False,
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform')):
         super(PAFPN, self).__init__(
@@ -70,6 +71,7 @@ class PAFPN(FPN):
             norm_cfg,
             act_cfg,
             init_cfg=init_cfg)
+        self.short_cut = short_cut
         # add extra bottom up pathway
         self.downsample_convs = nn.ModuleList()
         self.pafpn_convs = nn.ModuleList()
@@ -106,6 +108,8 @@ class PAFPN(FPN):
             lateral_conv(inputs[i + self.start_level])
             for i, lateral_conv in enumerate(self.lateral_convs)
         ]
+        if self.short_cut:
+            mem_laterals = list(laterals)
 
         # build top-down path
         used_backbone_levels = len(laterals)
@@ -130,6 +134,10 @@ class PAFPN(FPN):
             self.pafpn_convs[i - 1](inter_outs[i])
             for i in range(1, used_backbone_levels)
         ])
+
+        if self.short_cut:
+            for i in range(used_backbone_levels):
+                outs[i] = outs[i]+mem_laterals[i]
 
         # part 3: add extra levels
         if self.num_outs > len(outs):

@@ -1,4 +1,4 @@
-#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, 使用pafpn
+#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, 使用pafpn, 使用新的assigner参数
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
@@ -28,7 +28,6 @@ model = dict(
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
-        short_cut=True,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
@@ -94,7 +93,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -202,9 +201,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_test"
-#load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
-load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_pafpn/weights/checkpoint_50000.pth'
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_nassigner"
+load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

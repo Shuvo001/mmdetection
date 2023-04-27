@@ -297,7 +297,7 @@ class SimOTAAssigner(BaseAssigner):
         topk_ious, _ = torch.topk(pairwise_ious, candidate_topk, dim=0)
         # calculate dynamic k for each gt
         dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
-        print(dynamic_ks)
+        #print(dynamic_ks)
         for gt_idx in range(num_gt):
             _, pos_idx = torch.topk(
                 cost[:, gt_idx], k=dynamic_ks[gt_idx], largest=False)
