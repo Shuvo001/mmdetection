@@ -344,11 +344,12 @@ def main():
     results_save_path = osp.join(save_path,"results.pk")
     with open(results_save_path,"wb") as f:
         print(f"results save path {results_save_path}")
-        print(f"python object_detection_tools/metrics_tools.py {results_save_path} --classes_wise")
+        print(f"python object_detection_tools/metrics_tools.py {results_save_path} --metrics PrecisionAndRecall --classes_wise")
         pickle.dump(pyresults,f)
         
     metrics.show()
     print(classes)
+
 
 if __name__ == "__main__":
     main()

@@ -16,7 +16,6 @@ import os
 import sys
 import time
 from itertools import count
-from wtorch.dataset_toolkit import DataResample
 
 class WCustomDataset(Dataset):
     """Custom dataset for detection.
