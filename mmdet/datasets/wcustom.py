@@ -10,6 +10,7 @@ from mmdet.core import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
 import datasets_tools.statistics_tools as st
+from object_detection2.standard_names import *
 import wml_utils as wmlu
 import pickle
 import os
@@ -70,15 +71,18 @@ class WCustomDataset(Dataset):
                  filter_empty_gt=True,
                  cache_processed_data=False,
                  cache_data_items=True,
+                 cache_file=False,
                  name="dataset"):
         self.name = name
-        self.ann_file = ann_file
+        self.ann_file = osp.abspath(ann_file)
         self.data_root = data_root
         self.img_prefix = img_prefix
         self.seg_prefix = seg_prefix
         self.test_mode = test_mode
         self.filter_empty_gt = filter_empty_gt
         self.CLASSES = classes
+        self.cache_file = False
+        self.cache_processed_data = False
 
         # join paths if data_root is specified
         if self.data_root is not None:
@@ -105,17 +109,20 @@ class WCustomDataset(Dataset):
             self._set_group_flag()
 
 
-        if not cache_processed_data and pipeline2 is not None:
+        if (not cache_processed_data and not cache_file) and pipeline2 is not None:
             print(f"Auto merge pipeline and pipline2")
             pipeline = pipeline+pipeline2
             pipeline2 = None
         # processing pipeline
         self.pipeline = Compose(pipeline)
         self.pipeline2 = None
-
+        self.mmap_data = None
         self._data_cache = None
         self._processed_data_cache = None
-        if cache_processed_data:
+        self._cache_files = []
+        if cache_file:
+            self.make_cache_file()
+        elif cache_processed_data:
             cache_file_path = self.get_local_cache_file_path(self.ann_file)
             try:
                 if osp.exists(cache_file_path):
@@ -128,7 +135,6 @@ class WCustomDataset(Dataset):
             except Exception as e:
                 print(e)
                 self.apply_process_cache(cache_file_path)
-            
         elif cache_data_items:
             self._data_cache = []
             print("Cache data items")
@@ -143,6 +149,7 @@ class WCustomDataset(Dataset):
 
         self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
         self.cache_processed_data = cache_processed_data
+        self.cache_file = cache_file
     
     def get_local_cache_file_path(self,ann_file):
         cache_name = self.name+f"_{len(self._inner_dataset)}.pk"
@@ -262,9 +269,10 @@ class WCustomDataset(Dataset):
             dict: Training/test data (with annotation if `test_mode` is set \
                 True).
         """
+        if self.cache_file:
+            return self.read_cache_file(idx)
         if self.cache_processed_data:
             return copy.deepcopy(self._processed_data_cache[idx])
-
         if self.test_mode:
             return self.prepare_test_img(idx)
         while True:
@@ -273,7 +281,7 @@ class WCustomDataset(Dataset):
                 idx = self._rand_another(idx)
                 continue
             return data
-
+    
     def _ann_item(self,idx):
         if self._data_cache is not None:
             return self._data_cache[idx]
@@ -428,4 +436,51 @@ class WCustomDataset(Dataset):
                 for i, num in enumerate(proposal_nums):
                     eval_results[f'AR@{num}'] = ar[i]
         return eval_results
+
+    def make_cache_file(self):
+        cache_dir = "/dl_cache"
+        ann_base_name = wmlu.base_name(self.ann_file)
+        cache_dir = osp.join(cache_dir,ann_base_name,self.name)
+        self.cache_file = False #先设置为False以使用正常流程处理数据
+        self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
+        self._processed_data_cache = []
+        self._cache_files = []
+        print(f"Cache processed files, cache dir {cache_dir}")
+        sys.stdout.flush()
+        beg_t = time.time()
+        et = wmlu.EstimateTimeCost(total_nr=len(self._inner_dataset))
+        
+        new_make = 0
+        old_cache_file = 0
+        for i in range(len(self._inner_dataset)):
+            img_file = osp.abspath(self._inner_dataset[i][0])
+            sub_path = wmlu.get_relative_path(img_file,self.ann_file)
+            sub_path = osp.splitext(sub_path)[0]
+            save_path = osp.join(cache_dir,sub_path+".cache")
+            self._cache_files.append(save_path)
+            if osp.exists(save_path):
+                old_cache_file += 1
+                continue
+            dir_name = osp.dirname(save_path)
+            os.makedirs(dir_name,exist_ok=True)
+            results = copy.deepcopy(self.__getitem__(i))
+            with open(save_path,"wb") as f:
+                pickle.dump(results,f)
+            new_make += 1
+            if i%20 == 0:
+                et.set_process_nr(i+1)
+                sys.stdout.write(f"cache {i:05d}/{len(self._inner_dataset):05d}, {str(et)}   \r")
+                sys.stdout.flush()
+
+        print(f"Total cache {new_make} processed data item files, use {old_cache_file} old files, total {new_make+old_cache_file} {(time.time()-beg_t)/len(self._inner_dataset):.3f} sec/item.")
+        print(f"Pipeline for cache is {self.pipeline}")
+        print(f"Pipeline not cache is {self.pipeline2}")
+        sys.stdout.flush()
+    
+    def read_cache_file(self,idx):
+        file_path = self._cache_files[idx]
+        with open(file_path,"rb") as f:
+            return pickle.load(f)
+
+
 

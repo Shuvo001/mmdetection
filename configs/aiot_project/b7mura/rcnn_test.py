@@ -94,7 +94,8 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
+#data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/try_s0'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -155,7 +156,8 @@ train_dataset = dict(
             dict(type="WDecodeImg",fmt='gray'),
 
         ],
-        cache_processed_data=True,
+        #cache_processed_data=True,
+        cache_file =True,
         name="b7mura_resample",
     ),
     pipeline=train_pipeline)
@@ -193,7 +195,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=500,
+    tb_interval=2,
     img_nr=3)
 checkpoint_config = dict(
     interval=1000,

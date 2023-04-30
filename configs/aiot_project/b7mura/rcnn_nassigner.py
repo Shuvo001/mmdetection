@@ -154,7 +154,8 @@ train_dataset = dict(
             dict(type="WDecodeImg",fmt='gray'),
 
         ],
-        cache_processed_data=True,
+        #cache_processed_data=True,
+        cache_file = True,
         name="b7mura_resample",
     ),
     pipeline=train_pipeline)

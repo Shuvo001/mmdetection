@@ -77,7 +77,7 @@ model = dict(
                 ),
         train_cfg=dict(
             rpn=dict(
-            assigner=dict(type='SimOTAAssigner', center_radius=2.5,,min_bbox_size=50),
+            assigner=dict(type='SimOTAAssigner', center_radius=2.5,min_bbox_size=50),
             ),
             rcnn=dict(
                 sampler=dict(
