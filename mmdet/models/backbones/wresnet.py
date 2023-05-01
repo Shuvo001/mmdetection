@@ -633,7 +633,7 @@ class WResNet(BaseModule):
                             override=dict(name='norm3'))
         else:
             raise TypeError('pretrained must be a str or None')
-
+        self.outs = {}
         self.deep_stem_mode = deep_stem_mode
         self.depth = depth
         if stem_channels is None:
@@ -832,6 +832,7 @@ class WResNet(BaseModule):
 
     def forward(self, x):
         """Forward function."""
+        self.outs = {}
         if self.deep_stem:
             x = self.stem(x)
         else:
@@ -841,6 +842,7 @@ class WResNet(BaseModule):
                 print(f"ERROR:{x.shape}, {self.conv1.weight.shape}, {self.conv1.weight.device}, {x.device}, {wtd.get_rank()}")
             x = self.norm1(x)
             x = self.relu(x)
+        self.outs['stem'] = x
         x = self.maxpool(x)
         outs = []
         for i, layer_name in enumerate(self.res_layers):
@@ -848,6 +850,8 @@ class WResNet(BaseModule):
             x = res_layer(x)
             if i in self.out_indices:
                 outs.append(x)
+            else:
+                self.outs[i] = x
         return tuple(outs)
 
     def train(self, mode=True):

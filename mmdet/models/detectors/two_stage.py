@@ -188,7 +188,7 @@ class TwoStageDetector(BaseDetector):
             proposal_list = proposals
 
         if self.second_stage_hook is not None:
-            x = self.second_stage_hook(x)
+            x = self.second_stage_hook(x,backbone=self.backbone)
         
         _proposal_list = []
         for pbboxes,gtb in zip(proposal_list,gt_bboxes): #默认将gtbboxes加入proposal
@@ -237,7 +237,7 @@ class TwoStageDetector(BaseDetector):
             proposal_list = proposals
         
         if self.second_stage_hook is not None:
-            x = self.second_stage_hook(x)
+            x = self.second_stage_hook(x,backbone=self.backbone)
 
         results = self.roi_head.simple_test(
             x, proposal_list, img_metas)

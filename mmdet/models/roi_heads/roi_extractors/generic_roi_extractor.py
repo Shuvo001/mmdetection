@@ -1,9 +1,10 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from mmcv.cnn.bricks import build_plugin_layer
 from mmcv.runner import force_fp32
-
+from collections import Iterable
 from mmdet.models.builder import ROI_EXTRACTORS
 from .base_roi_extractor import BaseRoIExtractor
+import torch
 
 
 @ROI_EXTRACTORS.register_module()
@@ -47,13 +48,19 @@ class GenericRoIExtractor(BaseRoIExtractor):
             return self.roi_layers[0](feats[0], rois)
 
         out_size = self.roi_layers[0].output_size
+        if not isinstance(out_size,Iterable):
+            out_size = (out_size,out_size)
         num_levels = len(feats)
-        roi_feats = feats[0].new_zeros(
-            rois.size(0), self.out_channels, *out_size)
+        if self.aggregation == 'sum':
+            roi_feats = feats[0].new_zeros(
+                rois.size(0), self.out_channels, *out_size)
+        else:
+            roi_feats = []
 
         # some times rois is an empty tensor
-        if roi_feats.shape[0] == 0:
-            return roi_feats
+        if rois.size(0) == 0:
+            return feats[0].new_zeros(
+                rois.size(0), self.out_channels, *out_size)
 
         if roi_scale_factor is not None:
             rois = self.roi_rescale(rois, roi_scale_factor)
@@ -71,12 +78,12 @@ class GenericRoIExtractor(BaseRoIExtractor):
                 roi_feats += roi_feats_t
             else:
                 # and concat them along channel dimension
-                roi_feats[:, start_channels:end_channels] = roi_feats_t
+                roi_feats.append(roi_feats_t)
             # update channels starting position
             start_channels = end_channels
         # check if concat channels match at the end
         if self.aggregation == 'concat':
-            assert start_channels == self.out_channels
+            roi_feats = torch.cat(roi_feats,dim=1)
 
         if self.with_post:
             # apply post-processing before return the result

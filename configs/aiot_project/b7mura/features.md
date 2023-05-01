@@ -6,7 +6,15 @@
 |配置|W PAFPN|WO PAFPN(FPN)|
 |---|---|---|
 |rcnn_pafpn.py/rcnn_yoloxv2_snun.py|0.640|0.620|
+|rcnn_scale_pafpn.py/rcnn_yoloxv2_scale.py|0.635|0.634|
 
+
+###PAFPN short cut
+
+|配置|W PAFPN|W PAFPN(short cut=True)|
+|---|---|---|
+|rcnn_pafpn.py/rcnn_ps.py|0.640/0.616|0.611|
+|rcnn_nassigner.py/rcnn_nas.py|0.614|0.623|
 
 ###input normal
 
@@ -48,11 +56,16 @@ config:
 
 |配置|MultiBranchStemS12X|MultiBranchStemSA12X|
 |---|---|---|
-|config|0.598|0.605/0.582|
+|config0|0.598|0.605/0.582|
+|config|0.624|0.634|
 
-config:
+config0:
 - rcnn_yoloxv2_huge.py
 - rcnn_yoloxv2_huges_bn.py/rcnn_yoloxv2_hugesa.py
+
+config1:
+- rcnn_scales.py
+- rcnn_yoloxv2_scale.py
 
 ###Head FC norm
 
@@ -141,3 +154,18 @@ config:
 config:
 - rcnn_yoloxv2_snun.py
 - rcnn_s50.py
+
+|配置|R50|CSPResnet50|
+|---|---|---|
+|config|0.640/0.616|0.619|
+
+config:
+- rcnn_pafpn.py
+- rcnn_cr.py
+
+###SimOTA vs SimOTA(min bbox size=50)
+
+|配置|SimOTA|SimOTA(ms=50)|
+|---|---|---|
+|rcnn_yoloxv2_scale.py/rcnn_scale_na.py|0.634|0.641|
+|rcnn_pafpn.py/rcnn_nassigner.py|0.640/0.616|0.614|

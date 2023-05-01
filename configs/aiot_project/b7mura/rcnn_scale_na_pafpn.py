@@ -1,4 +1,4 @@
-#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, 使用pafpn
+#rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
@@ -28,7 +28,6 @@ model = dict(
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
-        short_cut=True,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
@@ -39,18 +38,14 @@ model = dict(
     roi_head=dict(
         type='StandardRoIHead',
         bbox_roi_extractor=dict(
-            type='GenericRoIExtractor',
+            type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
-            out_channels=320,
-            featmap_strides=[12,24],
-            aggregation="concat",
-            ),
+            out_channels=256,
+            featmap_strides=[24]),
         bbox_head=dict(
             type='WShared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
-            fc_norm=False,
-            num_shared_convs=1,
-            in_channels=320,
+            in_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
             num_classes=len(classes),
@@ -64,8 +59,7 @@ model = dict(
             loss_bbox=dict(_delete_=True,type='CIoULoss', loss_weight=1.0),
             ),
         ),
-        simple_norm_input=True,
-        second_stage_hook=dict(type='FusionFPNHook',in_channels=256,return_stem=True),
+        second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
         drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
@@ -97,8 +91,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-#data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/try_s0'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_su1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -160,7 +153,7 @@ train_dataset = dict(
 
         ],
         #cache_processed_data=True,
-        cache_file =True,
+        cache_file=True,
         name="b7mura_resample",
     ),
     pipeline=train_pipeline)
@@ -190,6 +183,7 @@ data = dict(
 evaluation = dict(metric=['bbox', 'segm'])
 optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
+bn_momentum = 0.03
 # learning policy
 lr_config = dict(
     policy='WarmupCosLR',
@@ -198,8 +192,7 @@ lr_config = dict(
 
 log_config = dict(
     print_interval=10,
-    tb_interval=2,
-    img_nr=3)
+    tb_interval=500)
 checkpoint_config = dict(
     interval=1000,
 )
@@ -207,9 +200,8 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_test"
-#load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
-load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_pafpn/weights/checkpoint_50000.pth'
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_na_pafpn"
+load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

@@ -252,7 +252,7 @@ class WShared4Conv2FCBBoxHead(WConvFCBBoxHead):
 
     def __init__(self, fc_out_channels=1024, conv_out_channels=256,*args, **kwargs):
         super().__init__(
-            num_shared_convs=0,
+            num_shared_convs=kwargs.pop('num_shared_convs',0),
             num_shared_fcs=0,
             num_cls_convs=0,
             num_cls_fcs=2,
