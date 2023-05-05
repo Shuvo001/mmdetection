@@ -199,6 +199,8 @@ lr_config = dict(
 log_config = dict(
     print_interval=10,
     tb_interval=2,
+    log_imgs=False,
+    log_gt_imgs=False,
     img_nr=3)
 checkpoint_config = dict(
     interval=1000,
@@ -206,6 +208,7 @@ checkpoint_config = dict(
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
+    dict(type='WTrainAllParameters',step=20,lr=1e-4),
 ]
 work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_test"
 #load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'

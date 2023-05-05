@@ -25,7 +25,7 @@ def build_lr_scheduler(name,kwargs):
 def build_optimizer(cfg, model):
     args = cfg.optimizer
     name = args.pop("type")
-    bn_weights,weights,biases = simple_split_parameters(model)
+    bn_weights,weights,biases,unbn_weights,unweights,unbiases = simple_split_parameters(model,return_unused=True)
     optimizer = OPTIMIZER_REGISTER.get(name)(
             weights,
             **args
@@ -34,4 +34,4 @@ def build_optimizer(cfg, model):
         optimizer.add_param_group({"params": bn_weights,"weight_decay":0.0})
     if len(biases)>0:
         optimizer.add_param_group({"params": biases,"weight_decay":0.0})
-    return optimizer
+    return optimizer,unbn_weights,unweights,unbiases

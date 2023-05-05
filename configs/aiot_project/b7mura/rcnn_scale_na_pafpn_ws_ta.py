@@ -1,9 +1,12 @@
-#rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset, multi scale rcnn
+#rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset
+#使用train all hook
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
 ]
 max_iters=50000
+conv_cfg = dict(type='ConvWS')
+norm_cfg = dict(type='GN', num_groups=32)
 # dataset settings
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 model = dict(
@@ -27,6 +30,7 @@ model = dict(
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
         num_outs=5,
+        conv_cfg=conv_cfg,
         norm_cfg=dict(type='GN',num_groups=32),
         ),
     rpn_head=dict(
@@ -34,23 +38,23 @@ model = dict(
         in_channels=256,
         strides=[24,48,96,192,384],
         feat_channels=256,
+        conv_cfg=conv_cfg,
+        norm_cfg=norm_cfg,
         loss_bbox={'type': 'CIoULoss','eps': 1e-16, 'reduction': 'sum', 'loss_weight': 5.0}),
     roi_head=dict(
         type='StandardRoIHead',
         bbox_roi_extractor=dict(
-            type='GenericRoIExtractor',
+            type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
-            out_channels=320,
-            featmap_strides=[12,24],
-            aggregation="concat",
-            ),
+            out_channels=256,
+            featmap_strides=[24]),
         bbox_head=dict(
             type='WShared4Conv2FCBBoxHead',
-            norm_cfg=dict(type='GN',num_groups=32),
-            in_channels=320,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            in_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
-            num_shared_convs=1,
             num_classes=len(classes),
             bbox_coder=dict(
                 type='DeltaXYWHBBoxCoder',
@@ -62,7 +66,7 @@ model = dict(
             loss_bbox=dict(_delete_=True,type='CIoULoss', loss_weight=1.0),
             ),
         ),
-        second_stage_hook=dict(type='FusionFPNHook',in_channels=256,return_stem=True),
+        second_stage_hook=dict(type='FusionFPNHook',in_channels=256),
         drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
         test_cfg=dict(
@@ -94,7 +98,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr1'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_su1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -202,9 +206,11 @@ checkpoint_config = dict(
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
+    dict(type='WTrainAllParameters',step=20000,lr=1e-4),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_na_pafpn_ws_ta"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
+#load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_na_pafpn/weights/checkpoint_50000.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

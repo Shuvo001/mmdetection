@@ -1,4 +1,5 @@
 #rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset, multi scale rcnn
+#合适train all hook
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
@@ -202,8 +203,9 @@ checkpoint_config = dict(
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
+    dict(type='WTrainAllParameters',step=20000,lr=1e-4),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms_ta"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

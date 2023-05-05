@@ -697,7 +697,6 @@ class WResNet(BaseModule):
             self.add_module(layer_name, res_layer)
             self.res_layers.append(layer_name)
 
-        self._freeze_stages()
 
         self.feat_dim = self.block.expansion * base_channels * 2**(
             len(self.stage_blocks) - 1)
@@ -812,23 +811,6 @@ class WResNet(BaseModule):
             self.relu = wnn.get_activation(activation_fn,inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-    def _freeze_stages(self):
-        if self.frozen_stages >= 0:
-            if self.deep_stem:
-                self.stem.eval()
-                for param in self.stem.parameters():
-                    param.requires_grad = False
-            else:
-                self.norm1.eval()
-                for m in [self.conv1, self.norm1]:
-                    for param in m.parameters():
-                        param.requires_grad = False
-
-        for i in range(1, self.frozen_stages + 1):
-            m = getattr(self, f'layer{i}')
-            m.eval()
-            for param in m.parameters():
-                param.requires_grad = False
 
     def forward(self, x):
         """Forward function."""
@@ -858,10 +840,3 @@ class WResNet(BaseModule):
         """Convert the model into training mode while keep normalization layer
         freezed."""
         super(WResNet, self).train(mode)
-        self._freeze_stages()
-        if mode and self.norm_eval:
-            for m in self.modules():
-                # trick: eval have effect on BatchNorm only
-                if isinstance(m, _BatchNorm):
-                    m.eval()
-

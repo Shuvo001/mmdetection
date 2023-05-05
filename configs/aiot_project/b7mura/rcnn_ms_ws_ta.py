@@ -1,9 +1,12 @@
 #rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset, multi scale rcnn
+#合适train all hook
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
 ]
 max_iters=50000
+conv_cfg = dict(type='ConvWS')
+norm_cfg = dict(type='GN', num_groups=32)
 # dataset settings
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 model = dict(
@@ -28,12 +31,15 @@ model = dict(
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
+        conv_cfg=conv_cfg,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
         in_channels=256,
         strides=[24,48,96,192,384],
         feat_channels=256,
+        conv_cfg=conv_cfg,
+        norm_cfg=norm_cfg,
         loss_bbox={'type': 'CIoULoss','eps': 1e-16, 'reduction': 'sum', 'loss_weight': 5.0}),
     roi_head=dict(
         type='StandardRoIHead',
@@ -47,6 +53,7 @@ model = dict(
         bbox_head=dict(
             type='WShared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
+            conv_cfg=conv_cfg,
             in_channels=320,
             fc_out_channels=1024,
             roi_feat_size=7,
@@ -202,8 +209,9 @@ checkpoint_config = dict(
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
+    dict(type='WTrainAllParameters',step=20000,lr=1e-4),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms_ws_ta"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'

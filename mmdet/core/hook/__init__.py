@@ -11,11 +11,12 @@ from .yolox_mode_switch_hook import YOLOXModeSwitchHook
 from .wtensorboard import WTensorboardLoggerHook
 from .wcosine_hook import WCosineAnnealingLrUpdaterHook
 from .close_mosaic import WCloseMosaic
+from .train_all_parameters import WTrainAllParameters
 
 __all__ = [
     'SyncRandomSizeHook', 'YOLOXModeSwitchHook', 'SyncNormHook',
     'ExpMomentumEMAHook', 'LinearMomentumEMAHook', 'YOLOXLrUpdaterHook',
     'CheckInvalidLossHook', 'SetEpochInfoHook', 'MemoryProfilerHook',
     'MMDetWandbHook','WTensorboardLoggerHook','WCosineAnnealingLrUpdaterHook',
-    'WCloseMosaic'
+    'WCloseMosaic', 'WTrainAllParameters'
 ]

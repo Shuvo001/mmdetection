@@ -66,8 +66,8 @@ class SimpleTrainer(BaseTrainer):
         if hasattr(cfg,"finetune_model"):
             if cfg.finetune_model:
                 wtt.finetune_model(model,
-                  names2train=cfg.names_2train,
-                  names_not2train=cfg.names_not2train)
+                  names2train=cfg.get("names_2train",None),
+                  names_not2train=cfg.get("names_not2train",None))
 
         if dist.is_available() and self.world_size>1:
             model = wtd.convert_sync_batchnorm(model)
@@ -93,7 +93,7 @@ class SimpleTrainer(BaseTrainer):
 
         self.load_checkpoint(model,cfg)
 
-        self.optimizer = build_optimizer(self.cfg, model)
+        self.optimizer,self.unbn_weights,self.unweights,self.unbiases = build_optimizer(self.cfg, model)
         lr_scheduler_args = self.cfg.lr_config
         policy_name = lr_scheduler_args.pop("policy")
         '''lr_scheduler_args = prepare_lr_scheduler_args(lr_scheduler_args,
@@ -184,7 +184,6 @@ class SimpleTrainer(BaseTrainer):
                 torch.cuda.empty_cache()
                 self.error_step_nr += 1
                 continue
-                
             if self.error_step_nr > SimpleTrainer.MAX_ERROR_STEP_NR:
                 print("ERROR: too many errors, stop training.")
                 break
@@ -262,14 +261,36 @@ class SimpleTrainer(BaseTrainer):
     def __tblog(self):
         if self.rank!=0:
             return
-        img_nr = self.cfg.log_config.get('img_nr',3)
         global_step = self.iter
         for tag, val in self.outputs["log_vars"].items():
             if isinstance(val, str):
                 self.log_writer.add_text(tag, val, global_step)
             else:
                 self.log_writer.add_scalar(tag, val, global_step)
+
+        self.tblog_imgs()
+
+        for i,m in enumerate(self.step_modules):
+            if isinstance(m,DBLinearScheduler):
+                self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob,global_step=global_step)
+
+        if self.total_norm is not None:
+            self.log_writer.add_scalar("total_norm",self.total_norm,global_step=global_step)
+        model = wtu.get_model(self.model)
+        summary.log_all_variable(self.log_writer,model,global_step=global_step)
+        summary.log_optimizer(self.log_writer,self.optimizer,global_step)
+
+    def tblog_imgs(self):
+        global_step = self.iter
+        img_nr = self.cfg.log_config.get('img_nr',3)
         imgs = self.inputs['img']
+        self.log_writer.add_histogram("img",imgs,global_step)
+        log_imgs_ = self.cfg.log_config.get("log_imgs",False)
+        log_gt_imgs_ = self.cfg.log_config.get("log_gt_imgs",True)
+
+        if not log_imgs_ and not log_gt_imgs_:
+            return
+
         if imgs.shape[1] == 1:
             imgs = torch.tile(imgs,[1,3,1,1])
         #print(imgs.shape)
@@ -287,14 +308,7 @@ class SimpleTrainer(BaseTrainer):
             is_rgb = None
 
         for idx in idxs:
-            gt_bboxes = self.inputs['gt_bboxes']
-            gt_labels = self.inputs['gt_labels']
-            gt_masks = self.inputs.get('gt_masks',None)
             img = imgs[idx].cpu()
-            gt_bboxes = gt_bboxes[idx].cpu().numpy()
-            gt_labels = gt_labels[idx].cpu().numpy()
-            if gt_masks is not None:
-                gt_masks = gt_masks[idx].masks
             if mean is not None:
                 img = unnormalize(img,mean=mean,std=std).cpu().numpy()
                 img = np.transpose(img,[1,2,0])
@@ -302,10 +316,22 @@ class SimpleTrainer(BaseTrainer):
                     img = img[...,::-1]
             else:
                 img = np.transpose(img,[1,2,0])
-            gt_bboxes = odb.npchangexyorder(gt_bboxes)
             img = np.ascontiguousarray(img)
             img = np.clip(img,0,255).astype(np.uint8)
             raw_img = img.copy()
+            if log_imgs_:
+                self.log_writer.add_image(f"input/img{idx}",raw_img,global_step=global_step,
+                    dataformats="HWC")
+            if not log_gt_imgs_:
+                continue
+            gt_bboxes = self.inputs['gt_bboxes']
+            gt_labels = self.inputs['gt_labels']
+            gt_masks = self.inputs.get('gt_masks',None)
+            gt_bboxes = gt_bboxes[idx].cpu().numpy()
+            gt_labels = gt_labels[idx].cpu().numpy()
+            if gt_masks is not None:
+                gt_masks = gt_masks[idx].masks
+            gt_bboxes = odb.npchangexyorder(gt_bboxes)
             #debug
             #gt_labels = np.array(list(range(gt_labels.shape[0])))+gt_labels.shape[0]*10
             if gt_labels.shape[0]>0:
@@ -318,18 +344,7 @@ class SimpleTrainer(BaseTrainer):
                 img = odv.draw_bboxes(img,gt_labels,bboxes=gt_bboxes,is_relative_coordinate=False)
             self.log_writer.add_image(f"input/img_with_bboxes{idx}",img,global_step=global_step,
                     dataformats="HWC")
-            self.log_writer.add_image(f"input/img{idx}",raw_img,global_step=global_step,
-                    dataformats="HWC")
 
-        for i,m in enumerate(self.step_modules):
-            if isinstance(m,DBLinearScheduler):
-                self.log_writer.add_scalar(f"drop_blocks/db{i}",m.dropblock.cur_drop_prob,global_step=global_step)
-
-        if self.total_norm is not None:
-            self.log_writer.add_scalar("total_norm",self.total_norm,global_step=global_step)
-        model = wtu.get_model(self.model)
-        summary.log_all_variable(self.log_writer,model,global_step=global_step)
-        summary.log_optimizer(self.log_writer,self.optimizer,global_step)
     
     def save_checkpoint(self):
         if not self.iter%self.cfg.checkpoint_config.interval==0 or self.rank!=0:

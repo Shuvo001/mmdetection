@@ -165,6 +165,7 @@ def main():
     from mmdet.utils.datadef import set_debug
 
 
+    print(f"config {args.config}")
     set_debug(args.debug)
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device=args.device)
