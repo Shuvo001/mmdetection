@@ -17,6 +17,7 @@ import os
 import sys
 import time
 from itertools import count
+from threadtoolkit import par_for_each_no_return
 
 class WCustomDataset(Dataset):
     """Custom dataset for detection.
@@ -437,7 +438,7 @@ class WCustomDataset(Dataset):
                     eval_results[f'AR@{num}'] = ar[i]
         return eval_results
 
-    def make_cache_file(self):
+    def make_cache_filev0(self):
         cache_dir = "/dl_cache"
         ann_base_name = wmlu.base_name(self.ann_file)
         cache_dir = osp.join(cache_dir,ann_base_name,self.name)
@@ -476,6 +477,53 @@ class WCustomDataset(Dataset):
         print(f"Pipeline for cache is {self.pipeline}")
         print(f"Pipeline not cache is {self.pipeline2}")
         sys.stdout.flush()
+
+    def make_cache_file(self):
+        cache_dir = "/dl_cache"
+        ann_base_name = wmlu.base_name(self.ann_file)
+        cache_dir = osp.join(cache_dir,ann_base_name,self.name)
+        self.cache_file = False #先设置为False以使用正常流程处理数据
+        self.cache_processed_data = False  #先设置为False以使用正常流程处理数据
+        self._processed_data_cache = []
+        self._cache_files = []
+        print(f"Cache processed files, cache dir {cache_dir}")
+        self.cache_dir = cache_dir
+        sys.stdout.flush()
+        
+        datas = list(range(len(self._inner_dataset)))
+        par_for_each_no_return(datas,self.cache_file_idx_list)
+        for i in range(len(self._inner_dataset)):
+            img_file = osp.abspath(self._inner_dataset[i][0])
+            sub_path = wmlu.get_relative_path(img_file,self.ann_file)
+            sub_path = osp.splitext(sub_path)[0]
+            save_path = osp.join(cache_dir,sub_path+".cache")
+            self._cache_files.append(save_path)
+
+        print(f"Pipeline for cache is {self.pipeline}")
+        print(f"Pipeline not cache is {self.pipeline2}")
+        sys.stdout.flush()
+
+    def cache_file_idx_list(self,idxs):
+        et = wmlu.EstimateTimeCost(total_nr=len(idxs))
+        for _i,i in enumerate(idxs):
+            img_file = osp.abspath(self._inner_dataset[i][0])
+            sub_path = wmlu.get_relative_path(img_file,self.ann_file)
+            sub_path = osp.splitext(sub_path)[0]
+            save_path = osp.join(self.cache_dir,sub_path+".cache")
+            self._cache_files.append(save_path)
+            if osp.exists(save_path):
+                continue
+            dir_name = osp.dirname(save_path)
+            os.makedirs(dir_name,exist_ok=True)
+            results = copy.deepcopy(self.__getitem__(i))
+            if osp.exists(save_path):
+                continue
+            with open(save_path,"wb") as f:
+                pickle.dump(results,f)
+            if i%20 == 0:
+                et.set_process_nr(_i+1)
+                print(f"{os.getpid()} cache {_i:05d}/{len(idxs):05d}, {str(et)}   \r")
+                sys.stdout.flush()
     
     def read_cache_file(self,idx):
         file_path = self._cache_files[idx]

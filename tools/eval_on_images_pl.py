@@ -6,6 +6,7 @@ import os
 import wml_utils as wmlu
 import img_utils as wmli
 import object_detection2.visualization as odv
+from object_detection_tools.recalculate_scores import docalculate_scores
 import numpy as np
 from object_detection2.data_process_toolkit import remove_class
 from iotoolkit.coco_toolkit import COCOData
@@ -376,6 +377,8 @@ def main():
     info = metrics.show()
     print(classes)
     print(f"python object_detection_tools/recalculate_scores.py \"{info}\" --exclude 6 7")
+    if info is not None:
+        docalculate_scores(info,exclude=[6,7])
 
 
 if __name__ == "__main__":

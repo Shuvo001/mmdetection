@@ -171,6 +171,7 @@ config:
 |---|---|---|
 |rcnn_yoloxv2_scale.py/rcnn_scale_na.py|0.797|0.799|
 |rcnn_pafpn.py/rcnn_nassigner.py|0.791|0.773|
+|rcnn_scale_pafpn.py/rcnn_scale_na_pafpn.py|0.8095|0.782|
 
 ###train strategy
 
@@ -191,3 +192,17 @@ config:
 |配置|ref|先训练stem和head再用大batchsize训练head|
 |---|---|---|
 |rcnn_scale_na_pafpn.py|0.782|0.802|
+
+|配置|训练到一半使用hook训练所有权重|不训练BN|
+|---|---|---|
+|rcnn_scale_na_pafpn_ta.py/rcnn_scale_na_pafpn_tabn.py|0.799|0.791|
+
+|配置|ref|直接训练所有参数|
+|---|---|---|
+|rcnn_scale_na_pafpn.py/rcnn_scale_na_pafpna.py|0.782|0.81|
+
+###multi scale rcnn
+|配置|w multi scale rcnn|wo multi scale rcnn|
+|---|---|---|
+|rcnn_ms.py/rcnn_scale_na_pafpn.py|0.799|0.782|
+|rcnn_ms_ta.py/rcnn_scale_na_pafpn_ta.py|0.791|0.799|

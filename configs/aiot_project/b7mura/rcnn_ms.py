@@ -94,7 +94,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr1'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr2'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -194,6 +194,7 @@ lr_config = dict(
     total_iters=max_iters)
 
 log_config = dict(
+    log_imgs=True,
     print_interval=10,
     tb_interval=500)
 checkpoint_config = dict(
