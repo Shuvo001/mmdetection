@@ -246,7 +246,7 @@ def main():
             if not args.inplace and len(labels)>0:
                 suffix = osp.splitext(full_path)[1][1:]
                 save_img_path = wmlu.change_suffix(ann_path,suffix)
-                wmlu.try_link(full_path,save_img_path)
+                #wmlu.try_link(full_path,save_img_path)
     
             if args.save_results:
                 img_save_path = os.path.join(save_path,name+".jpg")

@@ -1,6 +1,5 @@
-#rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset
-#使用预训练仅重,训练所有的权重
-
+#与scale不同的为使用了pafpn
+#训练所有的参数
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
@@ -79,7 +78,7 @@ model = dict(
                 ),
         train_cfg=dict(
             rpn=dict(
-            assigner=dict(type='SimOTAAssigner', center_radius=2.5,min_bbox_size=50),
+            assigner=dict(type='SimOTAAssigner', center_radius=2.5),
             ),
             rcnn=dict(
                 sampler=dict(
@@ -93,7 +92,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_su1'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -154,8 +153,7 @@ train_dataset = dict(
             dict(type="WDecodeImg",fmt='gray'),
 
         ],
-        #cache_processed_data=True,
-        cache_file=True,
+        cache_processed_data=True,
         name="b7mura_resample",
     ),
     pipeline=train_pipeline)
@@ -185,7 +183,6 @@ data = dict(
 evaluation = dict(metric=['bbox', 'segm'])
 optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
-bn_momentum = 0.03
 # learning policy
 lr_config = dict(
     policy='WarmupCosLR',
@@ -202,12 +199,11 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_na_pafpn"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_pafpna"
 load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
-#load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_scale_na_pafpn/weights/checkpoint_50000.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
-finetune_model=True
+finetune_model=False
 names_not2train = ["backbone"]
 names_2train = ["backbone.conv1","backbone.bn1","backbone.stem"]
 

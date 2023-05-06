@@ -8,9 +8,11 @@ class WTrainAllParameters(Hook):
     def __init__(self,
                  step=None,
                  lr=None,
+                 train_bn=True,
                  ):
         assert step is not None, "step can't be None"
         assert step != 0, "step can't be zero"
+        self.train_bn = train_bn
         self.step = step
         self.lr = lr
     
@@ -26,7 +28,7 @@ class WTrainAllParameters(Hook):
         model = runner.model
         model = wtu.get_model(model)
         if iter >= self.step:
-            ttu.defrost_model(model)
+            ttu.defrost_model(model,defrost_bn=self.train_bn)
         args = dict(runner.cfg.optimizer)
         if self.lr is not None:
             args['lr'] = self.lr

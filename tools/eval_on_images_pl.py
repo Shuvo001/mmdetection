@@ -7,6 +7,7 @@ import wml_utils as wmlu
 import img_utils as wmli
 import object_detection2.visualization as odv
 import numpy as np
+from object_detection2.data_process_toolkit import remove_class
 from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from iotoolkit.labelme_toolkit import LabelMeData
@@ -67,6 +68,12 @@ def parse_args():
         '--debug',
         action='store_true',
         help='Whether or not use enable debug')
+    parser.add_argument(
+        '--exclude',
+        default=[],
+        type=int,
+        nargs="+",
+        help='labels not to test')
     args = parser.parse_args()
     return args
 
@@ -150,6 +157,11 @@ imgs17 = ["B68G1X0012C3AAN05-02_ALL_CAM00.bmp",
 "B68G190084B7BAH04-02_ALL_CAM00.bmp",
 "B68G190084B8BAG05-02_ALL_CAM00.bmp",
 ]
+def trans_labels(labels,exclude_trans):
+    nlabels = []
+    for l in labels:
+        nlabels.append(exclude_trans[l])
+    return np.array(nlabels)
 
 def main():
     args = parse_args()
@@ -236,7 +248,13 @@ def main():
     #model_args={"threshold":0.3})
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall,
     #        model_args={"threshold":0.2})
-    metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=COCOEvaluation)
+    exclude = args.exclude
+    exclude_trans = np.array(list(range(len(classes))))
+    et_mask = np.ones_like(exclude_trans,dtype=np.bool)
+    et_mask[exclude] = False
+    exclude_trans = exclude_trans[et_mask]
+
+    metrics = ClassesWiseModelPerformace(num_classes=len(classes)-len(exclude),classes_begin_value=0,model_type=COCOEvaluation)
     if len(args.dataset_type)>0:
         dataset_type = args.dataset_type
     else:
@@ -266,6 +284,10 @@ def main():
         #
         if test_labels is not None and len(test_labels)>0 and not any_same(test_labels,gt_labels):
             continue
+        if len(exclude)>0:
+            gt_boxes,gt_labels,*_ = remove_class(gt_boxes,gt_labels,labels_to_remove=exclude)
+            gt_labels = trans_labels(gt_labels,exclude_trans=exclude_trans)
+
         '''
         contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         print(contours)
@@ -281,6 +303,9 @@ def main():
         bboxes,labels,scores,det_masks,result = detector(model,
                                                          full_path,
                                                          input_size=input_size,score_thr=args.score_thr)
+        if len(exclude)>0:
+            bboxes,labels,scores,_ = remove_class(bboxes,labels,scores,labels_to_remove=exclude)
+            labels = trans_labels(labels,exclude_trans=exclude_trans)
 
         if args.min_bbox_size>0:
             gt_boxes_e = odb.clamp_bboxes(gt_boxes,args.min_bbox_size)
@@ -348,8 +373,9 @@ def main():
         print(f"python object_detection_tools/metrics_tools.py {results_save_path} --metrics PrecisionAndRecall --classes_wise")
         pickle.dump(pyresults,f)
         
-    metrics.show()
+    info = metrics.show()
     print(classes)
+    print(f"python object_detection_tools/recalculate_scores.py \"{info}\" --exclude 6 7")
 
 
 if __name__ == "__main__":
