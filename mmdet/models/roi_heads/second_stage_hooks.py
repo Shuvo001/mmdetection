@@ -21,26 +21,32 @@ class FusionFPNHook(BaseModule):
                  act_cfg=None,
                  init_cfg=dict(
                      type='Xavier', layer='Conv2d', distribution='uniform'),
-                return_stem=False):
+                return_stem=False,
+                begin_idx=0):
         super().__init__(init_cfg)
         if out_channels is None:
             out_channels = in_channels
         self.return_stem = return_stem
         self.fusion_conv = ConvModule(in_channels*2,out_channels,3,padding=1,conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,act_cfg=act_cfg,inplace=False)
+        self.begin_idx = begin_idx
 
     @auto_fp16()
     def forward(self, inputs,backbone=None):
+        res = inputs[:self.begin_idx]
+        inputs = inputs[self.begin_idx:]
         net0 = inputs[0]
         shape = net0.shape[-2:]
         net1 = F.interpolate(inputs[1],size=shape,mode='bilinear')
-        for x in inputs[2:4]:
+        for x in inputs[2:]:
             x = F.interpolate(x,size=shape,mode='bilinear')
             net1 = net1+x
         net = torch.cat([net0,net1],dim=1)
         net = self.fusion_conv(net)
 
+        res = res+[net]
+
         if self.return_stem:
-            return tuple([backbone.outs['stem'],net])
+            return tuple([backbone.outs['stem']]+res)
         else:
-            return tuple([net])
+            return tuple(res)

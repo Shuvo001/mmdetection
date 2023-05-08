@@ -217,5 +217,7 @@ class YOLOBaseBackbone(BaseModule, metaclass=ABCMeta):
             x = layer(x)
             if i in self.out_indices:
                 outs.append(x)
+            else:
+                self.outs[layer_name] = x
 
         return tuple(outs)

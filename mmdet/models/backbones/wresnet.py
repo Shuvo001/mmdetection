@@ -646,7 +646,6 @@ class WResNet(BaseModule):
         self.dilations = dilations
         assert len(strides) == len(dilations) == num_stages
         self.out_indices = out_indices
-        assert max(out_indices) < num_stages
         self.style = style
         self.deep_stem = deep_stem
         self.avg_down = avg_down
@@ -815,6 +814,7 @@ class WResNet(BaseModule):
     def forward(self, x):
         """Forward function."""
         self.outs = {}
+        outs = []
         if self.deep_stem:
             x = self.stem(x)
         else:
@@ -824,9 +824,12 @@ class WResNet(BaseModule):
                 print(f"ERROR:{x.shape}, {self.conv1.weight.shape}, {self.conv1.weight.device}, {x.device}, {wtd.get_rank()}")
             x = self.norm1(x)
             x = self.relu(x)
-        self.outs['stem'] = x
+        if 'stem' in self.out_indices:
+            outs.append(x)
+        else:
+            self.outs['stem'] = x
+            
         x = self.maxpool(x)
-        outs = []
         for i, layer_name in enumerate(self.res_layers):
             res_layer = getattr(self, layer_name)
             x = res_layer(x)

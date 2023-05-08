@@ -36,6 +36,9 @@ def parse_args():
     parser.add_argument('--save-results',
         action='store_true',
         help='whether save results imgs.')
+    parser.add_argument('--copy-imgs',
+        action='store_true',
+        help='whether save copy imgs.')
     args = parser.parse_args()
     return args
 
@@ -246,7 +249,8 @@ def main():
             if not args.inplace and len(labels)>0:
                 suffix = osp.splitext(full_path)[1][1:]
                 save_img_path = wmlu.change_suffix(ann_path,suffix)
-                #wmlu.try_link(full_path,save_img_path)
+                if args.copy_imgs:
+                    wmlu.try_link(full_path,save_img_path)
     
             if args.save_results:
                 img_save_path = os.path.join(save_path,name+".jpg")

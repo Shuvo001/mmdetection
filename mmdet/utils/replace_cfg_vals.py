@@ -67,4 +67,10 @@ def replace_cfg_vals(ori_cfg):
     if updated_cfg.get('model_wrapper', None) is not None:
         updated_cfg.model = updated_cfg.model_wrapper
         updated_cfg.pop('model_wrapper')
+    if updated_cfg['data'].train.dataset.ann_file != updated_cfg.data_root:
+        print(f"Update train data ann_file to {updated_cfg.data_root}")
+        updated_cfg['data'].train.dataset.ann_file = updated_cfg.data_root
+    if updated_cfg.data.val.data_dirs != updated_cfg.test_data_dir:
+        print(f"Update val data dirs to {updated_cfg.test_data_dir}")
+        updated_cfg.data.val.data_dirs = updated_cfg.test_data_dir
     return updated_cfg

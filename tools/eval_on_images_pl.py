@@ -179,6 +179,7 @@ def main():
 
 
     print(f"config {args.config}")
+    sys.stdout.flush()
     set_debug(args.debug)
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device=args.device)

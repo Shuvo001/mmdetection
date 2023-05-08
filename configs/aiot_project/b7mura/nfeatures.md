@@ -178,6 +178,7 @@ config:
 |配置|ref|先训练stem和head再训练所有权重|
 |---|---|---|
 |rcnn_scale_na_pafpn.py|0.782|0.813|
+|rcnn_ms.py(sr2)|0.790|0.810|
 
 
 |配置|ref|训练到一半使用hook训练所有权重|
@@ -201,8 +202,17 @@ config:
 |---|---|---|
 |rcnn_scale_na_pafpn.py/rcnn_scale_na_pafpna.py|0.782|0.81|
 
+|配置|ref|训练100000步|
+|---|---|---|
+|rcnn_scale_na_pafpn.py/rcnn_scale_na_pafpnl.py|0.782|0.795|
+
 ###multi scale rcnn
 |配置|w multi scale rcnn|wo multi scale rcnn|
 |---|---|---|
 |rcnn_ms.py/rcnn_scale_na_pafpn.py|0.799|0.782|
 |rcnn_ms_ta.py/rcnn_scale_na_pafpn_ta.py|0.791|0.799|
+
+###different dataset
+|配置|s1|s2|
+|---|---|---|
+|rcnn_ms.py|0.799|0.790|

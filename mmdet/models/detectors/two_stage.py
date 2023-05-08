@@ -32,6 +32,8 @@ class TwoStageDetector(BaseDetector):
                  second_stage_hook=None,
                  drop_blocks=None,
                  simple_norm_input=False,
+                 rpn_in_indices=None,
+                 rcn_in_indices=None,
                  **kwargs):
         loss_scale = train_cfg.get("loss_scale",{}) if train_cfg is not None else {}
         super(TwoStageDetector, self).__init__(init_cfg,
@@ -73,6 +75,8 @@ class TwoStageDetector(BaseDetector):
             roi_head.pretrained = pretrained
             self.roi_head = build_head(roi_head)
 
+        self.rpn_in_indices = rpn_in_indices
+        self.rcn_in_indices = rcn_in_indices
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 
@@ -175,8 +179,12 @@ class TwoStageDetector(BaseDetector):
         if self.with_rpn:
             proposal_cfg = self.train_cfg.get('rpn_proposal',
                                               self.test_cfg.rpn)
+            if self.rpn_in_indices is not None:
+                rpn_x = [x[i] for i in self.rpn_in_indices]
+            else:
+                rpn_x = x
             rpn_losses, proposal_list = self.rpn_head.forward_train(
-                x,
+                rpn_x,
                 img_metas,
                 gt_bboxes,
                 gt_labels=None,
@@ -187,14 +195,18 @@ class TwoStageDetector(BaseDetector):
         else:
             proposal_list = proposals
 
+        if self.rcn_in_indices is not None:
+            rcn_x = [x[i] for i in self.rcn_in_indices]
+        else:
+            rcn_x = x
         if self.second_stage_hook is not None:
-            x = self.second_stage_hook(x,backbone=self.backbone)
+            rcn_x = self.second_stage_hook(rcn_x,backbone=self.backbone)
         
         _proposal_list = []
         for pbboxes,gtb in zip(proposal_list,gt_bboxes): #默认将gtbboxes加入proposal
             _proposal_list.append(self.cat_proposals_and_gtbboxes(pbboxes,gtb))
 
-        roi_losses = self.roi_head.forward_train(x, img_metas, _proposal_list,
+        roi_losses = self.roi_head.forward_train(rcn_x, img_metas, _proposal_list,
                                                  gt_bboxes, gt_labels,
                                                  gt_bboxes_ignore, gt_masks,
                                                  **kwargs)

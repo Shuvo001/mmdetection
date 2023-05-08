@@ -90,6 +90,7 @@ class WCSPResNet(YOLOBaseBackbone):
         self.attention_cfg = attention_cfg
         self.deep_stem_mode = deep_stem_mode
         self.deep_stem = deep_stem
+        self.outs = {}
 
 
         super().__init__(
