@@ -489,9 +489,10 @@ class WCustomDataset(Dataset):
         print(f"Cache processed files, cache dir {cache_dir}")
         self.cache_dir = cache_dir
         sys.stdout.flush()
+        new_make = 0
+        old_cache_file = 0 
+        datas = []
         
-        datas = list(range(len(self._inner_dataset)))
-        par_for_each_no_return(datas,self.cache_file_idx_list)
         for i in range(len(self._inner_dataset)):
             img_file = osp.abspath(self._inner_dataset[i][0])
             sub_path = wmlu.get_relative_path(img_file,self.ann_file)
@@ -499,6 +500,16 @@ class WCustomDataset(Dataset):
             save_path = osp.join(cache_dir,sub_path+".cache")
             self._cache_files.append(save_path)
 
+            if osp.exists(save_path):
+                old_cache_file += 1
+            else:
+                new_make += 1
+                datas.append(i)
+
+        if new_make>0:
+            par_for_each_no_return(datas,self.cache_file_idx_list)
+
+        print(f"Total cache {new_make} processed data item files, use {old_cache_file} old files, total {new_make+old_cache_file}.")
         print(f"Pipeline for cache is {self.pipeline}")
         print(f"Pipeline not cache is {self.pipeline2}")
         sys.stdout.flush()

@@ -44,7 +44,7 @@ class FusionFPNHook(BaseModule):
         net = torch.cat([net0,net1],dim=1)
         net = self.fusion_conv(net)
 
-        res = res+[net]
+        res = list(res)+[net]
 
         if self.return_stem:
             return tuple([backbone.outs['stem']]+res)

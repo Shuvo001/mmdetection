@@ -244,14 +244,23 @@ class TwoStageDetector(BaseDetector):
         x = self.extract_feat(img)
         if proposals is None:
             #proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)
-            proposal_list = self.rpn_head.simple_test(x, img_metas)
+            if self.rpn_in_indices is not None:
+                rpn_x = [x[i] for i in self.rpn_in_indices]
+            else:
+                rpn_x = x
+            proposal_list = self.rpn_head.simple_test(rpn_x, img_metas)
         else:
             proposal_list = proposals
         
+        if self.rcn_in_indices is not None:
+            rcn_x = [x[i] for i in self.rcn_in_indices]
+        else:
+            rcn_x = x
+        
         if self.second_stage_hook is not None:
-            x = self.second_stage_hook(x,backbone=self.backbone)
+            rcn_x = self.second_stage_hook(rcn_x,backbone=self.backbone)
 
         results = self.roi_head.simple_test(
-            x, proposal_list, img_metas)
+            rcn_x, proposal_list, img_metas)
 
         return results

@@ -4,14 +4,8 @@ import os.path as osp
 import warnings
 from functools import partial
 import torch
-from mmcv import Config, DictAction
 import os
 import wml_utils as wmlu
-from mmdet.core.export import build_model_from_cfg, preprocess_2traced_example_input
-import wtorch.train_toolkit as wtt
-import wtorch.utils as wtu
-
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
 
 def pytorch2traced(model,
@@ -117,16 +111,9 @@ def parse_args():
         default=[58.395, 57.12, 57.375],
         help='variance value used for preprocess input data. '
         'This argument is deprecated and will be removed in future releases.')
+    parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument(
-        '--cfg-options',
-        nargs='+',
-        action=DictAction,
-        help='Override some settings in the used config, the key-value pair '
-        'in xxx=yyy format will be merged into config file. If the value to '
-        'be overwritten is a list, it should be like key="[a,b]" or key=a,b '
-        'It also allows nested list/tuple values, e.g. key="[(a,b),(c,d)]" '
-        'Note that the quotation marks are necessary and that no white space '
-        'is allowed.')
+        '--score-thr', type=float, default=0.5, help='bbox score threshold')
     parser.add_argument(
         '--skip-postprocess',
         action='store_true',
@@ -143,15 +130,20 @@ if __name__ == '__main__':
         parsed directly from config file and are deprecated and \
         will be removed in future releases.')
 
+    if args.gpus is not None and len(args.gpus)>0:
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
+        print(os.environ['CUDA_VISIBLE_DEVICES'])
+    
+    if not osp.exists(args.input_img):
+        print(f"input img {args.input_img} not exists.")
+        exit(0)
 
-    try:
-        from mmcv.onnx.symbolic import register_extra_symbolics
-    except ModuleNotFoundError:
-        raise NotImplementedError('please update mmcv to version>=v1.0.4')
+    from mmcv import Config
+    from mmdet.core.export import build_model_from_cfg, preprocess_2traced_example_input
+    import wtorch.train_toolkit as wtt
+    import wtorch.utils as wtu
 
     cfg = Config.fromfile(args.config)
-    if args.cfg_options is not None:
-        cfg.merge_from_dict(args.cfg_options)
 
     if args.shape is None:
         img_scale = cfg.img_scale
@@ -167,7 +159,7 @@ if __name__ == '__main__':
 
     # build the model and load checkpoint
     model = build_model_from_cfg(args.config, args.checkpoint,
-                                 args.cfg_options)
+                                 None)
     if args.checkpoint is None:
         checkpoint = osp.join(cfg.work_dir+"_fp16","weights","latest.pth")
         if not osp.exists(checkpoint):
@@ -202,6 +194,7 @@ if __name__ == '__main__':
     mask_thr_binary: mask threshold
     '''
     print("RCNN test config")
+    model.roi_head.test_cfg.score_thr = args.score_thr
     #roi_head.test_cfg 配置时通过config.model.test_cfg.rcnn配置
     wmlu.show_dict(model.roi_head.test_cfg)
     # convert model to onnx file

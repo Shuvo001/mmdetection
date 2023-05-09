@@ -347,7 +347,8 @@ class MultiImageMixDataset:
     indexes, and you can set `skip_flags` to change the pipeline running
     process. At the same time, we provide the `dynamic_scale` parameter
     to dynamically change the output image size.
-
+    如果变换操作有get_indexes属性，则通过get_indexes获取数据集的index,根据index取出相关数据并放在mix_results中
+    然后再调用相应操作的__call__
     Args:
         dataset (:obj:`CustomDataset`): The dataset to be mixed.
         pipeline (Sequence[dict]): Sequence of transform object or

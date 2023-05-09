@@ -193,6 +193,7 @@ config:
 |配置|ref|先训练stem和head再用大batchsize训练head|
 |---|---|---|
 |rcnn_scale_na_pafpn.py|0.782|0.802|
+|rcnn_ws.py/rcnn_wsh|0.790|0.795|
 
 |配置|训练到一半使用hook训练所有权重|不训练BN|
 |---|---|---|

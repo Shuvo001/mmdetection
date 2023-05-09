@@ -10,6 +10,8 @@ import img_utils as wmli
 import object_detection2.bboxes as odb
 from object_detection2.standard_names import *
 from collections import Iterable
+import object_detection2.visualization as odv
+import object_detection2.mask as odm
 
 
 
@@ -42,6 +44,7 @@ class WRandomCrop:
                  crop_if=None,
                  try_crop_around_gtbboxes=False,
                  crop_around_gtbboxes_prob=0.5,
+                 max_size=None, #(H,W)
                  name='WRandomCrop'):
         assert isinstance(crop_size, (list, tuple))
         self.crop_size = crop_size
@@ -52,6 +55,13 @@ class WRandomCrop:
         self.try_crop_around_gtbboxes = try_crop_around_gtbboxes
         self.crop_around_gtbboxes_prob = crop_around_gtbboxes_prob
         self.multiscale_mode = isinstance(crop_size[0],Iterable)
+        if max_size is not None:
+            if not isinstance(max_size,Iterable):
+                max_size = (max_size,max_size)
+            self.max_size = [x if x>0 else 1e8 for x in max_size]
+            print(f"RandomCrop set max size {self.max_size}")
+        else:
+            self.max_size = None
         self.name = name
 
     def get_crop_bbox(self,crop_size,img_shape,gtbboxes):
@@ -116,7 +126,7 @@ class WRandomCrop:
         Returns:
             results (dict): The updated dict.
         """
-        img = results['img']
+        img = results['img'] #(H,W,C)
         if not self.multiscale_mode:
             crop_size = self.crop_size
         else:
@@ -171,7 +181,13 @@ class WRandomCrop:
             return results
 
     def __call__(self, results):
-        if self.crop_if is not None:
+        if self.max_size is not None:
+            img = results['img'] #(H,W,C)
+            shape = img.shape
+            if shape[0]>self.max_size[0] or shape[1]>self.max_size[1]:
+                results = self._train_aug(results)
+            return results
+        elif self.crop_if is not None:
             process_pipline = results.get('process',[])
             for key in self.crop_if:
                 if key in process_pipline:
@@ -1165,15 +1181,15 @@ class WMosaic:
 
         results.setdefault('process',[])
         if random.uniform(0, 1) > self.prob:
-            results['process'].append(type(self).__name__)
             return results
 
+        results['process'].append(type(self).__name__)
         if len(results['mix_results'])==3:
             results = self._mosaic_transform_4imgs(results)
         else:
             funcs = [self._mosaic_transform_2imgsh,self._mosaic_transform_2imgsv]
             t = random.choice(self.two_imgs_directions)
-            return funcs[t](results)
+            results = funcs[t](results)
         results['process'].append(type(self).__name__)
         return results
 
@@ -1870,13 +1886,23 @@ class WCutOut:
 
 @PIPELINES.register_module()
 class WFixData:
-    def __init__(self) -> None:
-        pass
+    def __init__(self,min_bbox_size=1) -> None:
+        self.min_bbox_size = min_bbox_size
 
     def __call__(self,results):
         if len(results['img'].shape) == 2:
             results['img'] = np.expand_dims(results['img'],axis=-1)
             results['img_shape'] = results['img'].shape
+        gt_bboxes = results[GT_BOXES]
+        bboxes_area = odb.area(gt_bboxes)
+        keep = bboxes_area>self.min_bbox_size
+        if not np.all(keep):
+            results[GT_BOXES] = results[GT_BOXES][keep]
+            results[GT_LABELS] = results[GT_LABELS][keep]
+            if GT_MASKS in results:
+                masks = results[GT_MASKS].masks[keep]
+                results[GT_MASKS] = BitmapMasks(masks)
+
       
 
         return results
@@ -2020,3 +2046,224 @@ class W2PolygonMask:
             results[GT_MASKS] = masks
         
         return results
+
+@PIPELINES.register_module()
+class WCopyPaste:
+    """Simple Copy-Paste is a Strong Data Augmentation Method for Instance
+    Segmentation The simple copy-paste transform steps are as follows:
+
+    1. The destination image is already resized with aspect ratio kept,
+       cropped and padded.
+    2. Randomly select a source image, which is also already resized
+       with aspect ratio kept, cropped and padded in a similar way
+       as the destination image.
+    3. Randomly select some objects from the source image.
+    4. Paste these source objects to the destination image directly,
+       due to the source and destination image have the same size.
+    5. Update object masks of the destination image, for some origin objects
+       may be occluded.
+    6. Generate bboxes from the updated destination masks and
+       filter some objects which are totally occluded, and adjust bboxes
+       which are partly occluded.
+    7. Append selected source bboxes, masks, and labels.
+
+    Args:
+        max_num_pasted (int): The maximum number of pasted objects.
+            Default: 100.
+        bbox_occluded_thr (int): The threshold of occluded bbox.
+            Default: 10.
+        mask_occluded_thr (int): The threshold of occluded mask.
+            Default: 300.
+        selected (bool): Whether select objects or not. If select is False,
+            all objects of the source image will be pasted to the
+            destination image.
+            Default: True.
+    """
+
+    def __init__(
+        self,
+        max_num_pasted=100,
+        bbox_occluded_thr=10,
+        mask_occluded_thr=300,
+        selected=True,
+        prob=0.3,
+        scale=2.0,
+        labels=None,
+    ):
+        self.max_num_pasted = max_num_pasted
+        self.bbox_occluded_thr = bbox_occluded_thr
+        self.mask_occluded_thr = mask_occluded_thr
+        self.selected = selected
+        self.prob = prob
+        self.scale = scale
+        self.labels = labels
+
+    def get_indexes(self, dataset):
+        """Call function to collect indexes.s.
+
+        Args:
+            dataset (:obj:`MultiImageMixDataset`): The dataset.
+        Returns:
+            list: Indexes.
+        """
+        return random.randint(0, len(dataset))
+
+    def __call__(self, results):
+        """Call function to make a copy-paste of image.
+
+        Args:
+            results (dict): Result dict.
+        Returns:
+            dict: Result dict with copy-paste transformed.
+        """
+        if random.uniform(0, 1)>self.prob:
+            return results
+        assert 'mix_results' in results
+        num_images = len(results['mix_results'])
+        assert num_images == 1, \
+            f'CopyPaste only supports processing 2 images, got {num_images}'
+        if self.selected:
+            selected_results = self._select_object(results['mix_results'][0])
+        else:
+            selected_results = results['mix_results'][0]
+        return self._copy_paste(results, selected_results)
+
+    def _select_object(self, results):
+        """Select some objects from the source results."""
+        bboxes = results['gt_bboxes']
+        labels = results['gt_labels']
+        masks = results.get('gt_masks',None)
+        max_num_pasted = min(bboxes.shape[0] + 1, self.max_num_pasted)
+        num_pasted = np.random.randint(0, max_num_pasted)
+        _selected_inds = np.random.choice(
+            bboxes.shape[0], size=num_pasted, replace=False)
+        if self.labels is not None:
+            selected_inds = []
+            for i in _selected_inds:
+                if labels[i] not in self.labels:
+                    continue
+                selected_inds.append(i)
+            selected_inds = np.array(selected_inds,dtype=np.int32)
+        else:
+            selected_inds = _selected_inds
+
+
+        selected_bboxes = bboxes[selected_inds]
+        selected_labels = labels[selected_inds]
+        selected_masks = masks[selected_inds] if masks is not None else None
+
+        results['gt_bboxes'] = selected_bboxes
+        results['gt_labels'] = selected_labels
+        if selected_masks is not None:
+            results['gt_masks'] = selected_masks
+        return results
+
+    def make_mask_by_bboxes(self,results):
+        img = results['img']
+        bboxes = results['gt_bboxes']
+        mask = np.zeros([bboxes.shape[0]]+list(img.shape[:2]),dtype=np.uint8)
+        mask = odv.generate_mask_by_boxes(bboxes,mask)
+        return mask
+
+    def _find_pos(self,dst_mask,compressed_dst_mask,src_mask,src_bbox,iou_threshold=0.5):
+        '''
+        dst_mask: [N,H,W]
+        src_mask:[h,w]
+        src_bbox:[4] (x0,y0,x1,y1)
+        '''
+        try_nr = 5
+        bbox_s = src_bbox[2:]-src_bbox[:2]
+        shape = dst_mask.shape[1:]
+        x_max = max(int(shape[1]-bbox_s[0]),0)
+        y_max = max(int(shape[0]-bbox_s[1]),0)
+        for _ in range(try_nr):
+            x = random.randint(0,x_max)
+            y = random.randint(0,y_max)
+            if compressed_dst_mask[y,x]==0:
+                break
+        n_mask = np.zeros(dst_mask.shape[1:],dtype=dst_mask.dtype)
+        if y+src_mask.shape[0]>n_mask.shape[0] or x+src_mask.shape[1]>n_mask.shape[1]:
+            return None,None
+        n_mask[y:y+src_mask.shape[0],x:x+src_mask.shape[1]] = src_mask
+
+        for i in range(dst_mask.shape[0]):
+            i_v = np.sum(np.logical_and(n_mask,dst_mask[i]))
+            u_v = np.sum(np.logical_or(n_mask,dst_mask[i]))+1.0
+            if i_v/u_v > iou_threshold:
+                return None,None
+        return (x,y),n_mask
+    
+
+    def _copy_paste(self, dst_results, src_results):
+        """CopyPaste transform function.
+
+        Args:
+            dst_results (dict): Result dict of the destination image.
+            src_results (dict): Result dict of the source image.
+        Returns:
+            dict: Updated result dict.
+        """
+        dst_img = dst_results['img']
+        dst_bboxes = dst_results['gt_bboxes']
+        dst_labels = dst_results['gt_labels']
+        dst_masks = dst_results.get('gt_masks',None)
+        if dst_masks is None:
+            dst_masks = self.make_mask_by_bboxes(dst_results)
+        else:
+            dst_masks = dst_masks.masks
+        
+        compressed_dst_mask = np.any(dst_masks,axis=0)
+
+        src_img = src_results['img']
+        src_bboxes = src_results['gt_bboxes']
+        src_labels = src_results['gt_labels']
+        src_masks = src_results.get('gt_masks',None)
+        raw_bboxes = src_bboxes.copy()
+        if src_masks is None:
+            src_masks = self.make_mask_by_bboxes(src_results)
+        else:
+            src_masks = src_masks.masks
+
+        if self.scale is not None:
+            src_bboxes = odb.npscale_bboxes(src_bboxes,self.scale,max_size=[src_img.shape[1],src_img.shape[0]])
+        
+        psrc_masks = odm.crop_masks_by_bboxes(src_masks,src_bboxes)
+
+        if len(src_bboxes) == 0 or len(src_bboxes)==0:
+            return dst_results
+        
+        for i in range(src_bboxes.shape[0]):
+            l = src_labels[i]
+            if self.labels is not None and l not in self.labels:
+                continue
+            psrc_mask = psrc_masks[i]
+            src_bbox = src_bboxes[i].copy()
+            raw_src_bbox = raw_bboxes[i].copy()
+            pos,n_mask = self._find_pos(dst_masks,compressed_dst_mask,psrc_mask,src_bbox)
+            if pos is None:
+                continue
+            dst_masks = np.concatenate([dst_masks,np.expand_dims(n_mask,axis=0)],0)
+            raw_src_bbox_s = raw_src_bbox[2:]-raw_src_bbox[:2]
+            gt_pos_x = pos[0]+raw_src_bbox[0]-src_bbox[0]
+            gt_pos_y = pos[1]+raw_src_bbox[1]-src_bbox[1]
+            gt_src_bbox = np.array([gt_pos_x,gt_pos_y,gt_pos_x+raw_src_bbox_s[0],gt_pos_y+raw_src_bbox_s[1]],dtype=src_bbox.dtype)
+            dst_bboxes = np.concatenate([dst_bboxes,np.expand_dims(gt_src_bbox,axis=0)],axis=0)
+            dst_labels = np.concatenate([dst_labels,np.array([src_labels[i]],dtype=dst_labels.dtype)],axis=0)
+            dst_img = wmli.crop_and_past_img(dst_img,src_img,src_bboxes[i].astype(np.int32),pos)
+
+        dst_results['img'] = dst_img
+        dst_results['gt_bboxes'] = dst_bboxes
+        dst_results['gt_labels'] = dst_labels
+        if GT_MASKS in dst_results:
+            dst_results['gt_masks'] = BitmapMasks(dst_masks, dst_masks.shape[1],
+                                              dst_masks.shape[2])
+
+        return dst_results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'max_num_pasted={self.max_num_pasted}, '
+        repr_str += f'bbox_occluded_thr={self.bbox_occluded_thr}, '
+        repr_str += f'mask_occluded_thr={self.mask_occluded_thr}, '
+        repr_str += f'selected={self.selected}, '
+        return repr_str

@@ -98,7 +98,7 @@ model = dict(
 )
 dataset_type = 'WXMLDataset'
 #data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/try_s0'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -109,7 +109,7 @@ random_crop_scales = [(4006, 6720), (3892, 6528), (3777, 6336), (3663, 6144), (3
 img_fill_val = 255
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=img_fill_val,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
-    dict(type="WRandomCrop",crop_if=["WMosaic"],crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
+    dict(type="WRandomCrop",max_size=(4007, 6721),crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='WRotate',
         prob=0.3,
         img_fill_val=img_fill_val,
@@ -120,6 +120,7 @@ train_pipeline = [
         max_translate_offset=200,
         img_fill_val=(img_fill_val,),
         ),
+    dict(type='WCopyPaste',prob=1.0,labels=[0,1,4,5,6,7,8]),
     dict(
         type='WMixUpWithMask',
         img_scale=img_scale,
@@ -200,7 +201,6 @@ log_config = dict(
     print_interval=10,
     tb_interval=2,
     log_imgs=False,
-    log_gt_imgs=False,
     img_nr=3)
 checkpoint_config = dict(
     interval=1000,
