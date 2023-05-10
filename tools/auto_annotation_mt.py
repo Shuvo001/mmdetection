@@ -146,6 +146,7 @@ def main():
     from mmdet.datasets.pipelines import Compose
     from mmdet.apis import (ImageInferencePipeline,
                         init_detector,get_test_img_scale)
+    from iotoolkit.imgs_reader_mt import ImgsReader
 
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, None, device="cuda:0")
@@ -198,7 +199,8 @@ def main():
 
     test_data_dir = args.data_dir 
     print(f"test_data_dir: {test_data_dir}")
-    files = wmlu.get_files(test_data_dir,suffix=args.img_suffix)
+    #files = wmlu.get_files(test_data_dir,suffix=args.img_suffix)
+    reader = ImgsReader(test_data_dir)
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
@@ -215,10 +217,16 @@ def main():
     #save_annotation_bboxes_txt_head(save_path)
 
     save_size = input_size
+    sys.stdout.flush()
 
-    for i,full_path in enumerate(files):
+    for i,(full_path,img) in enumerate(reader):
         try:
-            print(f"process {i}/{len(files)}")
+            print(f"process {i}/{len(reader.dataset)}")
+            if len(img) == 0:
+                print(f"Read {full_path} faild.")
+                continue
+            if i%10 == 0:
+                sys.stdout.flush()
             #
             #if 1 not in gt_labels:
                 #continue
@@ -247,7 +255,6 @@ def main():
                 print(f"{ann_save_path1} exists, skip")
                 sys.stdout.flush()
                 continue
-            img = wmli.imread(full_path)
             bboxes,labels,scores,det_masks,result = detector(model,
                                                              img,
                                                              input_size=input_size,score_thr=args.score_thr)
@@ -284,12 +291,13 @@ def main():
                 if det_masks is not None:
                     img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
                 wmli.imwrite(img_save_path,img)
-        except:
+        except Exception as e:
+            print(e)
             pass
 
 
     
-    print(f"Image save path: {save_path}, total process {len(files)}")
+    print(f"Image save path: {save_path}, total process {len(reader.dataset)}")
         
     print(classes)
 
