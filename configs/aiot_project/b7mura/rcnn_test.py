@@ -1,4 +1,4 @@
-#与sn相比，使用了su1数据集, WShared4Conv2FCBBoxHead不使用norm, 使用pafpn
+#rcnn_yoloxv2_scale.py基础上使用新的assigner, PAFPN, bnm=0.03, su1 dataset, multi scale rcnn
 _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
@@ -28,7 +28,6 @@ model = dict(
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
-        short_cut=True,
         ),
     rpn_head=dict(
         type='YOLOXRPNHead',
@@ -48,11 +47,10 @@ model = dict(
         bbox_head=dict(
             type='WShared4Conv2FCBBoxHead',
             norm_cfg=dict(type='GN',num_groups=32),
-            fc_norm=False,
-            num_shared_convs=1,
             in_channels=320,
             fc_out_channels=1024,
             roi_feat_size=7,
+            num_shared_convs=1,
             num_classes=len(classes),
             bbox_coder=dict(
                 type='DeltaXYWHBBoxCoder',
@@ -64,7 +62,6 @@ model = dict(
             loss_bbox=dict(_delete_=True,type='CIoULoss', loss_weight=1.0),
             ),
         ),
-        simple_norm_input=True,
         second_stage_hook=dict(type='FusionFPNHook',in_channels=256,return_stem=True),
         drop_blocks={ "dropout":{"type":"DropBlock2D","drop_prob":[0.1,0.1,0.1,0.1,0.1],"block_size":[4,4,3,2,1]},
                 "scheduler":{"type":"LinearScheduler","begin_step":5000,"end_step":max_iters-5000}},
@@ -97,8 +94,7 @@ model = dict(
         )
 )
 dataset_type = 'WXMLDataset'
-#data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
-data_root = '/home/wj/ai/mldata1/B7mura/datas/train_s1'
+data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr2'
 test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
@@ -120,12 +116,11 @@ train_pipeline = [
         max_translate_offset=200,
         img_fill_val=(img_fill_val,),
         ),
-    dict(type='WCopyPaste',prob=1.0,labels=[0,1,4,5,6,7,8]),
     dict(
         type='WMixUpWithMask',
         img_scale=img_scale,
         ratio_range=(0.8, 1.6),
-        prob=0.3,
+        prob=0.1,
         pad_val=img_fill_val,skip_filter=False),
     dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
     #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
@@ -161,12 +156,12 @@ train_dataset = dict(
 
         ],
         #cache_processed_data=True,
-        cache_file =True,
+        cache_file=True,
         name="b7mura_resample",
     ),
     pipeline=train_pipeline)
 
-samples_per_gpu = 6
+samples_per_gpu = 4
 data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor",
@@ -191,6 +186,7 @@ data = dict(
 evaluation = dict(metric=['bbox', 'segm'])
 optimizer = dict(type='SGD', momentum=0.9,nesterov=True,lr=0.001, weight_decay=0.001)
 optimizer_config = dict(grad_clip=None)
+bn_momentum = 0.03
 # learning policy
 lr_config = dict(
     policy='WarmupCosLR',
@@ -198,21 +194,19 @@ lr_config = dict(
     total_iters=max_iters)
 
 log_config = dict(
-    print_interval=10,
-    tb_interval=2,
     log_imgs=False,
-    img_nr=3)
+    print_interval=10,
+    tb_interval=3)
 checkpoint_config = dict(
     interval=1000,
 )
 hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
-    dict(type='WTrainAllParameters',step=20,lr=1e-4),
 ]
 work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_test"
 #load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
-load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_pafpn/weights/checkpoint_50000.pth'
+load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms/weights/checkpoint_50000.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True

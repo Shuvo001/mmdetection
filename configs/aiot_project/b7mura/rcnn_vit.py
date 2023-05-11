@@ -9,22 +9,14 @@ classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 model = dict(
     type='FasterRCNN',
     backbone=dict(
-        type='WResNet',
-        in_channels=1,
-        first_conv_cfg=None,
-        depth=50,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3),
-        frozen_stages=1,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=True,
-        deep_stem=True,
+        _delete_=True,
+        type='ImageEncoderViT',
+        in_chans=1,
         deep_stem_mode='MultiBranchStemSA12X',
-        style='pytorch',
-        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
+        ),
     neck=dict(
         type='PAFPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[256, 256, 256, 256],
         out_channels=256,
         num_outs=5,
         norm_cfg=dict(type='GN',num_groups=32),
@@ -122,10 +114,9 @@ train_pipeline = [
         ratio_range=(0.8, 1.6),
         prob=0.1,
         pad_val=img_fill_val,skip_filter=False),
-    dict(type='WResize', img_scale=random_resize_scales,multiscale_mode=True),
     #dict(type="WRandomCrop",crop_size=random_crop_scales_min,name="WRandomCrop2",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),
     dict(type='RandomFlip', flip_ratio=0.5),
-    dict(type='Pad', size_divisor=192,img_fill_val=img_fill_val),
+    dict(type='WResize', img_scale=6144,multiscale_mode=False,pad=True,img_fill_val=img_fill_val),
     dict(type='WFixData'),
     dict(type='DefaultFormatBundle',img_to_float=False,img_fill_val=img_fill_val),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
@@ -161,7 +152,7 @@ train_dataset = dict(
     ),
     pipeline=train_pipeline)
 
-samples_per_gpu = 6
+samples_per_gpu = 1
 data = dict(
     dataloader="mmdet_dataloader",
     data_processor="mmdet_data_processor",
@@ -204,11 +195,11 @@ hooks = [
     dict(type='WMMDetModelSwitch', close_iter=-10000,skip_type_keys=('WMixUpWithMask','WRandomCrop2')),
     dict(type='WMMDetModelSwitch', close_iter=-5000,skip_type_keys=('WMosaic', 'WRandomCrop1','WRandomCrop2', 'WMixUpWithMask')),
 ]
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms"
-load_from='/home/wj/ai/work/mmdetection/weights/faster_rcnn_r50_fpn_2x_coco_bbox_mAP-0.384_20200504_210434-a5d8aa15.pth'
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_vit"
+load_from='sam_vit_b_01ec64.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint.pth'
 #load_from = '/home/wj/ai/mldata1/B11ACT/workdir/b11act_mask_huge_fp16/weights/checkpoint1.pth'
 finetune_model=True
 names_not2train = ["backbone"]
-names_2train = ["backbone.conv1","backbone.bn1","backbone.stem"]
+names_2train = ["backbone.patch_embed","backbone.scale","backbone.stem"]
 

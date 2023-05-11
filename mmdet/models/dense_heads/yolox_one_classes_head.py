@@ -76,6 +76,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
                      loss_weight=1.0),
                  loss_l1=dict(type='L1Loss', reduction='sum', loss_weight=1.0),
                  train_cfg=dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5)),
+                 iou_aware_obj_loss = False,
                  test_cfg=None,
                  init_cfg=dict(
                      type='Kaiming',
@@ -100,10 +101,14 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
         assert conv_bias == 'auto' or isinstance(conv_bias, bool)
         self.conv_bias = conv_bias
         self.use_sigmoid_cls = True
-
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
+
+        if loss_obj.type in ['VarifocalLoss']:
+            self.iou_aware_obj_loss = True
+        else:
+            self.iou_aware_obj_loss = False
 
         self.loss_bbox = build_loss(loss_bbox)
         self.loss_obj = build_loss(loss_obj)
@@ -450,8 +455,14 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
         num_pos_per_img = pos_inds.size(0)
 
         #pos_ious = assign_result.max_overlaps[pos_inds]
+
         obj_target = torch.zeros_like(objectness).unsqueeze(-1)
-        obj_target[pos_inds] = 1
+        if self.iou_aware_obj_loss:
+            pos_ious = assign_result.max_overlaps[pos_inds]
+            # IOU aware classification score
+            obj_target[pos_inds] = pos_ious.unsqueeze(-1).to(obj_target.dtype)
+        else:
+            obj_target[pos_inds] = 1
         bbox_target = sampling_result.pos_gt_bboxes
         l1_target = objectness.new_zeros((num_pos_per_img, 4))
         if self.use_l1:

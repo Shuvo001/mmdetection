@@ -67,10 +67,25 @@ def replace_cfg_vals(ori_cfg):
     if updated_cfg.get('model_wrapper', None) is not None:
         updated_cfg.model = updated_cfg.model_wrapper
         updated_cfg.pop('model_wrapper')
-    if updated_cfg['data'].train.dataset.ann_file != updated_cfg.data_root:
-        print(f"Update train data ann_file to {updated_cfg.data_root}")
-        updated_cfg['data'].train.dataset.ann_file = updated_cfg.data_root
-    if updated_cfg.data.val.data_dirs != updated_cfg.test_data_dir:
-        print(f"Update val data dirs to {updated_cfg.test_data_dir}")
-        updated_cfg.data.val.data_dirs = updated_cfg.test_data_dir
+    data_root = updated_cfg.get('data_root',None)
+    if data_root is not None and updated_cfg['data'].train.dataset.ann_file != data_root:
+        print(f"Update train data ann_file to {data_root}")
+        updated_cfg['data'].train.dataset.ann_file = data_root
+        updated_cfg.data_root = None
+    test_data_dir = updated_cfg.get('test_data_dir',None)
+    if updated_cfg.data.val.data_dirs != test_data_dir:
+        print(f"Update val data dirs to {test_data_dir}")
+        updated_cfg.data.val.data_dirs = test_data_dir
+        updated_cfg.test_data_dir = None
+    train_dataset = updated_cfg.get('train_dataset',None)
+    if train_dataset is not None:
+        updated_cfg.data.train = train_dataset
+        updated_cfg.train_dataset = None
+    train_pipeline = updated_cfg.get('train_pipeline',None)
+    if train_pipeline is not None:
+        updated_cfg.data.train.pipeline = train_pipeline
+        updated_cfg.train_pipeline = None
+    samples_per_gpu = updated_cfg.get('samples_per_gpu',None)
+    if samples_per_gpu is not None:
+        updated_cfg.data.samples_per_gpu = samples_per_gpu
     return updated_cfg

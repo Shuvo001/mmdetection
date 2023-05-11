@@ -44,6 +44,7 @@ class WRandomCrop:
                  crop_if=None,
                  try_crop_around_gtbboxes=False,
                  crop_around_gtbboxes_prob=0.5,
+                 prob=0.5,
                  max_size=None, #(H,W)
                  name='WRandomCrop'):
         assert isinstance(crop_size, (list, tuple))
@@ -62,6 +63,7 @@ class WRandomCrop:
             print(f"RandomCrop set max size {self.max_size}")
         else:
             self.max_size = None
+        self.prob = prob
         self.name = name
 
     def get_crop_bbox(self,crop_size,img_shape,gtbboxes):
@@ -193,8 +195,10 @@ class WRandomCrop:
                 if key in process_pipline:
                     return self._train_aug(results)
             return results
-        else:
+        elif np.random.rand()<self.prob:
             return self._train_aug(results)
+        else:
+            return results
 
     def __repr__(self):
         repr_str = self.__class__.__name__
@@ -420,6 +424,7 @@ class WRotate:
 class WTranslate:
     """Translate the images, bboxes, masks and segmentation maps horizontally
     or vertically.
+    the size of img before and after translate is same
 
     Args:
         level (int | float): The level for Translate and should be in
@@ -944,7 +949,9 @@ class WResize:
                  img_scale=None, #(H,W)
                  multiscale_mode=False,
                  bbox_clip_border=True,
-                 override=False):
+                 override=False,
+                 img_fill_val=0,
+                 pad=False):
 
         if multiscale_mode:
             if not isinstance(img_scale[0],Iterable):
@@ -961,6 +968,8 @@ class WResize:
         # TODO: refactor the override option in Resize
         self.override = override
         self.bbox_clip_border = bbox_clip_border
+        self.img_fill_val = img_fill_val
+        self.pad = pad
 
     @staticmethod
     def random_select(img_scales):
@@ -1009,10 +1018,15 @@ class WResize:
     def _resize_img(self, results):
         """Resize images with ``results['scale']``."""
         for key in results.get('img_fields', ['img']):
-            img, scale_factor = wmli.resize_imgv2(results[key],
-                results['scale'],
-                return_scale=True,
-                )
+            if self.pad:
+                img, scale_factor = wmli.resize_and_pad(results[key],results['scale'],
+                                    pad_color=self.img_fill_val,
+                                    return_scale=True)
+            else:
+                img, scale_factor = wmli.resize_imgv2(results[key],
+                    results['scale'],
+                    return_scale=True,
+                    )
             # the w_scale and h_scale has minor difference
             # a real fix should be done in the mmcv.imrescale in the future
             new_h, new_w = img.shape[:2]

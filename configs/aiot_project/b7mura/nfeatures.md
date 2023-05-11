@@ -159,11 +159,16 @@ config:
 
 |配置|R50|CSPResnet50|
 |---|---|---|
-|config|0.791|0.796|
+|config0|0.791|0.796|
+|config1|0.791|0.777|
 
-config:
+config0:
 - rcnn_pafpn.py
 - rcnn_cr.py
+
+config0:
+- rcnn_hr.py
+- rcnn_hr_cr.py
 
 ###SimOTA vs SimOTA(min bbox size=50)
 
