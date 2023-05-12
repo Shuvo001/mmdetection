@@ -278,7 +278,7 @@ class SimpleTrainer(BaseTrainer):
             self.log_writer.add_scalar("total_norm",self.total_norm,global_step=global_step)
         model = wtu.get_model(self.model)
         summary.log_all_variable(self.log_writer,model,global_step=global_step)
-        summary.log_optimizer(self.log_writer,self.optimizer,global_step)
+        summary.log_optimizer(self.log_writer,self.optimizer,global_step,name=self.meta['exp_name'])
 
     def tblog_imgs(self):
         global_step = self.iter

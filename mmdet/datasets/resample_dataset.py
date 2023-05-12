@@ -28,6 +28,9 @@ def get_resample_nr(labels,resample_parameters):
         return 1,major_label
     return nr,major_label
 
+'''
+没有任何标注的文件，其采样率的关键字用none表示
+'''
 class WResampleDataset(Dataset):
     CLASSES = None
 
@@ -64,9 +67,12 @@ class WResampleDataset(Dataset):
             else:
                 nr = rdata_resample_parameters[k]
                 print(f"label {k} repeat {nr} times, total {len(v)} samples.")
-                nnr = int(nr*len(v))
-                d = DataUnit(v)
-                idx2idx.extend([d]*nnr)
+                if wmlu.is_int(nr):
+                    idx2idx.extend(list(list(v)*nr))
+                else:
+                    nnr = int(nr*len(v))
+                    d = DataUnit(v)
+                    idx2idx.extend([d]*nnr)
         print(f"Resample {len(self._inner_dataset)} to {len(idx2idx)}") 
         return idx2idx
 
