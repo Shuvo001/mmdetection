@@ -1,11 +1,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch
 from ..builder import LOSSES
 from .utils import weight_reduce_loss
 
 
+@torch.cuda.amp.autocast(enabled=False)
 def varifocal_loss(pred,
                    target,
                    weight=None,
@@ -38,6 +39,10 @@ def varifocal_loss(pred,
     """
     # pred and target should be of the same size
     assert pred.size() == target.size()
+    pred = pred.float()
+    target = target.float()
+    if torch.is_tensor(weight):
+        weight = weight.float()
     pred_sigmoid = pred.sigmoid()
     target = target.type_as(pred)
     if iou_weighted:

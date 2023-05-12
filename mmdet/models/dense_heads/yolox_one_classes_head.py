@@ -105,7 +105,7 @@ class YOLOXOneClassesHead(BaseDenseHead, BBoxTestMixin):
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
 
-        if loss_obj.type in ['VarifocalLoss']:
+        if loss_obj is not None and "type" in loss_obj and loss_obj["type"] in ['VarifocalLoss']:
             self.iou_aware_obj_loss = True
         else:
             self.iou_aware_obj_loss = False
