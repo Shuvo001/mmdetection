@@ -1,5 +1,5 @@
 _base_ = [
-    './rcnn_ms.py'
+    './rcnn_ms_sm.py'
 ]
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
 img_scale = (3840, 6144)  # height, width
@@ -20,7 +20,7 @@ train_dataset = dict(
             ignored_classes=["MU4U"],
             img_suffix="jpg",
             ann_file=data_root,
-            resample_parameters={"MS1U": 8, "ML3U": 2, "Other": 2, "MV1U": 2},
+            resample_parameters={"MS1U": 8, "ML3U": 2, "OTHER": 2, "MV1U": 2},
             pipeline=[
                 dict(type='LoadImageFromFile', channel_order="rgb"),
                 dict(type='LoadAnnotations', with_bbox=True, with_mask=False),
@@ -38,4 +38,4 @@ train_dataset = dict(
     ),)
 #samples_per_gpu = 4
 #load_from="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms_ioucls/weights/checkpoint_15000.pth"
-work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms_ren"
+work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_faster_ms_sm_ren"

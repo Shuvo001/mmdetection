@@ -17,6 +17,7 @@ import os
 import sys
 import time
 from itertools import count
+from mmdet.utils.datadef import is_debug
 from threadtoolkit import par_for_each_no_return
 
 class WCustomDataset(Dataset):
@@ -211,7 +212,7 @@ class WCustomDataset(Dataset):
         img_file, img_shape,labels, labels_names, bboxes, masks, *_ = cur_data
         bboxes = odb.npchangexyorder(bboxes)
         labels = np.array(labels).astype(np.int32)
-        ann_info = dict(bboxes=bboxes,labels=labels,bitmap_masks=masks)
+        ann_info = dict(bboxes=bboxes,labels=labels,bitmap_masks=masks,filename=img_file)
 
         return ann_info
 
@@ -256,9 +257,13 @@ class WCustomDataset(Dataset):
         data = self.get_base_item(idx)
 
         if self.pipeline2 is not None:
-            return self.pipeline2(data)
+            results = self.pipeline2(data)
         else:
-            return data
+            results = data
+        
+        if is_debug():
+            results['filename'] = results['filename']+f"#{idx}"
+        return results
 
     def get_base_item(self, idx):
         """Get training/test data after pipeline.

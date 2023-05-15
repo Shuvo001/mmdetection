@@ -9,8 +9,10 @@ import pickle
 import os
 import sys
 import time
+from mmdet.utils.datadef import is_debug
 from itertools import count
 from wtorch.dataset_toolkit import DataUnit
+import copy
 
 def get_resample_nr(labels,resample_parameters):
     if len(labels)==0:
@@ -43,6 +45,14 @@ class WResampleDataset(Dataset):
         self._inner_dataset = dataset
         self.CLASSES = classes
         self.idx2idx = self.get_idx2idx(data_resample_parameters)
+        if is_debug():
+            print(f"Resample idx2idx")
+            for i,x in enumerate(self.idx2idx):
+                print(i,x)
+            print(f"inner dataset info")
+            for i in range(len(self._inner_dataset)):
+                info = self._inner_dataset.get_ann_info(i)
+                print(i,info['filename'],info['labels'])
     
     def get_idx2idx(self,data_resample_parameters):
         if data_resample_parameters is None or len(data_resample_parameters)==0:
@@ -69,6 +79,15 @@ class WResampleDataset(Dataset):
                 print(f"label {k} repeat {nr} times, total {len(v)} samples.")
                 if wmlu.is_int(nr):
                     idx2idx.extend(list(list(v)*nr))
+                elif nr<1.0:
+                    numerator,denominator = wmlu.to_fraction(nr)
+                    nrs = wmlu.list_to_2dlist(v,size=denominator)
+                    for _nrs in nrs:
+                        d = DataUnit(_nrs)
+                        repeat_nr = int(max(numerator*len(_nrs)/denominator,1))
+                        ds = [d]*repeat_nr
+                        ds = [copy.deepcopy(x) for x in ds]
+                        idx2idx.extend(ds)
                 else:
                     nnr = int(nr*len(v))
                     d = DataUnit(v)
@@ -114,5 +133,10 @@ class WResampleDataset(Dataset):
         return self._inner_dataset._rand_another(idx)
 
     def __getitem__(self, idx):
+        if is_debug():
+            old_idx = idx
         idx = self.trans_idx(idx)
-        return self._inner_dataset.__getitem__(idx)
+        results = self._inner_dataset.__getitem__(idx)
+        if is_debug():
+            results['filename'] = results['filename']+f"#{old_idx}"
+        return results

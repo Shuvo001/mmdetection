@@ -692,6 +692,12 @@ class WMixUpWithMask:
             return results
 
         results = self._mixup_transform(results)
+
+        filename = [results['filename']]
+        for x in results['mix_results']:
+            filename.append(x['filename'])
+        results['filename'] = ";".join(filename)
+
         return results
 
     def get_indexes(self, dataset):
@@ -1205,6 +1211,12 @@ class WMosaic:
             t = random.choice(self.two_imgs_directions)
             results = funcs[t](results)
         results['process'].append(type(self).__name__)
+
+        filename = [results['filename']]
+        for x in results['mix_results']:
+            filename.append(x['filename'])
+        results['filename'] = ";".join(filename)
+
         return results
 
     def get_indexes(self, dataset):

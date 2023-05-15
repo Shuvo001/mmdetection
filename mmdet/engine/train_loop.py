@@ -84,7 +84,7 @@ class SimpleTrainer(BaseTrainer):
 
         if is_debug():
             print("register_forward_hook")
-            wtt.register_forward_hook(model,wtt.isfinite_hook)
+            #wtt.register_forward_hook(model,wtt.isfinite_hook)
 
         print("model parameters info")
         wtt.show_model_parameters_info(model)
@@ -128,6 +128,7 @@ class SimpleTrainer(BaseTrainer):
         else:
             self.batch_pipeline = None
 
+        self.filename_counter = wmlu.Counter()
         if self.rank != 0:
             return
 
@@ -208,6 +209,23 @@ class SimpleTrainer(BaseTrainer):
 
         #data_batch = wtu.to(data_batch,device=self.rank)
         #print(self.rank,wtu.simple_model_device(self.model),data_batch['img'].device)
+        #if is_debug():
+        #if True:
+        if is_debug():
+            ann_dir = self.cfg.get("data_root",None)
+            for img_meta in data_batch['img_metas']:
+                filename = img_meta['filename']
+                if ";" in filename:
+                    filename = filename.split(";")
+                else:
+                    filename = [filename]
+                for x in filename:
+                    key = wmlu.get_relative_path(x,ann_dir)
+                    self.filename_counter.add(key)
+
+            if self.iter%500== 0:
+                wmlu.show_dict(self.filename_counter)
+                
         self.inputs = data_batch
     
 

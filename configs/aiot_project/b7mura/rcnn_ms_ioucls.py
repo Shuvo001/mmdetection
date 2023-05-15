@@ -1,12 +1,12 @@
 _base_ = [
-    './rcnn_ms.py'
+    './rcnn_ms_sm_ren.py'
 ]
 model = dict(
     rpn_head=dict(
-        loss_obj=dict(type='VarifocalLoss'),
+        loss_obj=dict(type='VarifocalLoss',loss_weight=5e5),
     ),
     train_cfg=dict(
-            loss_scale={"loss_cls":25,"loss_bbox":100,"loss_yolox_obj":1e5},
+            loss_scale={"loss_cls":25,"loss_bbox":100},
     )
 )
 #samples_per_gpu = 4

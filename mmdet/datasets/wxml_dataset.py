@@ -13,7 +13,10 @@ class WXMLDataset(WCustomDataset):
         self.classes = kwargs.get("classes")
         filter_empty_files = kwargs.pop("filter_empty_files",False)
         resample_parameters = kwargs.pop("resample_parameters",None)
+        ignored_classes = kwargs.pop("ignored_classes",[])
         self.label_text2id = dict(zip(self.classes,count()))
+        for c in ignored_classes:
+            self.label_text2id[c] = None
         self.__dataset = PascalVOCData(label_text2id=self.label_text2id,
                                        absolute_coord=True,
                                        filter_empty_files=filter_empty_files,
