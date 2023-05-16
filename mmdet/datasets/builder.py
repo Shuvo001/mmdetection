@@ -63,12 +63,14 @@ def build_dataset(cfg, default_args=None):
     if isinstance(cfg, (list, tuple)):
         dataset = ConcatDataset([build_dataset(c, default_args) for c in cfg])
     elif cfg['type'] == "WResampleDataset":
+        cfg = copy.deepcopy(cfg)
         inner_dataset = build_dataset(cfg['dataset'])
         classes = cfg['dataset']['classes']
-        data_resample_parameters = cfg['data_resample_parameters']
+        cfg.pop('dataset')
+        cfg.pop('type')
         return WResampleDataset(dataset=inner_dataset,
                                 classes=classes,
-                                data_resample_parameters=data_resample_parameters)
+                                **cfg)
     elif cfg['type'] == 'ConcatDataset':
         dataset = ConcatDataset(
             [build_dataset(c, default_args) for c in cfg['datasets']],

@@ -41,9 +41,11 @@ class WResampleDataset(Dataset):
     def __init__(self,
                  dataset,
                  classes,
-                 data_resample_parameters):
+                 data_resample_parameters,
+                 base_repeat_nr:int=1):
         self._inner_dataset = dataset
         self.CLASSES = classes
+        self.base_repeat_nr = int(base_repeat_nr)
         self.idx2idx = self.get_idx2idx(data_resample_parameters)
         if is_debug():
             print(f"Resample idx2idx")
@@ -72,12 +74,13 @@ class WResampleDataset(Dataset):
         idx2idx = []
         for k,v in l2idx.items():
             if k not in rdata_resample_parameters:
-                idx2idx.extend(v)
-                print(f"label {k} default repeat 1 times, total {len(v)} samples.")
+                idx2idx.extend(v*self.base_repeat_nr)
+                print(f"label {k} default repeat {self.base_repeat_nr} times, total {len(v)*self.base_repeat_nr} samples.")
             else:
-                nr = rdata_resample_parameters[k]
+                nr = rdata_resample_parameters[k]*self.base_repeat_nr
                 print(f"label {k} repeat {nr} times, total {len(v)} samples.")
                 if wmlu.is_int(nr):
+                    nr = int(nr)
                     idx2idx.extend(list(list(v)*nr))
                 elif nr<1.0:
                     numerator,denominator = wmlu.to_fraction(nr)

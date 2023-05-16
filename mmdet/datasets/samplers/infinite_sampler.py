@@ -1,6 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import itertools
-
+import os
 import numpy as np
 import torch
 from mmcv.runner import get_dist_info
@@ -154,6 +154,7 @@ class InfiniteBatchSampler(Sampler):
         # could use different indices to select non-overlapped data from the
         # same data list.
         self.seed = sync_random_seed(seed)
+        print(f"InfiniteBatchSampler, pid={os.getpid()}, seed={self.seed}")
         self.shuffle = shuffle
         self.size = len(dataset)
         self.indices = self._indices_of_rank()

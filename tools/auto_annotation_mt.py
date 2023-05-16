@@ -32,6 +32,7 @@ def parse_args():
         help='whether to set async options for async inference.')
     parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument('--save-data-dir', type=str,help='Path to output file')
+    parser.add_argument('--test-nr', type=int,help='Path to output file')
     parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
     parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
     parser.add_argument('--save-results',
@@ -193,14 +194,23 @@ def main():
     if hasattr(model.cfg,"classes"):
         classes = model.cfg.classes
 
-    save_path = args.save_data_dir
-    if save_path is None:
-        save_path = osp.join(work_dir,"tmp","auto_annotation")
 
     test_data_dir = args.data_dir 
     print(f"test_data_dir: {test_data_dir}")
     #files = wmlu.get_files(test_data_dir,suffix=args.img_suffix)
-    reader = ImgsReader(test_data_dir)
+    if args.test_nr>0:
+        files = wmlu.get_files(test_data_dir)
+        files = files[:args.test_nr]
+        args.copy_imgs = True
+        print(f"test nr is {args.test_nr}, files len is {len(files)}")
+        reader = ImgsReader(files,shuffle=False)
+        sys.stdout.flush()
+    else:
+        reader = ImgsReader(test_data_dir)
+
+    save_path = args.save_data_dir
+    if save_path is None:
+        save_path = osp.join(work_dir,"tmp","auto_annotation_"+wmlu.base_name(test_data_dir))
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
@@ -208,6 +218,8 @@ def main():
     #model_args={"threshold":0.3})
     input_size = get_test_img_scale(model.cfg)
     print(f"input size={input_size}")
+    print(f"Save path {save_path}")
+    sys.stdout.flush()
     #save_size = (1024,640) 
     save_size = None
 

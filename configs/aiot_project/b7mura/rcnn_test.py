@@ -15,6 +15,7 @@ train_dataset = dict(
         _delete_=True,
         type="WResampleDataset",
         data_resample_parameters={"none":0.4},
+        base_repeat_nr=5,
         dataset=dict(
             type=dataset_type,
             classes=classes,
