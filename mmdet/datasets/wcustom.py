@@ -149,6 +149,7 @@ class WCustomDataset(Dataset):
             print(f"Total cache {len(self._data_cache)} data items.")
             sys.stdout.flush()
 
+        print(f"WCustomDataset, ann_file={ann_file}\n pipeline={pipeline}\n pipeline2={pipeline2}")
         self.pipeline2 = Compose(pipeline2) if pipeline2 is not None else None
         self.cache_processed_data = cache_processed_data
         self.cache_file = cache_file

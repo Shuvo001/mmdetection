@@ -13,6 +13,7 @@ train_dataset = dict(
     type='MultiImageMixDataset',
     dataset=dict(
         type="WResampleDataset",
+        _delete_=True,
         data_resample_parameters={"none":0.4},
         dataset=dict(
             type=dataset_type,

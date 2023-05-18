@@ -69,6 +69,15 @@ config1:
 - rcnn_scales.py
 - rcnn_yoloxv2_scale.py
 
+|配置|MultiBranchStemSA12X|MultiBranchStemM12X|
+|---|---|---|
+|config0|0.799|0.822|
+
+config0:
+- rcnn_ms.py
+- rcnn_ms_sm.py
+
+
 ###Head FC norm
 
 |配置|WO GN|W norm|

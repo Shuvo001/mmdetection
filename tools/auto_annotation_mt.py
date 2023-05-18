@@ -136,6 +136,13 @@ def get_results(result,score_thr=0.05):
 def label_trans(labels):
     return np.array([x+1 for x in labels])
 
+class LResize:
+    def __init__(self,size) -> None:
+        self.size = size #w,h
+    
+    def __call__(self,img):
+        return wmli.resize_img(img,self.size,keep_aspect_ratio=True)
+
 def main():
     args = parse_args()
 
@@ -198,15 +205,16 @@ def main():
     test_data_dir = args.data_dir 
     print(f"test_data_dir: {test_data_dir}")
     #files = wmlu.get_files(test_data_dir,suffix=args.img_suffix)
-    if args.test_nr>0:
+    resizer = LResize(size=list(model.cfg.img_scale)[::-1])
+    if args.test_nr is not None and args.test_nr>0:
         files = wmlu.get_files(test_data_dir)
         files = files[:args.test_nr]
         args.copy_imgs = True
         print(f"test nr is {args.test_nr}, files len is {len(files)}")
-        reader = ImgsReader(files,shuffle=False)
+        reader = ImgsReader(files,shuffle=False,transform=resizer)
         sys.stdout.flush()
     else:
-        reader = ImgsReader(test_data_dir)
+        reader = ImgsReader(test_data_dir,transform=resizer)
 
     save_path = args.save_data_dir
     if save_path is None:
@@ -233,6 +241,8 @@ def main():
 
     for i,(full_path,img) in enumerate(reader):
         try:
+            p_shape = img.shape
+            org_shape = wmli.get_img_size(full_path)
             print(f"process {i}/{len(reader.dataset)}")
             if len(img) == 0:
                 print(f"Read {full_path} faild.")

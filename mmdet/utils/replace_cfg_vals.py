@@ -89,10 +89,10 @@ def replace_cfg_vals(ori_cfg):
         updated_cfg.data.val.data_dirs = test_data_dir
         updated_cfg.test_data_dir = None
 
-    train_pipeline = updated_cfg.get('train_pipeline',None)
+    '''train_pipeline = updated_cfg.get('train_pipeline',None)
     if train_pipeline is not None:
         replace_key_vals(updated_cfg['data'].train,"pipeline",train_pipeline)
-        updated_cfg.train_pipeline = None
+        updated_cfg.train_pipeline = None'''
 
     samples_per_gpu = updated_cfg.get('samples_per_gpu',None)
     if samples_per_gpu is not None:

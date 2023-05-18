@@ -1819,8 +1819,15 @@ class W2Gray:
 
     @staticmethod
     def apply(img):
-        gray_img = wmli.nprgb_to_gray(img)
-        gray_img = np.expand_dims(gray_img,axis=-1)
+        if len(img.shape) == 3:
+            if img.shape[-1] == 3:
+                gray_img = wmli.nprgb_to_gray(img)
+                gray_img = np.expand_dims(gray_img,axis=-1)
+            elif img.shape[-1] != 1:
+                print(f"ERROR channel nr: {img.shape[-1]}")
+                gray_img = img[:,:,:1]
+        else:
+            gray_img = np.expand_dims(gray_img,axis=-1)
         return gray_img
 
     def __call__(self,results):
@@ -2293,3 +2300,45 @@ class WCopyPaste:
         repr_str += f'mask_occluded_thr={self.mask_occluded_thr}, '
         repr_str += f'selected={self.selected}, '
         return repr_str
+
+@PIPELINES.register_module()
+class WRandomBrightness:
+    def __init__(self,prob,max_delta):
+        self.prob = prob
+        self.max_delta = max_delta
+
+    def __call__(self, results):
+        '''
+        img: [H,W,C], np.uint8
+        '''
+        if np.random.rand()>self.prob:
+            return results
+        img = results[IMAGE].astype(np.int16)
+        delta = random.randint(-self.max_delta,self.max_delta)
+        img = img+delta
+        img = np.clip(img,a_min=0,a_max=255).astype(np.uint8)
+        results[IMAGE] = img
+        return results
+
+
+@PIPELINES.register_module()
+class WRandomContrast:
+    def __init__(self,prob,lower=0.8,upper=1.2):
+        self.prob = prob
+        self.lower = lower
+        self.upper = upper
+
+    def __call__(self, results):
+        '''
+        img: [H,W,C], np.uint8
+        '''
+        if np.random.rand()>self.prob:
+            return results
+        img = results[IMAGE].astype(np.float32)
+        contrast_factor = random.uniform(self.lower,self.upper)
+        mean = np.mean(img,axis=(0,1),keepdims=True)
+        #img = (img-mean)*contrast_factor+mean
+        img = img*contrast_factor+mean*(1.0-contrast_factor)
+        img = np.clip(img,a_min=0,a_max=255).astype(np.uint8)
+        results[IMAGE] = img
+        return results

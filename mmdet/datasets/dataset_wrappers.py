@@ -390,7 +390,7 @@ class MultiImageMixDataset:
                 self.pipeline.append(transform)
             else:
                 raise TypeError('pipeline must be a dict')
-
+        print(f"MultiImageMixDataset, pipeline={pipeline}, skip_type_keys={skip_type_keys}")
         self.dataset = dataset
         self.CLASSES = dataset.CLASSES
         self.PALETTE = getattr(dataset, 'PALETTE', None)

@@ -42,9 +42,20 @@ class WResampleDataset(Dataset):
                  dataset,
                  classes,
                  data_resample_parameters,
-                 base_repeat_nr:int=1):
+                 base_repeat_nr="auto"):
         self._inner_dataset = dataset
         self.CLASSES = classes
+        if base_repeat_nr == "auto":
+            brn = 1
+            MAX_BRN = 10
+            for k,v in data_resample_parameters.items():
+                if not wmlu.is_int(v):
+                    numerator,denominator = wmlu.to_fraction(v)
+                    brn = max(denominator,brn)
+            if brn<=MAX_BRN:
+                base_repeat_nr = brn
+            print(f"Auto update ResampleDataset base repeat nr to {base_repeat_nr}")
+            
         self.base_repeat_nr = int(base_repeat_nr)
         self.idx2idx = self.get_idx2idx(data_resample_parameters)
         if is_debug():
