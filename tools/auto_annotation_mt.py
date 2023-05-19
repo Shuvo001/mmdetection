@@ -141,7 +141,8 @@ class LResize:
         self.size = size #w,h
     
     def __call__(self,img):
-        return wmli.resize_img(img,self.size,keep_aspect_ratio=True)
+        img = wmli.resize_img(img,self.size,keep_aspect_ratio=True)
+        return wmli.nprgb_to_gray(img)
 
 def main():
     args = parse_args()
@@ -243,6 +244,7 @@ def main():
         try:
             p_shape = img.shape
             org_shape = wmli.get_img_size(full_path)
+            i_scale = org_shape[0]/p_shape[0]
             print(f"process {i}/{len(reader.dataset)}")
             if len(img) == 0:
                 print(f"Read {full_path} faild.")
@@ -280,10 +282,11 @@ def main():
             bboxes,labels,scores,det_masks,result = detector(model,
                                                              img,
                                                              input_size=input_size,score_thr=args.score_thr)
+            bboxes = bboxes*i_scale
             name = wmlu.base_name(full_path)
     
             ann_path = save_annotation(ann_save_dir,
-                                       full_path,img.shape,bboxes,labels,scores,det_masks,classes,
+                                       full_path,org_shape,bboxes,labels,scores,det_masks,classes,
                                        save_scores=args.save_scores)
     
             if not args.inplace and len(labels)>0:

@@ -8,12 +8,12 @@ from mmdet.utils.datadef import is_debug
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def varifocal_loss(pred,
+def wvarifocal_loss(pred,
                    target,
                    weight=None,
-                   alpha=0.75,
+                   alpha=1.0,
                    gamma=2.0,
-                   iou_weighted=True,
+                   iou_weighted=False,
                    reduction='mean',
                    avg_factor=None):
     """`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
@@ -46,17 +46,18 @@ def varifocal_loss(pred,
         weight = weight.float()
     pred_sigmoid = pred.sigmoid()
     target = target.type_as(pred)
+    _target = (target>0.0).float()
     if iou_weighted:
-        focal_weight = target * (target > 0.0).float() + \
+        focal_weight = target * _target + \
             alpha * (pred_sigmoid - target).abs().pow(gamma) * \
             (target <= 0.0).float()
     else:
-        focal_weight = (target > 0.0).float() + \
+        focal_weight = _target + \
             alpha * (pred_sigmoid - target).abs().pow(gamma) * \
             (target <= 0.0).float()
 
     loss = F.binary_cross_entropy_with_logits(
-        pred, target, reduction='none') * focal_weight
+        pred, _target, reduction='none') * focal_weight
     if is_debug():
         nr = pred.numel()
         p_mask = target>0.0
@@ -74,13 +75,13 @@ def varifocal_loss(pred,
 
 
 @LOSSES.register_module()
-class VarifocalLoss(nn.Module):
+class WVarifocalLoss(nn.Module):
 
     def __init__(self,
                  use_sigmoid=True,
-                 alpha=0.75,
+                 alpha=1.0,
                  gamma=2.0,
-                 iou_weighted=True,
+                 iou_weighted=False,
                  reduction='mean',
                  loss_weight=1.0):
         """`Varifocal Loss <https://arxiv.org/abs/2008.13367>`_
@@ -100,7 +101,7 @@ class VarifocalLoss(nn.Module):
                 "sum".
             loss_weight (float, optional): Weight of loss. Defaults to 1.0.
         """
-        super(VarifocalLoss, self).__init__()
+        super().__init__()
         assert use_sigmoid is True, \
             'Only sigmoid varifocal loss supported now.'
         assert alpha >= 0.0
@@ -137,7 +138,7 @@ class VarifocalLoss(nn.Module):
         reduction = (
             reduction_override if reduction_override else self.reduction)
         if self.use_sigmoid:
-            loss_cls = self.loss_weight * varifocal_loss(
+            loss_cls = self.loss_weight * wvarifocal_loss(
                 pred,
                 target,
                 weight,

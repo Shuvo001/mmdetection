@@ -1827,7 +1827,7 @@ class W2Gray:
                 print(f"ERROR channel nr: {img.shape[-1]}")
                 gray_img = img[:,:,:1]
         else:
-            gray_img = np.expand_dims(gray_img,axis=-1)
+            gray_img = np.expand_dims(img,axis=-1)
         return gray_img
 
     def __call__(self,results):

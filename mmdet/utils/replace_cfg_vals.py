@@ -3,12 +3,12 @@ import re
 
 from mmcv.utils import Config
 
-def replace_key_vals(cfg,key,v):
+def replace_key_vals(cfg,key,nv):
     for k,v in cfg.items():
         if k == key:
-            cfg[k] = v
+            cfg[k] = nv
         elif isinstance(v,dict):
-            replace_key_vals(v,key,v)
+            replace_key_vals(v,key,nv)
 
 def replace_cfg_vals(ori_cfg):
     """Replace the string "${key}" with the corresponding value.
@@ -81,7 +81,7 @@ def replace_cfg_vals(ori_cfg):
     data_root = updated_cfg.get('data_root',None)
     if data_root is not None:
         print(f"Update train data ann_file to {data_root}")
-        replace_key_vals(updated_cfg['data'],"ann_file",data_root)
+        replace_key_vals(updated_cfg['data']["train"],"ann_file",data_root)
 
     test_data_dir = updated_cfg.get('test_data_dir',None)
     if updated_cfg.data.val.data_dirs != test_data_dir:
