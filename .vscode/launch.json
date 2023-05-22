@@ -87,7 +87,7 @@
             //"args":["configs/aiot_project/b7mura/rcnn_vit.py"  "--gpus" "0" "--debug" "--work-dir" "t"],
             //"args":["configs/aiot_project/b7mura/rcnn_test.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
             //"args":["configs/aiot_project/b7mura/rcnn_ms_sm_ren_sd3.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
-            "args":["configs/aiot_project/b7mura/rcnn_ms_ioucls.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
+            "args":["configs/aiot_project/b7mura/rcnn_ms_sm_ren_sd4.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
         },
         {
             "name": "Python: train steel",
@@ -277,6 +277,15 @@
             "program": "./tools/traced_predict_on_images.py",
             "console": "integratedTerminal",
             "args":["tmp.traced" "--gpus" "2" "--save_data_dir" "/home/wj/ai/mldata1/0day/traced_predict_on_images"],
+        },
+        {
+            "name": "Python: check annotation",
+            "type": "python",
+            "justMyCode": true,
+            "request": "launch",
+            "program": "./tools/check_annotation.py",
+            "console": "integratedTerminal",
+            "args":["configs/aiot_project/b7mura/rcnn_ms_sm_rena.py" "/home/wj/ai/mldata1/B7mura/datas/test_s2" "--gpus" "1"],
         },
     ]
     

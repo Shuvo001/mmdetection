@@ -13,6 +13,7 @@ from iotoolkit.coco_toolkit import COCOData
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
 from iotoolkit.labelme_toolkit import LabelMeData
 from object_detection2.metrics.toolkit import *
+from thirdparty.pyconfig.config import Config
 import os.path as osp
 from itertools import count
 import pickle
@@ -176,13 +177,18 @@ def main():
     from mmdet.apis import (ImageInferencePipeline,
                         init_detector,get_test_img_scale)
     from mmdet.utils.datadef import set_debug
+    from mmdet.utils import replace_cfg_vals
 
 
     print(f"config {args.config}")
     sys.stdout.flush()
     set_debug(args.debug)
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, None, device=args.device)
+    cfg = Config.fromfile(args.config)
+
+    # replace the ${key} with the value of cfg.key
+    cfg = replace_cfg_vals(cfg)
+    model = init_detector(cfg, None, device=args.device)
 
     if args.work_dir is not None:
         if len(args.work_dir)==1 and not osp.isdir(args.work_dir):

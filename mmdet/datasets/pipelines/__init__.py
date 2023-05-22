@@ -18,3 +18,4 @@ from .transforms import (Albu, CopyPaste, CutOut, Expand, MinIoURandomCrop,
 from .wtransforms import *
 from .wloading import *
 from .wbatchtransforms import *
+from .wtransform_wrappers import *

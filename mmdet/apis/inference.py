@@ -7,6 +7,7 @@ import mmcv
 import numpy as np
 import torch
 from mmcv.parallel import collate, scatter
+from thirdparty.pyconfig.config import Config 
 import wtorch.utils as wtu
 from mmdet.datasets import replace_ImageToTensor
 from mmdet.datasets.pipelines import Compose
@@ -39,10 +40,8 @@ def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
         nn.Module: The constructed detector.
     """
     if isinstance(config, (str, Path)):
-        config = mmcv.Config.fromfile(config)
-    elif not isinstance(config, mmcv.Config):
-        raise TypeError('config must be a filename or Config object, '
-                        f'but got {type(config)}')
+        config = Config.fromfile(config)
+
     if cfg_options is not None:
         config.merge_from_dict(cfg_options)
     if 'pretrained' in config.model:
