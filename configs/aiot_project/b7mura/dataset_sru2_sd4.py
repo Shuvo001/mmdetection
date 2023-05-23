@@ -59,8 +59,11 @@ train_dataset = dict(
             pipeline2=[
                 dict(type="WDecodeImg", fmt='gray'),
                 dict(type='RandomFlip', flip_ratio=0.5),
-                dict(type="WRandomChoice",transforms=[(dict(type='WRandomBrightness', prob=1.0,max_delta=11),0.3),
-                (dict(type='WRandomContrast', prob=1.0,lower=0.8,upper=1.2),0.1)]),
+                dict(type="WRandomChoice",transforms=[
+                    (dict(type='WRandomBrightness', prob=1.0,max_delta=11),0.3),
+                    (dict(type='WRandomContrast', prob=1.0,lower=0.8,upper=1.2),0.09),
+                    (dict(type='WRandomBrightStripe', prob=1.0,max_size=2000),0.01),
+                    ]),
             ],
             cache_file=True,
             name="b7mura_resample",

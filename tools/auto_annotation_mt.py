@@ -13,6 +13,7 @@ from iotoolkit.labelme_toolkit import LabelMeData,save_labelme_datav3
 import os.path as osp
 from itertools import count
 import cv2
+import random
 import shutil
 import torch
 
@@ -34,6 +35,7 @@ def parse_args():
     parser.add_argument('--save-data-dir', type=str,help='Path to output file')
     parser.add_argument('--test-nr', type=int,help='Path to output file')
     parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
+    parser.add_argument('--shuffle', action='store_true',help='whether to shuffle input files.')
     parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
     parser.add_argument('--save-results',
         action='store_true',
@@ -209,6 +211,9 @@ def main():
     resizer = LResize(size=list(model.cfg.img_scale)[::-1])
     if args.test_nr is not None and args.test_nr>0:
         files = wmlu.get_files(test_data_dir)
+        if args.shuffle:
+            random.shuffle(files)
+            print(f"Shuffle files")
         files = files[:args.test_nr]
         args.copy_imgs = True
         print(f"test nr is {args.test_nr}, files len is {len(files)}")

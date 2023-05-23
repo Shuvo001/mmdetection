@@ -91,15 +91,12 @@ def eval_dataset(data_dir,classes,dataset_type="json"):
     print(f"Text to label")
     wmlu.show_dict(text2label)
 
-    def label_text2id(x):
-        return text2label[x]
-
     #data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
     #data.read_data(data_dir,img_suffix=".bmp;;.jpg;;.jpeg",check_xml_file=False)
     if dataset_type == "LabelmeDataset":
-        data = LabelMeData(label_text2id=label_text2id,absolute_coord=True)
+        data = LabelMeData(label_text2id=text2label,absolute_coord=True)
     elif dataset_type == "WXMLDataset":
-        data = PascalVOCData(label_text2id=label_text2id,absolute_coord=True)
+        data = PascalVOCData(label_text2id=text2label,absolute_coord=True)
     else:
         print(f"unsupport dataset type {dataset_type}")
         raise RuntimeError(f"unsupport dataset type {dataset_type}")

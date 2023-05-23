@@ -94,7 +94,7 @@ model = dict(
 )
 dataset_type = 'WXMLDataset'
 data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sr1'
-test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s1'
+test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s2m'
 #img_scale = (5120, 8192)  # height, width
 #random_resize_scales = [8960, 8704, 8448, 8192, 7936, 7680]
 #random_crop_scales = [(5600, 8960), (5440, 8704), (5280, 8448), (5120, 8192), (4960, 7936), (4800, 7680)]

@@ -2342,3 +2342,32 @@ class WRandomContrast:
         img = np.clip(img,a_min=0,a_max=255).astype(np.uint8)
         results[IMAGE] = img
         return results
+
+@PIPELINES.register_module()
+class WRandomBrightStripe:
+    def __init__(self,prob,min_size=100,max_size=1000,min_v = 20,max_v=160):
+        self.prob = prob
+        self.min_size = min_size
+        self.max_size = max_size
+        self.min_v = min_v
+        self.max_v = max_v
+
+    def __call__(self, results):
+        '''
+        img: [H,W,C], np.uint8
+        '''
+        if np.random.rand()>self.prob:
+            return results
+        img = results[IMAGE]
+        img = img.astype(np.float32)
+        v = random.randint(self.min_v,self.max_v)
+        size = random.randint(self.min_size,self.max_size)
+        if size>=img.shape[1]:
+            size = img.shape[1]
+            beg_pos = 0
+        else:
+            beg_pos = random.randint(0,img.shape[1]-size)
+        img[:,beg_pos:beg_pos+size] += v
+        img = np.clip(img,a_min=0,a_max=255).astype(np.uint8)
+        results[IMAGE] = img
+        return results
