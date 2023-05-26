@@ -58,7 +58,7 @@ class WResampleDataset(Dataset):
             
         self.base_repeat_nr = int(base_repeat_nr)
         self.idx2idx = self.get_idx2idx(data_resample_parameters)
-        if is_debug():
+        if False and is_debug():
             print(f"Resample idx2idx")
             for i,x in enumerate(self.idx2idx):
                 print(i,x)
@@ -66,6 +66,13 @@ class WResampleDataset(Dataset):
             for i in range(len(self._inner_dataset)):
                 info = self._inner_dataset.get_ann_info(i)
                 print(i,info['filename'],info['labels'])
+        
+        print(f"resample dataset statistics:")
+        st.statistics_dict_dataset_boxes_with_datas(self,label_encoder=st.default_encode_label,
+                                          labels_to_remove=None,
+                                          max_aspect=None,absolute_size=True,
+                                          silent=True)
+        pass
     
     def get_idx2idx(self,data_resample_parameters):
         if data_resample_parameters is None or len(data_resample_parameters)==0:
