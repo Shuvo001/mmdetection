@@ -3,6 +3,7 @@ from .builder import DATASETS
 from .wcustom import WCustomDataset
 from itertools import count
 from iotoolkit.pascal_voc_toolkit import PascalVOCData
+import wml_utils as wmlu
 
 
 @DATASETS.register_module()
@@ -14,9 +15,13 @@ class WXMLDataset(WCustomDataset):
         filter_empty_files = kwargs.pop("filter_empty_files",False)
         resample_parameters = kwargs.pop("resample_parameters",None)
         ignored_classes = kwargs.pop("ignored_classes",[])
+        label_text2id = kwargs.pop("label_text2id",{})
         self.label_text2id = dict(zip(self.classes,count()))
         for c in ignored_classes:
             self.label_text2id[c] = None
+        self.label_text2id.update(label_text2id)
+        print("Label text 2 id:")
+        wmlu.show_dict(self.label_text2id)
         self.__dataset = PascalVOCData(label_text2id=self.label_text2id,
                                        absolute_coord=True,
                                        filter_empty_files=filter_empty_files,

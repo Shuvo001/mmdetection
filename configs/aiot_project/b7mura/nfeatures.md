@@ -193,6 +193,7 @@ config0:
 |---|---|---|
 |rcnn_scale_na_pafpn.py|0.782|0.813|
 |rcnn_ms.py(sr2)|0.790|0.810|
+|rcnn_ms_ioucls|0.819|0.834|
 
 
 |配置|ref|训练到一半使用hook训练所有权重|
@@ -231,3 +232,10 @@ config0:
 |配置|s1|s2|
 |---|---|---|
 |rcnn_ms.py|0.799|0.790|
+
+
+###wvarifocalloss
+|配置|wo wvarifocalloss|w wvarifocalloss|
+|---|---|---|
+|rcnn_ms_sm_ren_sd4/rcnn_ms_sm_ren_sd4i|0.799|0.815|
+|rcnn_ms_sm_ren/rcnn_ms_ioucls|0.793|0.819|
