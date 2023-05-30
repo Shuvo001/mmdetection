@@ -177,14 +177,12 @@ class SimpleTrainer(BaseTrainer):
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
                 self.error_step_nr += 1
-                continue
             except:
                 print(f"Train error iter={self.iter}, error nr = {self.error_step_nr}.")
                 traceback.print_exc(file=sys.stdout)
                 sys.stdout.flush()
                 torch.cuda.empty_cache()
                 self.error_step_nr += 1
-                continue
             if self.error_step_nr > SimpleTrainer.MAX_ERROR_STEP_NR:
                 print("ERROR: too many errors, stop training.")
                 break
