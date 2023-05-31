@@ -25,4 +25,9 @@ def make_divisible(value, divisor, min_value=None, min_ratio=0.9):
     # Make sure that round down does not go down by more than (1-min_ratio).
     if new_value < min_ratio * value:
         new_value += divisor
-    return new_value
+    return int(new_value)
+
+
+def make_round(x: float, deepen_factor: float = 1.0) -> int:
+    """Make sure that x*deepen_factor becomes an integer not less than 1."""
+    return max(round(x * deepen_factor), 1) if x > 1 else x

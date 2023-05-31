@@ -21,3 +21,4 @@ from .wresnest import WResNeSt
 from .wcsp_resnet import WCSPResNet
 from .vit.image_encoder import ImageEncoderViT
 from .stem import *
+from .wcsp_darknetv8 import *

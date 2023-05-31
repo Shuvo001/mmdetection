@@ -1,6 +1,6 @@
 _base_ = [
     './rcnn_ms_sm.py',
-    './dataset_sru2_sd4.py',
+    './dataset_sru2_sd4_tiny.py',
 ]
 model = dict(
     backbone=dict(
@@ -32,5 +32,5 @@ model = dict(
 #samples_per_gpu = 4
 finetune_model=False
 #load_from='ppyoloe_plus_l_fast_8xb8-80e_coco_20230102_203825-1864e7b3.pth'
-load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_rcnn_cr_sd4i/weights/checkpoint_6000.pth'
+load_from='/home/wj/ai/mldata1/B7mura/workdir/b7mura_rcnn_cr_sd4i/weights/checkpoint_5000.pth'
 work_dir="/home/wj/ai/mldata1/B7mura/workdir/b7mura_rcnn_cr_sd4i"

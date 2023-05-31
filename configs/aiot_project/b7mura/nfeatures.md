@@ -194,6 +194,8 @@ config0:
 |rcnn_scale_na_pafpn.py|0.782|0.813|
 |rcnn_ms.py(sr2)|0.790|0.810|
 |rcnn_ms_ioucls|0.819|0.834|
+|rcnn_ms_sm_ren_sd4isl.py|0.811|0.814|
+|rcnn_ms_sm_ren_sd4i.py|0.811|0.831|
 
 
 |配置|ref|训练到一半使用hook训练所有权重|
