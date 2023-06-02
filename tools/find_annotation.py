@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('data_dir', type=str,help='Path to test data dir')
     parser.add_argument('--checkpoint', default=None,type=str,help='Checkpoint file')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
-    parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg;;.png",help='img suffix')
+    parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg",help='img suffix')
     parser.add_argument(
         '--score-thr', type=float, default=0.1, help='bbox score threshold')
     parser.add_argument(
@@ -148,6 +148,8 @@ class LResize:
 
 def main():
     args = parse_args()
+    args.copy_imgs = True
+    labels2save = set([4,5,6])
 
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
@@ -224,7 +226,7 @@ def main():
 
     save_path = args.save_data_dir
     if save_path is None:
-        save_path = osp.join(work_dir,"tmp","auto_annotation_"+wmlu.base_name(test_data_dir))
+        save_path = osp.join("/home/wj/ai/mldata1/B7mura","tmp","find_annotation_"+wmlu.base_name(test_data_dir))
 
     wmlu.create_empty_dir_remove_if(save_path,key_word="tmp")
     #metrics = ClassesWiseModelPerformace(num_classes=len(classes),classes_begin_value=0,model_type=PrecisionAndRecall)
@@ -287,6 +289,10 @@ def main():
             bboxes,labels,scores,det_masks,result = detector(model,
                                                              img,
                                                              input_size=input_size,score_thr=args.score_thr)
+            if len(labels)==0:
+                continue
+            if len(set(labels)&labels2save)==0:
+                continue
             bboxes = bboxes*i_scale
             name = wmlu.base_name(full_path)
     

@@ -79,7 +79,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def eval_dataset(data_dir,classes,dataset_type="json"):
+def eval_dataset(data_dir,classes,dataset_type="json",label_text2id={}):
     '''data = COCOData()
     data.read_data(wmlu.home_dir("ai/mldata/coco/annotations/instances_val2014.json"),
                    image_dir=wmlu.home_dir("ai/mldata/coco/val2014"))'''
@@ -88,6 +88,7 @@ def eval_dataset(data_dir,classes,dataset_type="json"):
     else:
         text2label = {"scratch":0}
 
+    text2label.update(label_text2id)
     print(f"Text to label")
     wmlu.show_dict(text2label)
 
@@ -264,7 +265,8 @@ def main():
         dataset_type = args.dataset_type
     else:
         dataset_type = model.cfg.data.val.get("type","WXMLDataset")
-    dataset = eval_dataset(test_data_dir,classes=classes,dataset_type=dataset_type)
+    label_text2id = model.cfg.get("label_text2id",{})
+    dataset = eval_dataset(test_data_dir,classes=classes,dataset_type=dataset_type,label_text2id=label_text2id)
     input_size = get_test_img_scale(model.cfg)
     print(f"input size={input_size}")
     #save_size = (1024,640) 

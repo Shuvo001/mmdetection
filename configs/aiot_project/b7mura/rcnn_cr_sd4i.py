@@ -27,6 +27,7 @@ model = dict(
     ),
     train_cfg=dict(
             loss_scale={"loss_cls":25,"loss_bbox":100},
+            max_norm=0.0,
     )
 )
 #samples_per_gpu = 4

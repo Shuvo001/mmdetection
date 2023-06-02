@@ -24,6 +24,7 @@ from mmdet.utils.datadef import *
 from .base_trainer import BaseTrainer
 import traceback
 from mmdet.datasets.pipelines import Compose
+from torch.distributed.algorithms.ddp_comm_hooks import default as comm_hooks
 
 
 
@@ -85,6 +86,14 @@ class SimpleTrainer(BaseTrainer):
         if is_debug():
             print("register_forward_hook")
             #wtt.register_forward_hook(model,wtt.isfinite_hook)
+        
+        self.max_norm = None
+        max_norm = cfg.model.train_cfg.get("max_norm",16.0)
+        if max_norm>0.1:
+            print(f"Enable grad clip, Set max_norm to {max_norm}")
+            self.max_norm = max_norm
+        else:
+            print(f"Disable grad clip")
 
         print("model parameters info")
         wtt.show_model_parameters_info(model)
@@ -109,6 +118,8 @@ class SimpleTrainer(BaseTrainer):
         if self.world_size>1:
             print(f"Use DDP model.")
             model = DDP(model,device_ids=[self.rank],output_device=self.rank)
+            if self.use_fp16:
+                model.register_comm_hook(state=None, hook=comm_hooks.fp16_compress_hook)
         self._raw_model = wtu.get_model(model)
         self.model = model
 
@@ -236,7 +247,8 @@ class SimpleTrainer(BaseTrainer):
         loss = outputs["loss"]
         self.optimizer.zero_grad()
         loss.backward()
-        self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
+        if self.max_norm is not None:
+            self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_norm, norm_type=2)
         self.optimizer.step()
         self.lr_scheduler.step()
 
@@ -250,8 +262,9 @@ class SimpleTrainer(BaseTrainer):
         loss = outputs["loss"]
         self.optimizer.zero_grad()
         self.scaler.scale(loss).backward()
-        self.scaler.unscale_(self.optimizer)
-        self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=16.0, norm_type=2)
+        if self.max_norm is not None:
+            self.scaler.unscale_(self.optimizer)
+            self.total_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_norm, norm_type=2)
         self.scaler.step(self.optimizer)
         self.scaler.update()
         self.lr_scheduler.step()

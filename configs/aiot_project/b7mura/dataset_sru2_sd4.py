@@ -1,5 +1,5 @@
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')
-label_text2id={"MP4U":7}
+label_text2id={"MP4U":7,"MU4U":None}
 #MP4U
 img_scale = (3840, 6144)  # height, width
 random_resize_scales = [6720, 6528, 6336, 6144, 5952, 5760]

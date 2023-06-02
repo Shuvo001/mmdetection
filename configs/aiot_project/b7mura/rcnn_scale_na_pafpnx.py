@@ -4,6 +4,7 @@ _base_ = [
     '../../_base_/models/faster_rcnn_r50_fpn_yolox.py',
     '../../_base_/default_runtime.py'
 ]
+label_text2id={"MP4U":7,'MU4U':None}
 max_iters=50000
 # dataset settings
 classes =  ('MS7U', 'MP1U', 'MU2U', 'ML9U', 'MV1U', 'ML3U', 'MS1U', 'Other')

@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('data_dir', type=str,help='Path to test data dir')
     parser.add_argument('--checkpoint', default=None,type=str,help='Checkpoint file')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
-    parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg",help='img suffix')
+    parser.add_argument('--img-suffix', type=str,default=".bmp;;.jpg;;.jpeg;;.png",help='img suffix')
     parser.add_argument(
         '--score-thr', type=float, default=0.1, help='bbox score threshold')
     parser.add_argument(
