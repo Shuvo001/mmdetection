@@ -16,7 +16,9 @@ class CascadeRCNN(TwoStageDetector):
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None,
-                 init_cfg=None):
+                 init_cfg=None,
+                 *args,
+                 **kwargs):
         super(CascadeRCNN, self).__init__(
             backbone=backbone,
             neck=neck,
@@ -25,7 +27,9 @@ class CascadeRCNN(TwoStageDetector):
             train_cfg=train_cfg,
             test_cfg=test_cfg,
             pretrained=pretrained,
-            init_cfg=init_cfg)
+            init_cfg=init_cfg,
+            *args,
+            **kwargs)
 
     def show_result(self, data, result, **kwargs):
         """Show prediction results of the detector.

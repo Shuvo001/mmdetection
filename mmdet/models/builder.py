@@ -2,7 +2,7 @@
 import warnings
 import torch.nn as nn
 from mmcv.cnn import MODELS as MMCV_MODELS
-from mmcv.utils import Registry
+from mmdet.utils import Registry
 from wtorch.dropblock import DropBlock2D,LinearScheduler
 from collections import Iterable
 import copy

@@ -74,3 +74,26 @@ train_dataset = dict(
     ),
     pipeline=train_pipeline,
     )
+
+samples_per_gpu = 6
+data = dict(
+    dataloader="mmdet_dataloader",
+    data_processor="mmdet_data_processor",
+    samples_per_gpu=samples_per_gpu,
+    workers_per_gpu=10,
+    batch_split_nr=2,
+    pin_memory=True,
+    train= train_dataset,
+    val=dict(
+        type=dataset_type,
+        classes=classes,
+        img_suffix="jpg",
+        ann_file=data_root,
+        data_dirs=test_data_dir,
+        pipeline=test_pipeline),
+    test=dict(
+        type=dataset_type,
+        classes=classes,
+        img_suffix="jpg",
+        ann_file=test_data_dir,
+        pipeline=test_pipeline))

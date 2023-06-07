@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-
+import re
 import mmcv
 import numpy as np
 import torch
@@ -162,7 +162,13 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             if k in log_vars:
                 log_vars[k] = log_vars[k]*s
             else:
-                print(f"ERROR: Find loss scale {k} in log vars faild.")
+                key = self.get_match_loss_scale(k,log_vars.keys())
+                if key is not None:
+                    log_vars[key] = log_vars[key]*s
+                    if is_debug():
+                        print(f"{key} match {k}, scale value {s}")
+                else:
+                    print(f"ERROR: Find loss scale {k} in log vars faild.")
         any_infinte_loss = False
         for k,v in log_vars.items():
             if not torch.isfinite(v):
@@ -197,6 +203,17 @@ class BaseDetector(BaseModule, metaclass=ABCMeta):
             log_vars[loss_name] = loss_value.item()'''
 
         return loss, log_vars
+
+    @staticmethod
+    def get_match_loss_scale(pattern,keys):
+        pattern = re.compile(pattern)
+        for key in keys:
+            v = pattern.match(key)
+            if v is not None:
+                v = v.span()
+                if v[1] == len(key):
+                    return key
+        return None
 
     def train_step(self, data, optimizer):
         """The iteration step during training.
