@@ -291,32 +291,14 @@ class CascadeRoIHead(BaseRoIHead):
         """
         assert self.with_bbox, 'Bbox head must be implemented.'
         num_imgs = len(proposal_list)
+        assert num_imgs==1,f"Error num imgs {num_imgs}"
         img_shapes = tuple(meta['img_shape'] for meta in img_metas)
 
         # "ms" in variable names means multi-stage
-        ms_bbox_result = {}
-        ms_segm_result = {}
         ms_scores = []
         rcnn_test_cfg = self.test_cfg
 
         rois = bbox2roi(proposal_list)
-
-        if rois.shape[0] == 0:
-            # There is no proposal in the whole batch
-            bbox_results = [[
-                np.zeros((0, 5), dtype=np.float32)
-                for _ in range(self.bbox_head[-1].num_classes)
-            ]] * num_imgs
-
-            if self.with_mask:
-                mask_classes = self.mask_head[-1].num_classes
-                segm_results = [[[] for _ in range(mask_classes)]
-                                for _ in range(num_imgs)]
-                results = list(zip(bbox_results, segm_results))
-            else:
-                results = bbox_results
-
-            return results
 
         for i in range(self.num_stages):
             bbox_results = self._bbox_forward(i, x, rois)
@@ -324,65 +306,48 @@ class CascadeRoIHead(BaseRoIHead):
             # split batch bbox prediction back to each image
             cls_score = bbox_results['cls_score']
             bbox_pred = bbox_results['bbox_pred']
-            num_proposals_per_img = tuple(
-                len(proposals) for proposals in proposal_list)
-            rois = rois.split(num_proposals_per_img, 0)
-            cls_score = cls_score.split(num_proposals_per_img, 0)
-            if isinstance(bbox_pred, torch.Tensor):
+            '''if isinstance(bbox_pred, torch.Tensor):
                 bbox_pred = bbox_pred.split(num_proposals_per_img, 0)
             else:
                 bbox_pred = self.bbox_head[i].bbox_pred_split(
-                    bbox_pred, num_proposals_per_img)
+                    bbox_pred, num_proposals_per_img)'''
+            assert isinstance(bbox_pred, torch.Tensor),f"ERROR bbox_pred type {type(bbox_pred)}, except type torch.Tensor"
             ms_scores.append(cls_score)
 
             if i < self.num_stages - 1:
                 if self.bbox_head[i].custom_activation:
-                    cls_score = [
-                        self.bbox_head[i].loss_cls.get_activation(s)
-                        for s in cls_score
-                    ]
-                refine_rois_list = []
-                for j in range(num_imgs):
-                    if rois[j].shape[0] > 0:
-                        bbox_label = cls_score[j][:, :-1].argmax(dim=1)
-                        refined_rois = self.bbox_head[i].regress_by_class(
-                            rois[j], bbox_label, bbox_pred[j], img_metas[j])
-                        refine_rois_list.append(refined_rois)
-                rois = torch.cat(refine_rois_list)
+                    cls_score = self.bbox_head[i].loss_cls.get_activation(cls_score)
+                j = 0
+                if rois.shape[0] > 0:
+                    bbox_label = cls_score[:, :-1].argmax(dim=1)
+                    refined_rois = self.bbox_head[i].regress_by_class(
+                        rois, bbox_label, bbox_pred, img_metas[j])
+                rois = refined_rois
 
         # average scores of each image by stages
-        cls_score = [
-            sum([score[i] for score in ms_scores]) / float(len(ms_scores))
-            for i in range(num_imgs)
-        ]
+        cls_score = sum(ms_scores) / float(len(ms_scores))
 
         # apply bbox post-processing to each image individually
-        det_bboxes = []
-        det_labels = []
-        for i in range(num_imgs):
-            det_bbox, det_label = self.bbox_head[-1].get_bboxes(
-                rois[i],
-                cls_score[i],
-                bbox_pred[i],
-                img_shapes[i],
+        det_bbox, det_label = self.bbox_head[-1].get_bboxes(
+                rois,
+                cls_score,
+                bbox_pred,
+                img_shapes[0],
                 cfg=rcnn_test_cfg)
-            det_bboxes.append(det_bbox)
-            det_labels.append(det_label)
 
 
-        bbox_results = bbox2result_yolo_style(det_bboxes[0], det_labels[0])
-        ms_bbox_result['ensemble'] = bbox_results
+        bbox_results = bbox2result_yolo_style(det_bbox, det_label)
 
         if self.with_mask:
             #only support one img inference
-            _bboxes = det_bboxes[0][...,:4]
+            _bboxes = det_bbox[...,:4]
             mask_rois = bbox2roi_one_img(_bboxes)
             i = self.num_stages-1
             mask_results = self._mask_forward(i, x, mask_rois)
             #
             mask_pred = mask_results['mask_pred']
             segm_results = self.mask_head[-1].get_seg_masks(
-                mask_pred, _bboxes, det_labels[0],
+                mask_pred, _bboxes, det_label,
                 self.test_cfg)
         else:
             segm_results = torch.zeros([0,28,28],dtype=torch.uint8)
