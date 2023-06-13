@@ -1,5 +1,6 @@
 _base_ = [
-    './rcnn_ms_sm_ren.py'
+    './rcnn_ms_sm_ren.py',
+   './dataset_sru2_sd4.py',
 ]
 #data_root = '/home/wj/ai/mldata1/B7mura/datas/try_min_bboxes_s0'
 model = dict(

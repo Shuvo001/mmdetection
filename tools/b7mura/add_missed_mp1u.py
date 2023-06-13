@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument('--test-nr', type=int,help='Path to output file')
     parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
     parser.add_argument('--shuffle', action='store_true',help='whether to shuffle input files.')
+    parser.add_argument('--label', type=str,default="MP1U",help='label to patch.')
     parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
     parser.add_argument('--save-results',
         action='store_true',
@@ -130,7 +131,8 @@ def main():
         text2id.update(model.cfg.label_text2id)
     print(f"text2id")
     wmlu.show_dict(text2id)
-    mp1u_id = text2id['MP1U']
+    mp1u_label = args.label
+    mp1u_id = text2id[mp1u_label]
     print(f"MP1U ID: {mp1u_id}")
 
 
@@ -213,7 +215,7 @@ def main():
                     if np.any(sious>iou_threshold):
                         continue
                 added_bboxes.append(cbbox)
-                save_img_patch(full_path,save_path,bbox,bbox_scale,min_save_img_size)
+                save_img_patch(full_path,save_path,bbox,bbox_scale,min_save_img_size,label=mp1u_label)
 
         except Exception as e:
             print(e)

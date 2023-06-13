@@ -87,7 +87,7 @@
             //"args":["configs/aiot_project/b7mura/rcnn_vit.py"  "--gpus" "0" "--debug" "--work-dir" "t"],
             //"args":["configs/aiot_project/b7mura/rcnn_test.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
             //"args":["configs/aiot_project/b7mura/rcnn_ms_sm_ren_sd3.py"  "--gpus" "3" "--debug" "--work-dir" "t"],
-            "args":["configs/aiot_project/b7mura/cascade_csp_sd4i.py"  "--gpus" "2" "--debug" "--work-dir" "t"],
+            "args":["configs/aiot_project/b7mura/cascade_sd4i.py" "--gpus" "2" "--debug" "--work-dir" "t"],
         },
         {
             "name": "Python: train b11 act t",

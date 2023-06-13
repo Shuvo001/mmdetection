@@ -4,6 +4,7 @@ import mmcv
 import numpy as np
 import torch
 from mmcv.runner import load_checkpoint
+from thirdparty.pyconfig.config import Config
 
 
 def generate_inputs_and_wrap_model(config_path,
@@ -74,7 +75,7 @@ def build_model_from_cfg(config_path, checkpoint_path, cfg_options=None):
     """
     from mmdet.models import build_detector
 
-    cfg = mmcv.Config.fromfile(config_path)
+    cfg = Config.fromfile(config_path)
     if cfg_options is not None:
         cfg.merge_from_dict(cfg_options)
     # set cudnn_benchmark

@@ -138,7 +138,7 @@ if __name__ == '__main__':
         print(f"input img {args.input_img} not exists.")
         exit(0)
 
-    from mmcv import Config
+    from thirdparty.pyconfig.config import Config
     from mmdet.core.export import build_model_from_cfg, preprocess_2traced_example_input
     import wtorch.train_toolkit as wtt
     import wtorch.utils as wtu

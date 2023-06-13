@@ -5,7 +5,7 @@ random_crop_scales = [(4006, 6720), (3892, 6528), (3777, 6336), (3663, 6144), (3
 img_fill_val = 255
 dataset_type = 'WXMLDataset'
 data_root = '/home/wj/ai/mldata1/B7mura/datas/train_sru2'
-test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s2m'
+test_data_dir = '/home/wj/ai/mldata1/B7mura/datas/test_s3m'
 train_pipeline = [
     dict(type='WMosaic', img_scale=img_scale, pad_val=img_fill_val,prob=0.3,skip_filter=False,two_imgs_directions=['horizontal']),
     dict(type="WRandomCrop",max_size=(4007, 6721),crop_size=random_crop_scales,name="WRandomCrop1",bbox_keep_ratio=0.001,try_crop_around_gtbboxes=True),

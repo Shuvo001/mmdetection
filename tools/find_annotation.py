@@ -34,12 +34,8 @@ def parse_args():
     parser.add_argument('--gpus', default="0", type=str,help='Path to output file')
     parser.add_argument('--save-data-dir', type=str,help='Path to output file')
     parser.add_argument('--test-nr', type=int,help='Path to output file')
-    parser.add_argument('--inplace', action='store_true',help='whether to save annotation inplace.')
     parser.add_argument('--shuffle', action='store_true',help='whether to shuffle input files.')
     parser.add_argument('--save-scores', action='store_true',help='whether to save score.')
-    parser.add_argument('--save-results',
-        action='store_true',
-        help='whether save results imgs.')
     parser.add_argument('--copy-imgs',
         action='store_true',
         help='whether save copy imgs.')
@@ -148,8 +144,7 @@ class LResize:
 
 def main():
     args = parse_args()
-    args.copy_imgs = True
-    labels2save = set([4,5,6])
+    labels2save = set([5,6,7])
 
     if args.gpus is not None and len(args.gpus)>0:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
@@ -217,7 +212,6 @@ def main():
             random.shuffle(files)
             print(f"Shuffle files")
         files = files[:args.test_nr]
-        args.copy_imgs = True
         print(f"test nr is {args.test_nr}, files len is {len(files)}")
         reader = ImgsReader(files,shuffle=False,transform=resizer)
         sys.stdout.flush()
@@ -236,15 +230,10 @@ def main():
     print(f"input size={input_size}")
     print(f"Save path {save_path}")
     sys.stdout.flush()
-    #save_size = (1024,640) 
-    save_size = None
 
     pipeline = Compose(model.cfg.test_pipeline)
     detector = ImageInferencePipeline(pipeline=pipeline)
 
-    #save_annotation_bboxes_txt_head(save_path)
-
-    save_size = input_size
     sys.stdout.flush()
 
     for i,(full_path,img) in enumerate(reader):
@@ -258,34 +247,7 @@ def main():
                 continue
             if i%10 == 0:
                 sys.stdout.flush()
-            #
-            #if 1 not in gt_labels:
-                #continue
-            '''
-            contours, hierarchy = cv2.findContours(binary_masks[0], cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-            print(contours)
-            tmp_img = wmli.imread(full_path)
-            cv2.drawContours(tmp_img,contours,-1,(255,0,0),2)
-            wmli.imwrite("a.jpg",tmp_img)'''
-            #
-            #if wmlu.base_name(full_path) != "B61C1Y0521B5BAQ03-aa-02_ALL_CAM00":
-                #continue
-            #if osp.basename(full_path) not in imgs17:
-                #continue
-            if args.inplace:
-                ann_save_dir = osp.dirname(full_path)
-            else:
-                ann_save_dir = save_path
-            ann_save_path0 = osp.join(ann_save_dir,wmlu.base_name(full_path)+".xml")
-            ann_save_path1 = osp.join(ann_save_dir,wmlu.base_name(full_path)+".json")
-            if osp.exists(ann_save_path0): 
-                print(f"{ann_save_path0} exists, skip")
-                sys.stdout.flush()
-                continue
-            if osp.exists(ann_save_path1):
-                print(f"{ann_save_path1} exists, skip")
-                sys.stdout.flush()
-                continue
+            ann_save_dir = save_path
             bboxes,labels,scores,det_masks,result = detector(model,
                                                              img,
                                                              input_size=input_size,score_thr=args.score_thr)
@@ -294,39 +256,16 @@ def main():
             if len(set(labels)&labels2save)==0:
                 continue
             bboxes = bboxes*i_scale
-            name = wmlu.base_name(full_path)
     
             ann_path = save_annotation(ann_save_dir,
                                        full_path,org_shape,bboxes,labels,scores,det_masks,classes,
                                        save_scores=args.save_scores)
     
-            if not args.inplace and len(labels)>0:
+            if len(labels)>0:
                 suffix = osp.splitext(full_path)[1][1:]
                 save_img_path = wmlu.change_suffix(ann_path,suffix)
-                if args.copy_imgs:
-                    wmlu.try_link(full_path,save_img_path)
+                wmlu.try_link(full_path,save_img_path)
     
-            if args.save_results:
-                img_save_path = os.path.join(save_path,name+".jpg")
-    
-                if save_size is not None:
-                    wmli.imwrite(img_save_path,wmli.imread(full_path),save_size)
-                else:
-                    shutil.copy(full_path,img_save_path)
-        
-                img_save_path = os.path.join(save_path,name+"_pred.jpg")
-                img = wmli.imread(full_path)
-                if save_size is not None:
-                    img,r = wmli.resize_imgv2(img,save_size,return_scale=True)
-                    t_bboxes = bboxes*r
-                else:
-                    t_bboxes = bboxes
-                img = odv.draw_bboxes_xy(img,
-                                         scores=scores,classes=labels,bboxes=t_bboxes,text_fn=text_fn,
-                                         show_text=True)
-                if det_masks is not None:
-                    img = odv.draw_mask_xy(img,classes=labels,bboxes=t_bboxes,masks=det_masks,color_fn=odv.red_color_fn)
-                wmli.imwrite(img_save_path,img)
         except Exception as e:
             print(e)
             pass
@@ -341,5 +280,4 @@ if __name__ == "__main__":
     main()
 
 '''
-python tools/auto_annotation.py configs/aiot_project/b7mura/rcnn_yoloxv2_huges_redbc.py /home/wj/ai/mldata1/B7mura/datas/verify_0328 --score-thr 0.4 --work-dir 1 --gpus 0 --save-scores
 '''
